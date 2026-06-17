@@ -11,21 +11,26 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchUserProfile = useCallback(async (userId) => {
+  const fetchUserProfile = useCallback(async (authUser) => {
     try {
-      const { data, error } = await supabase
-        .from('users')
+      const { data } = await supabase
+        .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', authUser.id)
         .single();
 
-      if (error) throw error;
-      
-      setCurrentUser(data);
-      setUserRole(data?.role || 'user');
+      const profile = data || {};
+      setCurrentUser({
+        id: authUser.id,
+        email: authUser.email,
+        ...profile,
+      });
+      setUserRole(profile.role || 'citizen');
     } catch (err) {
-      console.error('Error fetching user profile:', err);
-      setError(err.message);
+      // Profile might not exist yet on first login — keep auth user active anyway
+      setCurrentUser({ id: authUser.id, email: authUser.email });
+      setUserRole('citizen');
+      console.error('Error fetching profile:', err);
     }
   }, []);
 
@@ -33,9 +38,8 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          await fetchUserProfile(session.user);
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
@@ -49,7 +53,7 @@ export const AuthProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        await fetchUserProfile(session.user.id);
+        await fetchUserProfile(session.user);
       } else {
         setCurrentUser(null);
         setUserRole(null);
@@ -63,33 +67,18 @@ export const AuthProvider = ({ children }) => {
   const signup = useCallback(async (email, password, name) => {
     setError(null);
     setIsLoading(true);
-    
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name,
-          },
-        },
+        options: { data: { full_name: name } },
       });
-
       if (error) throw error;
-
-      toast({
-        title: "Account created!",
-        description: "Welcome to Radio Eje. You're now logged in.",
-      });
-
+      toast({ title: '¡Cuenta creada!', description: 'Bienvenido a POLYFAUNA.' });
       return { data, error: null };
     } catch (err) {
       setError(err.message);
-      toast({
-        variant: "destructive",
-        title: "Signup failed",
-        description: err.message,
-      });
+      toast({ variant: 'destructive', title: 'Error al registrarse', description: err.message });
       return { data: null, error: err };
     } finally {
       setIsLoading(false);
@@ -99,28 +88,14 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     setError(null);
     setIsLoading(true);
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
-
+      toast({ title: '¡Bienvenido de vuelta!', description: 'Has iniciado sesión.' });
       return { data, error: null };
     } catch (err) {
       setError(err.message);
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: err.message,
-      });
+      toast({ variant: 'destructive', title: 'Error al iniciar sesión', description: err.message });
       return { data: null, error: err };
     } finally {
       setIsLoading(false);
@@ -130,50 +105,31 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     setError(null);
     setIsLoading(true);
-
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
       setCurrentUser(null);
       setUserRole(null);
-
-      toast({
-        title: "Logged out",
-        description: "See you soon!",
-      });
-
+      toast({ title: 'Sesión cerrada', description: '¡Hasta pronto!' });
       return { error: null };
     } catch (err) {
       setError(err.message);
-      toast({
-        variant: "destructive",
-        title: "Logout failed",
-        description: err.message,
-      });
+      toast({ variant: 'destructive', title: 'Error al cerrar sesión', description: err.message });
       return { error: err };
     } finally {
       setIsLoading(false);
     }
   }, [toast]);
 
-  const value = {
-    currentUser,
-    userRole,
-    isLoading,
-    error,
-    signup,
-    login,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

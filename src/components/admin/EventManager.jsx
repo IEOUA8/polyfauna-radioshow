@@ -63,7 +63,7 @@ const EventManager = () => {
       const eventData = {
         ...formData,
         price: formData.price ? parseFloat(formData.price) : null,
-        created_by: currentUser.id,
+        owner_id: currentUser.id,
       };
 
       if (editingEvent) {

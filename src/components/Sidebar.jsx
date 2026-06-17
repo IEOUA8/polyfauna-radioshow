@@ -1,185 +1,195 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Radio, Home, Calendar, Mic2, 
-  Video, FileText, MapPin, Users, 
-  Info, Mail, Music2, LogIn, UserPlus, LogOut, User as UserIcon, Settings 
+import {
+  ArrowRight, CalendarDays, Disc3, FileText, Headphones,
+  LayoutGrid, MessageSquare, Radio, SlidersHorizontal,
+  Ticket, User, Video,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/Logo';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
-const Sidebar = ({ currentSection, setCurrentSection, isMobile, closeMobileMenu }) => {
-  const { currentUser, userRole, logout } = useAuth();
-  const navigate = useNavigate();
+const NAV_ITEMS = [
+  { id: 'radio-console', label: 'Radio Console',   icon: Radio           },
+  { id: 'podcasts',      label: 'Podcasts',         icon: Headphones      },
+  { id: 'community',     label: 'Community Grid',   icon: LayoutGrid      },
+  { id: 'inbox',         label: 'Signal Inbox',     icon: MessageSquare   },
+  { id: 'events',        label: 'Event Terminal',   icon: CalendarDays    },
+  { id: 'artists',       label: 'Artists & Labels', icon: Disc3           },
+  { id: 'blog',          label: 'Blog',             icon: FileText        },
+  { id: 'interviews',    label: 'Interviews',        icon: Video           },
+  { id: 'tickets',       label: 'Ticket Vault',     icon: Ticket          },
+  { id: 'settings',      label: 'Control Center',   icon: SlidersHorizontal },
+];
 
-  const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'live', label: 'Radio Live', icon: Radio },
-    { id: 'schedule', label: 'Programming', icon: Calendar },
-    { id: 'podcasts', label: 'Podcasts', icon: Mic2 },
-    { id: 'interviews', label: 'Interviews', icon: Video },
-    { id: 'blog', label: 'Blog', icon: FileText },
-    { id: 'events', label: 'Events', icon: MapPin },
-    { id: 'directory', label: 'Directory', icon: Users },
-    { id: 'about', label: 'About', icon: Info },
-    { id: 'contact', label: 'Contact', icon: Mail },
-  ];
+const AUDIO_BARS = [55, 80, 40, 92, 65, 48, 78, 60, 85, 50, 72, 38, 88, 62, 45, 75, 58, 90];
+const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=80&auto=format&fit=crop';
 
-  const categories = [
-    { id: 'techno', label: 'Techno' },
-    { id: 'house', label: 'House' },
-    { id: 'ambient', label: 'Ambient' },
-    { id: 'minimal', label: 'Minimal' },
-    { id: 'experimental', label: 'Experimental' },
-  ];
-
-  const handleNavClick = (id) => {
+function NavContent({ currentSection, setCurrentSection, profile, currentUser, onNavigate }) {
+  const navigate = (id) => {
     setCurrentSection(id);
-    if (isMobile && closeMobileMenu) {
-      closeMobileMenu();
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDashboard = () => {
-    if (userRole === 'admin') {
-      navigate('/admin');
-    } else {
-      navigate('/dashboard');
-    }
-    if (isMobile && closeMobileMenu) {
-      closeMobileMenu();
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-    if (isMobile && closeMobileMenu) {
-      closeMobileMenu();
-    }
+    onNavigate?.();
   };
 
   return (
-    <div className="flex flex-col h-full poly-bg relative overflow-hidden border-r border-white/5">
-      <div className="poly-texture opacity-50" />
-      <div className="relative z-10 flex flex-col h-full">
-        {/* Logo Area */}
-        <div className="p-8 pb-6 flex justify-center border-b border-white/5">
-          <div 
-            className="flex flex-col items-center gap-3 cursor-pointer group"
-            onClick={() => handleNavClick('home')}
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="px-5 pt-6 pb-5 shrink-0">
+        <Logo size="sm" />
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+        {/* Mi Panel — solo si logueado */}
+        {currentUser && (
+          <button
+            type="button"
+            onClick={() => navigate('mi-panel')}
+            className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative mb-1 ${
+              currentSection === 'mi-panel'
+                ? 'text-[#00CFFF] bg-[#00CFFF]/10'
+                : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+            }`}
           >
-            <Logo size="lg" className="group-hover:opacity-80 transition-transform hover:scale-105 duration-500" />
-          </div>
-        </div>
-
-        {/* Main Navigation */}
-        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-hide">
-          <div>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4 px-4">
-              Menu
-            </h3>
-            <div className="space-y-1">
-              {navItems.map((item) => (
-                <Button
-                  key={item.id}
-                  variant="ghost"
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full justify-start text-base h-12 rounded-xl transition-all duration-300 ${
-                    currentSection === item.id
-                      ? 'bg-secondary/20 text-secondary hover:bg-secondary/30 border border-secondary/20'
-                      : 'text-foreground hover:bg-white/5 hover:text-white border border-transparent'
-                  }`}
-                >
-                  <item.icon className={`w-5 h-5 mr-3 ${currentSection === item.id ? 'text-secondary' : 'text-muted-foreground'}`} />
-                  {item.label}
-                </Button>
-              ))}
+            {currentSection === 'mi-panel' && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#00CFFF' }} />
+            )}
+            <div className="w-4 h-4 rounded-full overflow-hidden shrink-0">
+              <img src={profile?.avatar_url || FALLBACK_AVATAR} alt="" className="w-full h-full object-cover" />
             </div>
-          </div>
+            Mi Panel
+          </button>
+        )}
 
-          {/* Categories / Playlists */}
-          <div>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4 px-4 flex items-center justify-between">
-              <span>Categories</span>
-              <Music2 className="w-3 h-3" />
-            </h3>
-            <div className="space-y-1">
-              {categories.map((cat) => (
-                <Button
-                  key={cat.id}
-                  variant="ghost"
-                  className="w-full justify-start text-sm h-10 rounded-xl text-foreground hover:bg-white/5 pl-4"
-                >
-                  <div className="w-2 h-2 rounded-full bg-primary mr-3 shadow-[0_0_8px_rgba(15,76,58,0.8)]" />
-                  {cat.label}
-                </Button>
-              ))}
-            </div>
+        <div className="mb-2 mx-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+
+        {NAV_ITEMS.map((item) => {
+          const active = currentSection === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => navigate(item.id)}
+              className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
+                active ? 'text-[#00CFFF] bg-[#00CFFF]/10' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+              }`}
+            >
+              {active && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#00CFFF' }} />
+              )}
+              <item.icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-[#00CFFF]' : 'text-white/40 group-hover:text-white/70'}`} />
+              {item.label}
+            </button>
+          );
+        })}
+
+        {/* Promoter Hub */}
+        {(profile?.role === 'promoter' || profile?.role === 'club' || profile?.role === 'admin') && (
+          <>
+            <div className="my-2 mx-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+            <button
+              type="button"
+              onClick={() => navigate('promoter')}
+              className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
+                currentSection === 'promoter' ? 'bg-[#F59E0B]/10' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+              }`}
+              style={{ color: currentSection === 'promoter' ? '#F59E0B' : undefined }}
+            >
+              {currentSection === 'promoter' && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#F59E0B' }} />
+              )}
+              <Ticket className="w-4 h-4 shrink-0" style={{ color: currentSection === 'promoter' ? '#F59E0B' : undefined }} />
+              Promoter Hub
+            </button>
+          </>
+        )}
+      </nav>
+
+      {/* Unauthenticated CTA */}
+      {!currentUser && (
+        <div className="mx-3 mb-3 p-3 rounded-xl flex items-center gap-3"
+          style={{ background: 'rgba(0,207,255,0.06)', border: '1px solid rgba(0,207,255,0.12)' }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,207,255,0.1)' }}>
+            <User className="w-4 h-4" style={{ color: '#00CFFF' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-white/60">¿Nuevo aquí?</p>
+            <a href="/signup" className="text-[11px] font-bold hover:underline" style={{ color: '#00CFFF' }}>
+              Crear cuenta →
+            </a>
           </div>
         </div>
+      )}
 
-        {/* Auth Section */}
-        <div className="p-6 border-t border-white/5 space-y-3 bg-black/20 backdrop-blur-md">
-          {currentUser ? (
-            <>
-              <div className="flex items-center gap-3 mb-3 p-3 bg-white/5 rounded-xl border border-white/5">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{currentUser.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{currentUser.email}</p>
-                </div>
-              </div>
-              <Button 
-                onClick={handleDashboard}
-                variant="outline" 
-                className="w-full justify-center border-white/10 hover:bg-white/5 text-foreground"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                {userRole === 'admin' ? 'Admin Panel' : 'Dashboard'}
-              </Button>
-              <Button 
-                onClick={handleLogout}
-                className="w-full justify-center bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button 
-                onClick={() => {
-                  navigate('/login');
-                  if (isMobile && closeMobileMenu) closeMobileMenu();
-                }}
-                variant="outline" 
-                className="w-full justify-center border-white/10 hover:bg-white/5 text-foreground"
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Login
-              </Button>
-              <Button 
-                onClick={() => {
-                  navigate('/signup');
-                  if (isMobile && closeMobileMenu) closeMobileMenu();
-                }}
-                className="w-full justify-center bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white border-0 shadow-lg"
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Register
-              </Button>
-            </>
-          )}
+      {/* Live Radio Widget */}
+      <div className="mx-3 mb-4 rounded-xl border p-4 shrink-0"
+        style={{ background: 'rgba(15, 19, 34, 0.9)', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Polyfauna Radio</span>
+          <span className="flex items-center gap-1.5">
+            <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
+              className="w-1.5 h-1.5 rounded-full" style={{ background: '#00CFFF' }} />
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#00CFFF' }}>Live Now</span>
+          </span>
         </div>
+        <p className="text-white text-sm font-semibold leading-tight">Underground Frequencies</p>
+        <p className="text-white/40 text-xs mt-0.5">with Nox Vega</p>
+        <div className="flex items-end gap-px h-7 mt-3">
+          {AUDIO_BARS.map((h, i) => (
+            <motion.div key={i} className="flex-1 rounded-t-sm" style={{ background: '#00CFFF', opacity: 0.65 }}
+              animate={{ height: [`${h * 0.3}%`, `${h}%`, `${h * 0.5}%`] }}
+              transition={{ duration: 0.7 + (i % 5) * 0.12, repeat: Infinity, repeatType: 'reverse', delay: i * 0.045 }} />
+          ))}
+        </div>
+        <button type="button" onClick={() => navigate('radio-console')}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-colors"
+          style={{ color: '#00CFFF', background: 'rgba(0,207,255,0.08)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.15)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.08)')}>
+          Go to Radio Console
+          <ArrowRight className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );
-};
+}
 
-export default Sidebar;
+export default function Sidebar({ currentSection, setCurrentSection, mobileOpen, setMobileOpen }) {
+  const { currentUser } = useAuth();
+  const { profile } = useProfile();
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className="hidden lg:flex flex-col w-60 shrink-0 h-full border-r"
+        style={{ background: 'rgba(8, 11, 22, 0.98)', borderColor: 'rgba(255,255,255,0.07)' }}
+      >
+        <NavContent
+          currentSection={currentSection}
+          setCurrentSection={setCurrentSection}
+          profile={profile}
+          currentUser={currentUser}
+        />
+      </aside>
+
+      {/* Mobile Sheet */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          side="left"
+          className="p-0 w-60 border-r"
+          style={{ background: 'rgba(8, 11, 22, 0.99)', borderColor: 'rgba(255,255,255,0.07)' }}
+        >
+          <NavContent
+            currentSection={currentSection}
+            setCurrentSection={setCurrentSection}
+            profile={profile}
+            currentUser={currentUser}
+            onNavigate={() => setMobileOpen?.(false)}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}

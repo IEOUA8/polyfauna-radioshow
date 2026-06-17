@@ -24,16 +24,16 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const [usersRes, playsRes, likesRes] = await Promise.all([
-        supabase.from('users').select('id', { count: 'exact', head: true }),
-        supabase.from('user_playback_history').select('id', { count: 'exact', head: true }),
+      const [usersRes, likesRes, favsRes] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('user_likes').select('id', { count: 'exact', head: true }),
         supabase.from('user_favorites').select('id', { count: 'exact', head: true }),
       ]);
 
       setStats({
         totalUsers: usersRes.count || 0,
-        totalPlays: playsRes.count || 0,
-        totalLikes: likesRes.count || 0,
+        totalPlays: likesRes.count || 0,
+        totalLikes: favsRes.count || 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -73,7 +73,7 @@ const AdminDashboard = () => {
 
           <Card className="poly-surface rounded-3xl border-white/5 hover:border-secondary/30 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Plays</CardTitle>
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Likes</CardTitle>
               <Play className="w-6 h-6 text-secondary" />
             </CardHeader>
             <CardContent>
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
 
           <Card className="poly-surface rounded-3xl border-white/5 hover:border-accent/30 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Likes</CardTitle>
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Favoritos</CardTitle>
               <Heart className="w-6 h-6 text-accent" />
             </CardHeader>
             <CardContent>

@@ -1,88 +1,157 @@
-import React from 'react';
-import { Play, Pause, Volume2, Radio, SkipBack, SkipForward, Repeat, Shuffle, Heart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useRef, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Heart, ListMusic, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
-const GlobalPlayer = ({ isPlaying, setIsPlaying }) => {
+const STREAM_URL = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
+
+export default function GlobalPlayer({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
-  
-  const handleFeature = () => {
-    toast({
-      title: "Not available in demo",
-      description: "This feature will be available in the full version."
-    });
-  };
+  const audioRef = useRef(null);
+  const [volume, setVolume] = useState(0.75);
+  const [muted, setMuted] = useState(false);
+  const [streamError, setStreamError] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      setStreamError(false);
+      audio.play().catch(() => {
+        setStreamError(true);
+        setIsPlaying(false);
+        toast({ title: 'Stream no disponible', description: 'Verifica la URL del stream en .env → VITE_RADIO_STREAM_URL', variant: 'destructive' });
+      });
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = muted ? 0 : volume;
+    }
+  }, [volume, muted]);
+
+  const noop = () => toast({ title: 'Próximamente', description: 'Disponible en la versión completa.' });
 
   return (
-    <div className="w-full poly-surface border-t border-white/10 py-3 px-4 md:px-8 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
-      <div className="flex items-center justify-between max-w-7xl mx-auto gap-4">
-        
+    <>
+      <audio ref={audioRef} src={STREAM_URL} preload="none" crossOrigin="anonymous" />
+
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 h-[72px] flex items-center px-4 md:px-6 border-t"
+        style={{
+          background: 'rgba(8, 11, 22, 0.97)',
+          backdropFilter: 'blur(24px)',
+          borderColor: 'rgba(255,255,255,0.08)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
+        }}
+      >
         {/* Track Info */}
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20 group relative overflow-hidden">
-             <img 
-               src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop" 
-               alt="Album Art" 
-               className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-500"
-             />
-             <div className="absolute inset-0 bg-black/40" />
-             <Radio className="w-6 h-6 text-white absolute" />
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+              <img
+                src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop"
+                alt="Now playing"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <motion.span
+              animate={{ opacity: isPlaying ? [1, 0.5, 1] : 1 }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="absolute -top-1.5 -left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
+              style={{
+                background: isPlaying ? '#00CFFF' : 'rgba(255,255,255,0.2)',
+                color: '#080B14',
+                letterSpacing: '0.05em',
+              }}
+            >
+              {isPlaying ? 'ON AIR' : 'PAUSED'}
+            </motion.span>
           </div>
+
           <div className="min-w-0 hidden sm:block">
-            <p className="text-sm font-bold text-white truncate drop-shadow-md">Deep Connections</p>
-            <p className="text-xs text-muted-foreground truncate hover:text-primary cursor-pointer transition-colors">DJ Fractal</p>
+            <p className="text-sm font-bold text-white leading-tight truncate">PolyFauna Radio</p>
+            <p className="text-xs text-white/40 truncate">
+              {streamError ? 'Error de conexión' : isPlaying ? 'Transmisión en vivo · 24/7' : 'En pausa'}
+            </p>
           </div>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-secondary hidden sm:flex hover:bg-white/5">
-             <Heart className="w-4 h-4" />
-          </Button>
+
+          <button type="button" onClick={noop} className="hidden sm:flex text-white/30 hover:text-white/60 transition-colors p-1">
+            <Heart className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Controls */}
         <div className="flex flex-col items-center gap-1 flex-1">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={handleFeature} className="text-muted-foreground hover:text-white w-8 h-8 hidden md:flex hover:bg-white/5">
-               <Shuffle className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleFeature} className="text-muted-foreground hover:text-white hover:bg-white/5">
-               <SkipBack className="w-5 h-5" />
-            </Button>
-            <Button
-              size="icon"
+          <div className="flex items-center gap-3 md:gap-4">
+            <button type="button" onClick={noop} className="hidden md:flex text-white/30 hover:text-white/60 transition-colors">
+              <Shuffle className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={noop} className="text-white/50 hover:text-white/80 transition-colors">
+              <SkipBack className="w-5 h-5" />
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsPlaying(!isPlaying)}
-              className="w-10 h-10 rounded-full bg-white text-black hover:bg-gray-200 hover:scale-105 transition-all shadow-xl shadow-white/10"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg"
+              style={{ background: '#00CFFF', boxShadow: '0 0 20px rgba(0,207,255,0.3)' }}
             >
-              {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleFeature} className="text-muted-foreground hover:text-white hover:bg-white/5">
-               <SkipForward className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleFeature} className="text-muted-foreground hover:text-white w-8 h-8 hidden md:flex hover:bg-white/5">
-               <Repeat className="w-4 h-4" />
-            </Button>
+              {isPlaying
+                ? <Pause className="w-4 h-4 fill-current" style={{ color: '#080B14' }} />
+                : <Play className="w-4 h-4 fill-current ml-0.5" style={{ color: '#080B14' }} />
+              }
+            </button>
+
+            <button type="button" onClick={noop} className="text-white/50 hover:text-white/80 transition-colors">
+              <SkipForward className="w-5 h-5" />
+            </button>
+            <button type="button" onClick={noop} className="hidden md:flex text-white/30 hover:text-white/60 transition-colors">
+              <Repeat className="w-4 h-4" />
+            </button>
           </div>
-          
-          {/* Progress Bar */}
-          <div className="w-full max-w-md flex items-center gap-3 text-xs text-muted-foreground font-medium">
-             <span>2:14</span>
-             <div className="flex-1 h-1 bg-[#2D2D2D] rounded-full relative group cursor-pointer">
-                <div className="absolute left-0 top-0 bottom-0 w-[40%] bg-gradient-to-r from-primary to-secondary rounded-full">
-                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-md transition-opacity" />
-                </div>
-             </div>
-             <span>5:30</span>
+
+          {/* Progress bar — live stream, no seek */}
+          <div className="w-full max-w-sm flex items-center gap-2 text-[11px] text-white/35 font-medium">
+            <span>{isPlaying ? 'LIVE' : '——'}</span>
+            <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+              {isPlaying && (
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: '#00CFFF' }}
+                  animate={{ width: ['0%', '100%'] }}
+                  transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+                />
+              )}
+            </div>
+            <span>∞</span>
           </div>
         </div>
 
         {/* Volume */}
-        <div className="flex-1 flex justify-end items-center gap-2 hidden md:flex">
-          <Volume2 className="w-4 h-4 text-muted-foreground" />
-          <div className="w-24 bg-[#2D2D2D] rounded-full h-1.5 overflow-hidden cursor-pointer">
-            <div className="w-3/4 h-full bg-muted-foreground hover:bg-primary transition-colors" />
-          </div>
+        <div className="flex-1 hidden md:flex justify-end items-center gap-3">
+          <button type="button" onClick={() => setMuted(!muted)} className="text-white/30 hover:text-white/60 transition-colors">
+            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.02"
+            value={muted ? 0 : volume}
+            onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
+            className="w-24 h-1 accent-[#00CFFF] cursor-pointer"
+            style={{ accentColor: '#00CFFF' }}
+          />
+          <button type="button" onClick={noop} className="ml-2 text-white/30 hover:text-white/60 transition-colors">
+            <ListMusic className="w-4 h-4" />
+          </button>
         </div>
       </div>
-    </div>
+    </>
   );
-};
-
-export default GlobalPlayer;
+}

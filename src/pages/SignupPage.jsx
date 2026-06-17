@@ -46,7 +46,7 @@ const SignupPage = () => {
     const { error } = await signup(formData.email, formData.password, formData.name);
     
     if (!error) {
-      navigate('/dashboard');
+      navigate('/');
     }
   };
 

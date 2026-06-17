@@ -28,7 +28,7 @@ const LoginPage = () => {
     const { error } = await login(email, password);
     
     if (!error) {
-      navigate('/dashboard');
+      navigate('/');
     }
   };
 
