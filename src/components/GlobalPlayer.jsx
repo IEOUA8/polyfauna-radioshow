@@ -23,16 +23,16 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   const [audioDuration, setAudioDuration] = useState(0);
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
 
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.src = STREAM_URL;
-  }, []);
-
+  // Set audio src whenever the track changes (runs on mount too — currentTrack starts null)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    const newSrc = currentTrack?.audio_url || STREAM_URL;
+    if (audio.src !== newSrc) {
+      audio.src = newSrc;
+    }
     setCurrentTime(0);
     setAudioDuration(0);
-    audio.src = currentTrack?.audio_url || STREAM_URL;
   }, [currentTrack?.id]);
 
   useEffect(() => {
@@ -40,7 +40,9 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     if (!audio) return;
     if (isPlaying) {
       setStreamError(false);
-      audio.play().catch(() => {
+      audio.play().catch((err) => {
+        // AbortError fires when src changes while play() is pending — not a real failure
+        if (err.name === 'AbortError') return;
         setStreamError(true);
         setIsPlaying(false);
         toast({ title: 'Stream no disponible', description: 'Verifica la URL del stream o el archivo de audio.', variant: 'destructive' });
