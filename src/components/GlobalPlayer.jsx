@@ -40,7 +40,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying }) {
 
   return (
     <>
-      <audio ref={audioRef} src={STREAM_URL} preload="none" crossOrigin="anonymous" />
+      <audio ref={audioRef} src={STREAM_URL} preload="none" />
 
       <div
         className="fixed bottom-0 left-0 right-0 z-50 h-[72px] flex items-center px-4 md:px-6 border-t"
