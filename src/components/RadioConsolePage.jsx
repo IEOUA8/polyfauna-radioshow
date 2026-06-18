@@ -5,11 +5,13 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
+import { useNowPlaying } from '@/hooks/useNowPlaying';
 
 const BARS = [68, 42, 82, 56, 92, 48, 74, 64, 88, 52, 76, 60, 84, 44, 70, 58, 90, 46];
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
+  const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
 
   const { data: shows, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('radio_shows').select('*').order('schedule', { ascending: true }).limit(8),
@@ -29,26 +31,30 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             style={{ background: 'linear-gradient(135deg, #00CFFF22, #7B5CF022)' }}
           >
             <img
-              src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop"
+              src={song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'}
               alt="Now playing"
               className="w-full h-full object-cover opacity-60"
             />
-            <Radio className="w-8 h-8 text-white absolute" style={{ filter: 'drop-shadow(0 0 8px #00CFFF)' }} />
+            {!song && <Radio className="w-8 h-8 text-white absolute" style={{ filter: 'drop-shadow(0 0 8px #00CFFF)' }} />}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <motion.span
-                animate={{ opacity: [1, 0.3, 1] }}
+                animate={{ opacity: isOnline ? [1, 0.3, 1] : 1 }}
                 transition={{ duration: 1.2, repeat: Infinity }}
                 className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded"
-                style={{ background: '#00CFFF', color: '#080B14' }}
+                style={{ background: isOnline ? '#00CFFF' : 'rgba(255,255,255,0.15)', color: '#080B14' }}
               >
-                Live Channel
+                {isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Live Channel' : 'Offline'}
               </motion.span>
             </div>
-            <h1 className="text-2xl font-black text-white">PolyFauna Radio</h1>
-            <p className="text-white/50 text-sm mt-1">Transmisión en vivo · 24/7</p>
+            <h1 className="text-2xl font-black text-white truncate">
+              {song?.title || 'PolyFauna Radio'}
+            </h1>
+            <p className="text-white/50 text-sm mt-1 truncate">
+              {song?.artist || (isOnline ? 'Transmisión en vivo · 24/7' : 'Estación offline')}
+            </p>
 
             <div className="flex items-end gap-px h-10 mt-4">
               {BARS.map((h, i) => (
@@ -66,7 +72,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
           <div className="flex flex-col items-center gap-3 shrink-0">
             <div className="flex items-center gap-1.5 text-white/50 text-xs">
               <Users className="w-3.5 h-3.5" />
-              <span>En vivo</span>
+              <span>{listeners > 0 ? `${listeners} oyente${listeners !== 1 ? 's' : ''}` : 'En vivo'}</span>
             </div>
             <button
               type="button"

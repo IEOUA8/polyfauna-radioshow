@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, ListMusic, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useNowPlaying } from '@/hooks/useNowPlaying';
 
 const STREAM_URL = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
 
@@ -11,6 +12,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying }) {
   const [volume, setVolume] = useState(0.75);
   const [muted, setMuted] = useState(false);
   const [streamError, setStreamError] = useState(false);
+  const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -54,7 +56,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying }) {
           <div className="relative shrink-0">
             <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
               <img
-                src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop"
+                src={song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'}
                 alt="Now playing"
                 className="w-full h-full object-cover"
               />
@@ -74,9 +76,17 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying }) {
           </div>
 
           <div className="min-w-0 hidden sm:block">
-            <p className="text-sm font-bold text-white leading-tight truncate">PolyFauna Radio</p>
+            <p className="text-sm font-bold text-white leading-tight truncate">
+              {song?.title || 'PolyFauna Radio'}
+            </p>
             <p className="text-xs text-white/40 truncate">
-              {streamError ? 'Error de conexión' : isPlaying ? 'Transmisión en vivo · 24/7' : 'En pausa'}
+              {streamError
+                ? 'Error de conexión'
+                : song?.artist
+                  ? song.artist
+                  : isPlaying
+                    ? 'Transmisión en vivo · 24/7'
+                    : 'En pausa'}
             </p>
           </div>
 
