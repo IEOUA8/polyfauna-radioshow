@@ -1,10 +1,99 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { CalendarDays, CheckCircle, ChevronRight, Clock, MapPin, Play, QrCode, User } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bell, CalendarDays, CheckCircle, ChevronDown, ChevronRight, Clock, FileText, Headphones, LogOut, MapPin, Play, QrCode, Radio, Settings, User, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+const ROLE_LABEL = { citizen: 'Wave Citizen', artist: 'Artista', promoter: 'Promotor', club: 'Club', admin: 'Admin' };
+
+const DEMO_NOTIFS = [
+  { id: 1, icon: Radio,     color: '#FF7043', title: 'Polyfauna Radio en vivo',       body: 'Underground Frequencies con Nox Vega.',      time: 'Hace 5 min' },
+  { id: 2, icon: Headphones, color: '#00CFFF', title: 'Nuevo podcast disponible',       body: 'Frecuencias Oscuras #12 — HVBER.',            time: 'Hace 1h'    },
+  { id: 3, icon: Bell,       color: '#FBBF24', title: 'Evento próximo: Subterranea',    body: 'Este lunes — Teatro Metropol.',               time: 'Hace 3h'    },
+  { id: 4, icon: FileText,   color: '#A78BFA', title: 'Nuevo artículo en el blog',      body: 'El sonido del techno industrial colombiano.', time: 'Ayer'       },
+];
+
+function NotificationsModal({ open, onClose }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            className="fixed inset-0 z-40"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+          />
+          <motion.div
+            ref={ref}
+            className="fixed top-20 right-4 z-50 w-80 rounded-2xl overflow-hidden shadow-2xl"
+            initial={{ opacity: 0, y: -12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ duration: 0.18 }}
+            style={{ background: 'rgba(10,13,24,0.97)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white">Notificaciones</h3>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,112,67,0.2)', color: '#FF7043' }}>
+                  {DEMO_NOTIFS.length}
+                </span>
+              </div>
+              <button type="button" onClick={onClose}
+                className="p-1 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto py-1">
+              {DEMO_NOTIFS.map((n, i) => {
+                const Icon = n.icon;
+                return (
+                  <motion.button key={n.id} type="button"
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-white/4"
+                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                    onClick={onClose}>
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ background: `${n.color}18`, border: `1px solid ${n.color}30` }}>
+                      <Icon className="w-4 h-4" style={{ color: n.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-white leading-tight">{n.title}</p>
+                      <p className="text-[11px] text-white/45 leading-snug mt-0.5">{n.body}</p>
+                    </div>
+                    <span className="text-[10px] text-white/30 shrink-0 mt-0.5">{n.time}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+            <div className="px-4 py-3 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+              <button type="button" className="text-xs font-semibold transition-colors hover:opacity-80"
+                style={{ color: '#FF7043' }} onClick={onClose}>
+                Marcar todo como leído
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
 
 const FALLBACK_PODCAST = 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=200&auto=format&fit=crop';
 const FALLBACK_EVENT   = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=400&auto=format&fit=crop';
@@ -163,8 +252,16 @@ function ArtistAvatar({ artist, index }) {
 }
 
 export default function RightPanel({ setCurrentSection }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole, logout } = useAuth();
+  const { profile } = useProfile();
+  const navigate = useNavigate();
   const [playing, setPlaying] = useState(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const displayName = profile?.display_name || currentUser?.email?.split('@')[0] || 'Wave Citizen';
+  const displayRole = profile ? (ROLE_LABEL[profile.role] || 'Wave Citizen') : (currentUser ? 'Wave Citizen' : 'Invitado');
+
+  const handleLogout = async () => { await logout(); navigate('/'); };
 
   const { data: tickets } = useSupabaseQuery(
     () => currentUser
@@ -190,25 +287,96 @@ export default function RightPanel({ setCurrentSection }) {
   );
 
   return (
+    <>
+      <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
+
     <aside className="w-72 shrink-0 h-full flex flex-col border-l overflow-y-auto"
       style={{ background: 'rgba(8,11,22,0.97)', borderColor: 'rgba(255,255,255,0.07)' }}>
 
-      {/* 1 — My QR Tickets */}
-      <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-        <SectionHeader title="My QR Tickets" onViewAll={() => setCurrentSection?.('tickets')} />
-        {!currentUser ? (
-          <div className="flex items-center gap-3 py-2">
+      {/* 0 — User Identity */}
+      <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        {currentUser ? (
+          <div className="flex items-center gap-3">
+            {/* Avatar + name → dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="flex items-center gap-2.5 flex-1 min-w-0 rounded-xl py-1 px-1 hover:bg-white/5 transition-colors text-left">
+                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0"
+                    style={{ background: 'linear-gradient(135deg,#FF7043 0%,#7B5CF0 100%)', border: '2px solid rgba(255,255,255,0.1)' }}>
+                    {profile?.avatar_url
+                      ? <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                      : <User className="w-4 h-4 text-white m-auto mt-1.5" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
+                    <p className="text-[11px] leading-tight truncate" style={{ color: '#FF7043' }}>{displayRole}</p>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[180px] border"
+                style={{ background: 'rgba(15,19,34,0.98)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                <DropdownMenuItem onClick={() => setCurrentSection?.('mi-panel')}
+                  className="cursor-pointer text-white/80 hover:text-white hover:bg-white/8 focus:bg-white/8">
+                  <User className="w-4 h-4 mr-2 text-white/50" />Mi Panel
+                </DropdownMenuItem>
+                {(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin') && (
+                  <DropdownMenuItem onClick={() => setCurrentSection?.('promoter')}
+                    className="cursor-pointer text-white/80 hover:text-white hover:bg-white/8 focus:bg-white/8">
+                    <Settings className="w-4 h-4 mr-2 text-white/50" />Promoter Hub
+                  </DropdownMenuItem>
+                )}
+                {userRole === 'admin' && (
+                  <DropdownMenuItem onClick={() => navigate('/admin')}
+                    className="cursor-pointer text-white/80 hover:text-white hover:bg-white/8 focus:bg-white/8">
+                    <Settings className="w-4 h-4 mr-2 text-white/50" />Admin Panel
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleLogout}
+                  className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-white/8 focus:bg-white/8">
+                  <LogOut className="w-4 h-4 mr-2" />Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Bell */}
+            <button type="button" onClick={() => setNotifOpen(v => !v)}
+              className="relative p-2 rounded-lg shrink-0 transition-colors"
+              style={{ color: notifOpen ? '#FF7043' : 'rgba(255,255,255,0.45)', background: notifOpen ? 'rgba(255,112,67,0.08)' : 'transparent' }}
+              onMouseEnter={e => { if (!notifOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={e => { if (!notifOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.background = notifOpen ? 'rgba(255,112,67,0.08)' : 'transparent'; }}>
+              <Bell className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                style={{ background: '#FF7043' }}>
+                {DEMO_NOTIFS.length}
+              </span>
+            </button>
+          </div>
+        ) : (
+          /* Logged-out state */
+          <div className="flex items-center gap-3 py-1">
             <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center"
-              style={{ background: 'rgba(0,207,255,0.08)', border: '1px solid rgba(0,207,255,0.12)' }}>
-              <User className="w-4 h-4" style={{ color: '#00CFFF' }} />
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <User className="w-4 h-4 text-white/30" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white/70">Sin sesión activa</p>
-              <a href="/login" className="text-[10px] font-bold hover:underline" style={{ color: '#00CFFF' }}>
-                Iniciar sesión →
-              </a>
+              <p className="text-xs font-bold text-white/50">Sin sesión activa</p>
+              <div className="flex gap-2 mt-0.5">
+                <a href="/login" className="text-[10px] font-bold hover:underline" style={{ color: '#00CFFF' }}>Ingresar</a>
+                <span className="text-[10px] text-white/20">·</span>
+                <a href="/signup" className="text-[10px] font-bold hover:underline" style={{ color: '#FF7043' }}>Crear cuenta</a>
+              </div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* 1 — My QR Tickets */}
+      <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <SectionHeader title="My QR Tickets" onViewAll={currentUser ? () => setCurrentSection?.('tickets') : undefined} />
+        {!currentUser ? (
+          <p className="text-[11px] text-white/30 py-2 text-center">Inicia sesión para ver tus entradas.</p>
         ) : !tickets || tickets.length === 0 ? (
           <p className="text-[11px] text-white/30 py-3 text-center">No tienes entradas aún.</p>
         ) : (
@@ -267,5 +435,6 @@ export default function RightPanel({ setCurrentSection }) {
         )}
       </div>
     </aside>
+    </>
   );
 }
