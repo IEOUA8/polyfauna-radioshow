@@ -123,8 +123,34 @@ export default function RightPanel() {
       className="w-72 shrink-0 h-full flex flex-col border-l overflow-y-auto"
       style={{ background: 'rgba(8, 11, 22, 0.97)', borderColor: 'rgba(255,255,255,0.07)' }}
     >
-      {/* My QR Tickets */}
+      {/* Featured Podcasts */}
       <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-white">Featured Podcasts</h2>
+          <button type="button" className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: '#00CFFF' }}>
+            View All <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {!podcasts || podcasts.length === 0 ? (
+          <p className="text-xs text-white/30 text-center py-4">No hay podcasts disponibles.</p>
+        ) : (
+          <div className="space-y-3">
+            {podcasts.map((pod, i) => (
+              <motion.div key={pod.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}>
+                <PodcastRow
+                  pod={pod}
+                  isPlaying={playing === pod.id}
+                  onPlay={() => setPlaying(playing === pod.id ? null : pod.id)}
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* My QR Tickets */}
+      <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-white">My QR Tickets</h2>
           <button type="button" className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: '#00CFFF' }}>
@@ -141,32 +167,6 @@ export default function RightPanel() {
             {tickets.map((ticket, i) => (
               <motion.div key={ticket.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
                 <TicketCard ticket={ticket} />
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Featured Podcasts */}
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-white">Featured Podcasts</h2>
-          <button type="button" className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: '#00CFFF' }}>
-            View All <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
-
-        {!podcasts || podcasts.length === 0 ? (
-          <p className="text-xs text-white/30 text-center py-4">No hay podcasts disponibles.</p>
-        ) : (
-          <div className="space-y-3">
-            {podcasts.map((pod, i) => (
-              <motion.div key={pod.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.08 }}>
-                <PodcastRow
-                  pod={pod}
-                  isPlaying={playing === pod.id}
-                  onPlay={() => setPlaying(playing === pod.id ? null : pod.id)}
-                />
               </motion.div>
             ))}
           </div>

@@ -12,17 +12,17 @@ import { useProfile } from '@/hooks/useProfile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 const NAV_ITEMS = [
-  { id: 'radio-console', label: 'Radio Console',   icon: Radio           },
-  { id: 'podcasts',      label: 'Podcasts',         icon: Headphones      },
-  { id: 'music',         label: 'Música',           icon: Music           },
-  { id: 'community',     label: 'Community Grid',   icon: LayoutGrid      },
-  { id: 'inbox',         label: 'Signal Inbox',     icon: MessageSquare   },
-  { id: 'events',        label: 'Event Terminal',   icon: CalendarDays    },
-  { id: 'artists',       label: 'Artists & Labels', icon: Disc3           },
-  { id: 'blog',          label: 'Blog',             icon: FileText        },
-  { id: 'interviews',    label: 'Interviews',        icon: Video           },
-  { id: 'tickets',       label: 'Ticket Vault',     icon: Ticket          },
-  { id: 'settings',      label: 'Control Center',   icon: SlidersHorizontal },
+  { id: 'radio-console', label: 'Radio Console',   icon: Radio,            color: '#FF7043' },
+  { id: 'podcasts',      label: 'Podcasts',         icon: Headphones,       color: '#00CFFF' },
+  { id: 'music',         label: 'Música',           icon: Music,            color: '#A78BFA' },
+  { id: 'community',     label: 'Community Grid',   icon: LayoutGrid,       color: '#34D399' },
+  { id: 'inbox',         label: 'Signal Inbox',     icon: MessageSquare,    color: '#F472B6' },
+  { id: 'events',        label: 'Event Terminal',   icon: CalendarDays,     color: '#FBBF24' },
+  { id: 'artists',       label: 'Artists & Labels', icon: Disc3,            color: '#818CF8' },
+  { id: 'blog',          label: 'Blog',             icon: FileText,         color: '#6EE7B7' },
+  { id: 'interviews',    label: 'Interviews',        icon: Video,            color: '#FB7185' },
+  { id: 'tickets',       label: 'Ticket Vault',     icon: Ticket,           color: '#FCD34D' },
+  { id: 'settings',      label: 'Control Center',   icon: SlidersHorizontal, color: '#94A3B8' },
 ];
 
 const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=80&auto=format&fit=crop';
@@ -36,7 +36,7 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser, o
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-5 pt-6 pb-5 shrink-0">
+      <div className="px-5 pt-7 pb-7 shrink-0">
         <Logo size="sm" />
       </div>
 
@@ -73,13 +73,20 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser, o
               type="button"
               onClick={() => navigate(item.id)}
               className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
-                active ? 'text-[#00CFFF] bg-[#00CFFF]/10' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                active ? 'text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
               }`}
+              style={active ? { background: `${item.color}15` } : {}}
             >
               {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#00CFFF' }} />
+                <span
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+                  style={{ background: item.color }}
+                />
               )}
-              <item.icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-[#00CFFF]' : 'text-white/40 group-hover:text-white/70'}`} />
+              <item.icon
+                className="w-4 h-4 shrink-0 transition-colors"
+                style={{ color: active ? item.color : `${item.color}70` }}
+              />
               {item.label}
             </button>
           );
@@ -136,11 +143,11 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser, o
                 animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
                 transition={{ duration: 1.3, repeat: Infinity, ease: 'easeOut' }}
                 className="absolute inline-flex h-full w-full rounded-full"
-                style={{ background: '#00CFFF' }}
+                style={{ background: '#FF7043' }}
               />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00CFFF' }} />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF7043' }} />
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#00CFFF' }}>Live</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#FF7043' }}>Live</span>
           </span>
         </div>
         <p className="text-white text-sm font-semibold leading-tight">Underground Frequencies</p>

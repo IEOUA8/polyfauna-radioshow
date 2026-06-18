@@ -67,9 +67,9 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               <span
                 className="relative inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full overflow-hidden"
                 style={{
-                  background: isOnline ? 'rgba(0,207,255,0.12)' : 'rgba(255,255,255,0.07)',
-                  border: `1px solid ${isOnline ? 'rgba(0,207,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
-                  color: isOnline ? '#00CFFF' : 'rgba(255,255,255,0.4)',
+                  background: isOnline ? 'rgba(255,112,67,0.12)' : 'rgba(255,255,255,0.07)',
+                  border: `1px solid ${isOnline ? 'rgba(255,112,67,0.40)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isOnline ? '#FF7043' : 'rgba(255,255,255,0.4)',
                 }}
               >
                 {/* Pulse dot */}
@@ -77,11 +77,11 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                   <span className="relative flex h-1.5 w-1.5 shrink-0">
                     <motion.span
                       className="absolute inline-flex h-full w-full rounded-full"
-                      style={{ background: '#00CFFF' }}
+                      style={{ background: '#FF7043' }}
                       animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
                       transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
                     />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00CFFF' }} />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF7043' }} />
                   </span>
                 )}
 
@@ -90,7 +90,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                   <motion.span
                     className="absolute inset-0 rounded-full pointer-events-none"
                     style={{
-                      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
+                      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)',
                     }}
                     animate={{ x: ['-150%', '150%'] }}
                     transition={{ duration: 3, repeat: Infinity, ease: 'linear', repeatDelay: 1.5 }}
