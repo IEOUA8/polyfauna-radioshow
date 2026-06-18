@@ -1,16 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Pause, Play, Radio, Users } from 'lucide-react';
+import { Pause, Play, Radio, User, Users } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
+import { useAuth } from '@/contexts/AuthContext';
 import HoloSpectrum from '@/components/HoloSpectrum';
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
+  const { currentUser } = useAuth();
 
   const { data: shows, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('radio_shows').select('*').order('schedule', { ascending: true }).limit(8),
@@ -21,31 +23,38 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
     <div className="p-5 space-y-6">
 
       {/* ── Now Playing card ── */}
-      <div className="glass-card holo-border rounded-2xl overflow-hidden p-6 relative">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+        className="glass-card holo-border rounded-2xl overflow-hidden p-6 relative"
+      >
 
-        {/* Subtle background glow behind album art */}
-        {song?.art && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `url(${song.art})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              opacity: 0.04,
-              filter: 'blur(40px)',
-              transform: 'scale(1.2)',
-            }}
-          />
-        )}
+        {/* Background glow behind album art */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `url(${song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.06,
+            filter: 'blur(50px)',
+            transform: 'scale(1.3)',
+          }}
+        />
 
         <div className="relative flex flex-col md:flex-row gap-6 items-start">
           {/* Album art */}
           <div className="relative shrink-0">
-            <div
-              className="w-24 h-24 rounded-xl overflow-hidden"
+            <motion.div
+              animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
+              transition={isPlaying ? { duration: 12, repeat: Infinity, ease: 'linear' } : { duration: 0.5 }}
+              className="w-28 h-28 rounded-full overflow-hidden"
               style={{
-                border: '1px solid rgba(255,255,255,0.12)',
-                boxShadow: '0 0 24px rgba(0,207,255,0.15), 0 8px 24px rgba(0,0,0,0.4)',
+                border: '3px solid rgba(0,207,255,0.25)',
+                boxShadow: isPlaying
+                  ? '0 0 32px rgba(0,207,255,0.3), 0 0 64px rgba(123,92,240,0.15), 0 8px 32px rgba(0,0,0,0.5)'
+                  : '0 0 16px rgba(0,207,255,0.1), 0 8px 24px rgba(0,0,0,0.4)',
               }}
             >
               <img
@@ -53,11 +62,11 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 alt="Now playing"
                 className="w-full h-full object-cover"
               />
-            </div>
-            {/* Corner accent */}
+            </motion.div>
+            {/* Center dot */}
             <div
-              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full"
-              style={{ background: 'linear-gradient(135deg, #00CFFF, #7B5CF0)', boxShadow: '0 0 8px rgba(0,207,255,0.7)' }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full z-10"
+              style={{ background: 'linear-gradient(135deg, #00CFFF, #7B5CF0)', boxShadow: '0 0 8px rgba(0,207,255,0.8)' }}
             />
           </div>
 
@@ -186,10 +195,41 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             </button>
           ))}
         </div>
-      </div>
+
+        {/* Banner para no logueados */}
+        {!currentUser && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-5 flex items-center gap-4 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(0,207,255,0.06)', border: '1px solid rgba(0,207,255,0.14)' }}
+          >
+            <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center"
+              style={{ background: 'rgba(0,207,255,0.12)' }}>
+              <User className="w-4 h-4" style={{ color: '#00CFFF' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white leading-tight">Únete a la comunidad</p>
+              <p className="text-[11px] text-white/40 mt-0.5">Guarda sesiones, sigue artistas y accede a contenido exclusivo.</p>
+            </div>
+            <a
+              href="/signup"
+              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
+              style={{ background: '#00CFFF', color: '#080B14' }}
+            >
+              Crear cuenta
+            </a>
+          </motion.div>
+        )}
+      </motion.div>
 
       {/* ── Upcoming Shows ── */}
-      <div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
+      >
         <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Programas</h2>
 
         {loading && <LoadingSkeleton rows={4} />}
@@ -230,7 +270,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

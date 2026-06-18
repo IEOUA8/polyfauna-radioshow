@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Heart, ListMusic, Pause, Play, Radio, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const STREAM_URL = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
 
@@ -72,6 +73,18 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     };
   }, []);
 
+  // Keyboard shortcuts: Space = play/pause, M = mute
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); setIsPlaying(p => !p); }
+      if (e.code === 'KeyM')  { setMuted(m => !m); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleSeek = (e) => {
     if (!currentTrack || !audioDuration) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -95,19 +108,18 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     <>
       <audio ref={audioRef} preload="none" />
 
-      {/* Top border gradient line */}
-      <div
-        className="fixed bottom-[72px] left-0 right-0 z-50 h-px pointer-events-none"
-        style={{ background: 'linear-gradient(to right, transparent 0%, rgba(0,207,255,0.3) 25%, rgba(123,92,240,0.25) 60%, rgba(236,72,153,0.2) 85%, transparent 100%)' }}
-      />
-
-      <div
-        className="fixed bottom-0 left-0 right-0 z-50 h-[72px] flex items-center px-4 md:px-6"
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
+        className="fixed bottom-4 left-4 right-4 lg:left-[256px] xl:right-[304px] z-50 h-[82px] flex items-center px-4 md:px-6"
         style={{
-          background: 'rgba(6, 8, 18, 0.96)',
-          backdropFilter: 'blur(32px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-          boxShadow: '0 -12px 40px rgba(0,0,0,0.6)',
+          background: 'rgba(8, 10, 24, 0.75)',
+          backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
+          WebkitBackdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
+          borderRadius: '24px',
+          border: '1px solid rgba(0,207,255,0.18)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(123,92,240,0.1), 0 0 32px rgba(0,207,255,0.08), inset 0 1px 0 rgba(255,255,255,0.07)',
         }}
       >
         {/* ── Track Info ── */}
@@ -140,7 +152,15 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           </div>
 
           <div className="min-w-0 hidden sm:block">
-            <p className="text-sm font-bold text-white leading-tight truncate">{trackTitle}</p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-sm font-bold text-white leading-tight truncate cursor-default">{trackTitle}</p>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>{trackTitle}</p>
+                {trackSub && <p className="text-white/60 text-[10px]">{trackSub}</p>}
+              </TooltipContent>
+            </Tooltip>
             <p className="text-xs text-white/35 truncate">{trackSub}</p>
           </div>
 
@@ -167,7 +187,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button type="button" onClick={noop} className="hidden md:flex text-white/20 hover:text-white/50 transition-colors">
               <Shuffle className="w-4 h-4" />
             </button>
-            <button type="button" onClick={noop} className="text-white/35 hover:text-white/70 transition-colors">
+            <button type="button" onClick={noop} className="hidden sm:flex text-white/35 hover:text-white/70 transition-colors">
               <SkipBack className="w-5 h-5" />
             </button>
 
@@ -199,7 +219,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               </button>
             </div>
 
-            <button type="button" onClick={isOnDemand ? backToRadio : noop} className="text-white/35 hover:text-white/70 transition-colors">
+            <button type="button" onClick={isOnDemand ? backToRadio : noop} className="hidden sm:flex text-white/35 hover:text-white/70 transition-colors">
               <SkipForward className="w-5 h-5" />
             </button>
             <button type="button" onClick={noop} className="hidden md:flex text-white/20 hover:text-white/50 transition-colors">
@@ -207,8 +227,8 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             </button>
           </div>
 
-          {/* Progress bar */}
-          <div className="w-full max-w-sm flex items-center gap-2 text-[11px] text-white/30 font-medium">
+          {/* Progress bar — hidden on mobile */}
+          <div className="hidden sm:flex w-full max-w-sm items-center gap-2 text-[11px] text-white/30 font-medium">
             {isOnDemand ? (
               <>
                 <span className="tabular-nums">{formatTime(currentTime)}</span>
@@ -269,7 +289,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <ListMusic className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }

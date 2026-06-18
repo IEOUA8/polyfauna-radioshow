@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PolyfaunaOS from '@/components/PolyfaunaOS';
 import LoginPage from '@/pages/LoginPage';
@@ -12,6 +13,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+      <TooltipProvider delayDuration={400}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
@@ -27,6 +29,7 @@ function App() {
           } />
           <Route path="/*" element={<PolyfaunaOS />} />
         </Routes>
+      </TooltipProvider>
       </AuthProvider>
     </Router>
   );

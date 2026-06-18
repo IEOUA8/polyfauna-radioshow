@@ -196,9 +196,19 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
     <>
       <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
 
-      <header
-        className="h-16 flex items-center gap-3 px-4 md:px-5 shrink-0 sticky top-0 z-30 border-b"
-        style={{ background: 'rgba(10, 13, 26, 0.95)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.07)' }}
+      <motion.header
+        initial={{ y: -56, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+        className="h-16 flex items-center gap-3 px-4 md:px-5 shrink-0 sticky top-0 z-30"
+        style={{
+          background: 'rgba(8, 10, 22, 0.80)',
+          backdropFilter: 'blur(40px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+          borderBottom: '1px solid transparent',
+          backgroundClip: 'padding-box',
+          boxShadow: '0 1px 0 0 rgba(0,207,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
+        }}
       >
         {/* Hamburger — mobile only */}
         <button
@@ -391,7 +401,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </header>
+      </motion.header>
     </>
   );
 }

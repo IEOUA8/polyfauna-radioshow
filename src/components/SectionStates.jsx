@@ -2,17 +2,48 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
-export function LoadingSkeleton({ rows = 4, cols = 1 }) {
+function Shimmer() {
   return (
-    <div className={`grid gap-4 ${cols > 1 ? `grid-cols-${cols}` : ''}`}>
+    <motion.div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+        backgroundSize: '200% 100%',
+      }}
+      animate={{ backgroundPositionX: ['200%', '-200%'] }}
+      transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
+    />
+  );
+}
+
+function SkeletonBlock({ className = '', style = {} }) {
+  return (
+    <div className={`relative overflow-hidden rounded-lg ${className}`}
+      style={{ background: 'rgba(255,255,255,0.05)', ...style }}>
+      <Shimmer />
+    </div>
+  );
+}
+
+export function LoadingSkeleton({ rows = 4 }) {
+  return (
+    <div className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
         <motion.div
           key={i}
-          animate={{ opacity: [0.4, 0.8, 0.4] }}
-          transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.1 }}
-          className="rounded-xl h-24"
-          style={{ background: 'rgba(255,255,255,0.05)' }}
-        />
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.07 }}
+          className="flex items-center gap-3 p-3 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+        >
+          <SkeletonBlock className="w-10 h-10 shrink-0 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <SkeletonBlock className="h-3 rounded" style={{ width: `${55 + (i % 3) * 15}%` }} />
+            <SkeletonBlock className="h-2.5 rounded" style={{ width: `${35 + (i % 2) * 20}%` }} />
+          </div>
+          <SkeletonBlock className="w-12 h-5 rounded-full shrink-0" />
+        </motion.div>
       ))}
     </div>
   );
@@ -24,15 +55,22 @@ export function CardSkeleton({ count = 4 }) {
       {Array.from({ length: count }).map((_, i) => (
         <motion.div
           key={i}
-          animate={{ opacity: [0.3, 0.7, 0.3] }}
-          transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.12 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.08 }}
           className="rounded-xl overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <div className="aspect-video" />
+          <div className="relative aspect-square overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <Shimmer />
+          </div>
           <div className="p-3 space-y-2">
-            <div className="h-3 w-3/4 rounded" style={{ background: 'rgba(255,255,255,0.08)' }} />
-            <div className="h-2 w-1/2 rounded" style={{ background: 'rgba(255,255,255,0.05)' }} />
+            <SkeletonBlock className="h-3" style={{ width: `${60 + (i % 3) * 12}%` }} />
+            <SkeletonBlock className="h-2.5" style={{ width: `${40 + (i % 2) * 15}%` }} />
+            <div className="flex items-center justify-between pt-1">
+              <SkeletonBlock className="h-2 w-16" />
+              <SkeletonBlock className="h-2 w-10" />
+            </div>
           </div>
         </motion.div>
       ))}
@@ -42,47 +80,65 @@ export function CardSkeleton({ count = 4 }) {
 
 export function EmptyState({ label = 'No hay contenido aún', icon: Icon }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col items-center justify-center py-16 gap-3 text-center"
+    >
       {Icon && (
-        <div
+        <motion.div
+          animate={{ y: [0, -4, 0] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
-          style={{ background: 'rgba(0,207,255,0.08)' }}
+          style={{ background: 'rgba(0,207,255,0.08)', border: '1px solid rgba(0,207,255,0.12)' }}
         >
           <Icon className="w-5 h-5" style={{ color: '#00CFFF' }} />
-        </div>
+        </motion.div>
       )}
       <p className="text-sm font-semibold text-white/50">{label}</p>
       <p className="text-xs text-white/25">El contenido aparecerá aquí cuando esté disponible.</p>
-    </div>
+    </motion.div>
   );
 }
 
 export function ErrorState({ message, onRetry }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-      <AlertCircle className="w-8 h-8 text-red-400" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center py-16 gap-3 text-center"
+    >
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+        <AlertCircle className="w-5 h-5 text-red-400" />
+      </div>
       <p className="text-sm font-semibold text-red-400">Error al cargar</p>
       <p className="text-xs text-white/30 max-w-xs">{message}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg mt-1 transition-colors"
-          style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF' }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,207,255,0.18)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(0,207,255,0.1)')}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg mt-1 transition-all"
+          style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.15)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,207,255,0.18)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,207,255,0.1)'; }}
         >
           <RefreshCw className="w-3 h-3" />
           Reintentar
         </button>
       )}
-    </div>
+    </motion.div>
   );
 }
 
 export function LoginRequired({ message = 'Inicia sesión para ver este contenido' }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center justify-center py-12 gap-3 text-center"
+    >
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center"
         style={{ background: 'rgba(0,207,255,0.08)', border: '1px solid rgba(0,207,255,0.15)' }}
@@ -99,6 +155,6 @@ export function LoginRequired({ message = 'Inicia sesión para ver este contenid
       >
         Iniciar sesión
       </a>
-    </div>
+    </motion.div>
   );
 }

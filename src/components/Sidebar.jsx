@@ -9,6 +9,7 @@ import Logo from '@/components/Logo';
 import HoloSpectrum from '@/components/HoloSpectrum';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 const NAV_ITEMS = [
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
 const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=80&auto=format&fit=crop';
 
 function NavContent({ currentSection, setCurrentSection, profile, currentUser, onNavigate }) {
+  const { song, isOnline, listeners } = useNowPlaying();
   const navigate = (id) => {
     setCurrentSection(id);
     onNavigate?.();
@@ -36,7 +38,7 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser, o
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-5 pt-7 pb-7 shrink-0">
+      <div className="px-5 pt-8 pb-10 shrink-0">
         <Logo size="sm" />
       </div>
 
@@ -138,20 +140,33 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser, o
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Polyfauna Radio</span>
           <span className="flex items-center gap-1.5">
-            <span className="relative flex h-1.5 w-1.5">
-              <motion.span
-                animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
-                transition={{ duration: 1.3, repeat: Infinity, ease: 'easeOut' }}
-                className="absolute inline-flex h-full w-full rounded-full"
-                style={{ background: '#FF7043' }}
-              />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF7043' }} />
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#FF7043' }}>Live</span>
+            {isOnline ? (
+              <>
+                <span className="relative flex h-1.5 w-1.5">
+                  <motion.span
+                    animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
+                    transition={{ duration: 1.3, repeat: Infinity, ease: 'easeOut' }}
+                    className="absolute inline-flex h-full w-full rounded-full"
+                    style={{ background: '#FF7043' }}
+                  />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF7043' }} />
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#FF7043' }}>Live</span>
+              </>
+            ) : (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white/25">Offline</span>
+            )}
           </span>
         </div>
-        <p className="text-white text-sm font-semibold leading-tight">Underground Frequencies</p>
-        <p className="text-white/35 text-xs mt-0.5 mb-3">with Nox Vega</p>
+        <p className="text-white text-sm font-semibold leading-tight truncate">
+          {song?.title || 'PolyFauna Radio'}
+        </p>
+        <div className="flex items-center justify-between mt-0.5 mb-3">
+          <p className="text-white/35 text-xs truncate">{song?.artist || (isOnline ? 'Transmisión 24/7' : 'Sin señal')}</p>
+          {listeners > 0 && (
+            <span className="text-[10px] text-white/30 shrink-0 ml-1">{listeners} 🎧</span>
+          )}
+        </div>
 
         <HoloSpectrum isPlaying={true} height={28} />
 
