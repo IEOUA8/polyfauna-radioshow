@@ -8,6 +8,7 @@ import GlobalPlayer from '@/components/GlobalPlayer';
 import EventTerminal from '@/components/EventTerminal';
 import RadioConsolePage from '@/components/RadioConsolePage';
 import PodcastsPage from '@/components/PodcastsPage';
+import MusicPage from '@/components/MusicPage';
 import ArtistsPage from '@/components/ArtistsPage';
 import CommunityGrid from '@/components/CommunityGrid';
 import BlogSection from '@/components/BlogSection';
@@ -21,12 +22,14 @@ import PromoterDashboard from '@/components/PromoterDashboard';
 function PolyfaunaOS() {
   const [currentSection, setCurrentSection] = useState('radio-console');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const renderSection = () => {
     switch (currentSection) {
       case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
-      case 'podcasts':      return <PodcastsPage />;
+      case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} />;
+      case 'music':         return <MusicPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} />;
       case 'events':        return <EventTerminal />;
       case 'community':     return <CommunityGrid />;
       case 'inbox':         return <SignalInbox />;
@@ -68,7 +71,12 @@ function PolyfaunaOS() {
         </div>
       </div>
 
-      <GlobalPlayer isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
+      <GlobalPlayer
+        isPlaying={isPlaying}
+        setIsPlaying={setIsPlaying}
+        currentTrack={currentTrack}
+        setCurrentTrack={setCurrentTrack}
+      />
       <Toaster />
     </div>
   );

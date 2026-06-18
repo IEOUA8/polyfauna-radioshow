@@ -2,10 +2,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight, CalendarDays, Disc3, FileText, Headphones,
-  LayoutGrid, MessageSquare, Radio, SlidersHorizontal,
+  LayoutGrid, MessageSquare, Music, Radio, SlidersHorizontal,
   Ticket, User, Video,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
+import HoloSpectrum from '@/components/HoloSpectrum';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -13,6 +14,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 const NAV_ITEMS = [
   { id: 'radio-console', label: 'Radio Console',   icon: Radio           },
   { id: 'podcasts',      label: 'Podcasts',         icon: Headphones      },
+  { id: 'music',         label: 'Música',           icon: Music           },
   { id: 'community',     label: 'Community Grid',   icon: LayoutGrid      },
   { id: 'inbox',         label: 'Signal Inbox',     icon: MessageSquare   },
   { id: 'events',        label: 'Event Terminal',   icon: CalendarDays    },
@@ -23,7 +25,6 @@ const NAV_ITEMS = [
   { id: 'settings',      label: 'Control Center',   icon: SlidersHorizontal },
 ];
 
-const AUDIO_BARS = [55, 80, 40, 92, 65, 48, 78, 60, 85, 50, 72, 38, 88, 62, 45, 75, 58, 90];
 const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=80&auto=format&fit=crop';
 
 function NavContent({ currentSection, setCurrentSection, profile, currentUser, onNavigate }) {
@@ -123,30 +124,38 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser, o
       )}
 
       {/* Live Radio Widget */}
-      <div className="mx-3 mb-4 rounded-xl border p-4 shrink-0"
-        style={{ background: 'rgba(15, 19, 34, 0.9)', borderColor: 'rgba(255,255,255,0.08)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Polyfauna Radio</span>
+      <div
+        className="mx-3 mb-4 rounded-xl p-4 shrink-0 glass-card holo-border"
+        style={{ borderRadius: '14px' }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Polyfauna Radio</span>
           <span className="flex items-center gap-1.5">
-            <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
-              className="w-1.5 h-1.5 rounded-full" style={{ background: '#00CFFF' }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#00CFFF' }}>Live Now</span>
+            <span className="relative flex h-1.5 w-1.5">
+              <motion.span
+                animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
+                transition={{ duration: 1.3, repeat: Infinity, ease: 'easeOut' }}
+                className="absolute inline-flex h-full w-full rounded-full"
+                style={{ background: '#00CFFF' }}
+              />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00CFFF' }} />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#00CFFF' }}>Live</span>
           </span>
         </div>
         <p className="text-white text-sm font-semibold leading-tight">Underground Frequencies</p>
-        <p className="text-white/40 text-xs mt-0.5">with Nox Vega</p>
-        <div className="flex items-end gap-px h-7 mt-3">
-          {AUDIO_BARS.map((h, i) => (
-            <motion.div key={i} className="flex-1 rounded-t-sm" style={{ background: '#00CFFF', opacity: 0.65 }}
-              animate={{ height: [`${h * 0.3}%`, `${h}%`, `${h * 0.5}%`] }}
-              transition={{ duration: 0.7 + (i % 5) * 0.12, repeat: Infinity, repeatType: 'reverse', delay: i * 0.045 }} />
-          ))}
-        </div>
-        <button type="button" onClick={() => navigate('radio-console')}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-colors"
-          style={{ color: '#00CFFF', background: 'rgba(0,207,255,0.08)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.15)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.08)')}>
+        <p className="text-white/35 text-xs mt-0.5 mb-3">with Nox Vega</p>
+
+        <HoloSpectrum isPlaying={true} height={28} />
+
+        <button
+          type="button"
+          onClick={() => navigate('radio-console')}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all duration-200"
+          style={{ color: '#00CFFF', background: 'rgba(0,207,255,0.07)', border: '1px solid rgba(0,207,255,0.15)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,207,255,0.14)'; e.currentTarget.style.borderColor = 'rgba(0,207,255,0.3)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,207,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(0,207,255,0.15)'; }}
+        >
           Go to Radio Console
           <ArrowRight className="w-3 h-3" />
         </button>

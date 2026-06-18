@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { UploadField } from './UploadField';
 
 const PodcastManager = () => {
   const { currentUser } = useAuth();
@@ -187,7 +188,7 @@ const PodcastManager = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Label htmlFor="duration">Duración (segundos)</Label>
                   <Input
                     id="duration"
                     type="number"
@@ -221,24 +222,20 @@ const PodcastManager = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <Label htmlFor="cover_url">Cover URL</Label>
-                <Input
-                  id="cover_url"
-                  value={formData.cover_url}
-                  onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })}
-                  className="bg-background border-border text-foreground"
-                />
-              </div>
-              <div>
-                <Label htmlFor="audio_url">Audio URL</Label>
-                <Input
-                  id="audio_url"
-                  value={formData.audio_url}
-                  onChange={(e) => setFormData({ ...formData, audio_url: e.target.value })}
-                  className="bg-background border-border text-foreground"
-                />
-              </div>
+              <UploadField
+                label="Portada"
+                bucket="podcast-covers"
+                accept="image/jpeg,image/png,image/webp"
+                value={formData.cover_url}
+                onChange={(url) => setFormData({ ...formData, cover_url: url })}
+              />
+              <UploadField
+                label="Archivo de audio"
+                bucket="podcast-audio"
+                accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav"
+                value={formData.audio_url}
+                onChange={(url) => setFormData({ ...formData, audio_url: url })}
+              />
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0">
                 {editingPodcast ? 'Update Podcast' : 'Create Podcast'}
               </Button>

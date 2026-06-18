@@ -12,6 +12,8 @@ import InterviewManager from '@/components/admin/InterviewManager';
 import ShowManager from '@/components/admin/ShowManager';
 import UserManager from '@/components/admin/UserManager';
 import ArtistManager from '@/components/admin/ArtistManager';
+import AlbumManager from '@/components/admin/AlbumManager';
+import TrackManager from '@/components/admin/TrackManager';
 
 const AdminDashboard = () => {
   const { currentUser } = useAuth();
@@ -110,6 +112,8 @@ const AdminDashboard = () => {
               <TabsTrigger value="interviews" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-xl px-6 py-3 font-bold">Interviews</TabsTrigger>
               <TabsTrigger value="shows" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-xl px-6 py-3 font-bold">Shows</TabsTrigger>
               <TabsTrigger value="artists" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-xl px-6 py-3 font-bold">Artists</TabsTrigger>
+              <TabsTrigger value="albums" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-xl px-6 py-3 font-bold">Álbumes</TabsTrigger>
+              <TabsTrigger value="tracks" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-xl px-6 py-3 font-bold">Tracks</TabsTrigger>
               <TabsTrigger value="users" className="data-[state=active]:bg-secondary data-[state=active]:text-white rounded-xl px-6 py-3 font-bold">Users</TabsTrigger>
             </TabsList>
 
@@ -120,6 +124,8 @@ const AdminDashboard = () => {
               <TabsContent value="interviews"><InterviewManager /></TabsContent>
               <TabsContent value="shows"><ShowManager /></TabsContent>
               <TabsContent value="artists"><ArtistManager /></TabsContent>
+              <TabsContent value="albums"><AlbumManager /></TabsContent>
+              <TabsContent value="tracks"><TrackManager /></TabsContent>
               <TabsContent value="users"><UserManager /></TabsContent>
             </div>
           </Tabs>

@@ -6,8 +6,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
-
-const BARS = [68, 42, 82, 56, 92, 48, 74, 64, 88, 52, 76, 60, 84, 44, 70, 58, 90, 46];
+import HoloSpectrum from '@/components/HoloSpectrum';
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
@@ -20,83 +19,168 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
 
   return (
     <div className="p-5 space-y-6">
-      {/* Now Playing */}
-      <div
-        className="relative rounded-2xl overflow-hidden p-6"
-        style={{ background: 'rgba(15, 19, 34, 0.9)', border: '1px solid rgba(255,255,255,0.07)' }}
-      >
-        <div className="flex flex-col md:flex-row gap-6 items-start">
+
+      {/* ── Now Playing card ── */}
+      <div className="glass-card holo-border rounded-2xl overflow-hidden p-6 relative">
+
+        {/* Subtle background glow behind album art */}
+        {song?.art && (
           <div
-            className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #00CFFF22, #7B5CF022)' }}
-          >
-            <img
-              src={song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'}
-              alt="Now playing"
-              className="w-full h-full object-cover opacity-60"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${song.art})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              opacity: 0.04,
+              filter: 'blur(40px)',
+              transform: 'scale(1.2)',
+            }}
+          />
+        )}
+
+        <div className="relative flex flex-col md:flex-row gap-6 items-start">
+          {/* Album art */}
+          <div className="relative shrink-0">
+            <div
+              className="w-24 h-24 rounded-xl overflow-hidden"
+              style={{
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 0 24px rgba(0,207,255,0.15), 0 8px 24px rgba(0,0,0,0.4)',
+              }}
+            >
+              <img
+                src={song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'}
+                alt="Now playing"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {/* Corner accent */}
+            <div
+              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full"
+              style={{ background: 'linear-gradient(135deg, #00CFFF, #7B5CF0)', boxShadow: '0 0 8px rgba(0,207,255,0.7)' }}
             />
-            {!song && <Radio className="w-8 h-8 text-white absolute" style={{ filter: 'drop-shadow(0 0 8px #00CFFF)' }} />}
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <motion.span
-                animate={{ opacity: isOnline ? [1, 0.3, 1] : 1 }}
-                transition={{ duration: 1.2, repeat: Infinity }}
-                className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded"
-                style={{ background: isOnline ? '#00CFFF' : 'rgba(255,255,255,0.15)', color: '#080B14' }}
+            {/* Live badge with pulse + shimmer */}
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="relative inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full overflow-hidden"
+                style={{
+                  background: isOnline ? 'rgba(0,207,255,0.12)' : 'rgba(255,255,255,0.07)',
+                  border: `1px solid ${isOnline ? 'rgba(0,207,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isOnline ? '#00CFFF' : 'rgba(255,255,255,0.4)',
+                }}
               >
+                {/* Pulse dot */}
+                {isOnline && (
+                  <span className="relative flex h-1.5 w-1.5 shrink-0">
+                    <motion.span
+                      className="absolute inline-flex h-full w-full rounded-full"
+                      style={{ background: '#00CFFF' }}
+                      animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
+                    />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00CFFF' }} />
+                  </span>
+                )}
+
+                {/* Shimmer overlay */}
+                {isOnline && (
+                  <motion.span
+                    className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
+                    }}
+                    animate={{ x: ['-150%', '150%'] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'linear', repeatDelay: 1.5 }}
+                  />
+                )}
+
                 {isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Live Channel' : 'Offline'}
-              </motion.span>
+              </span>
             </div>
-            <h1 className="text-2xl font-black text-white truncate">
+
+            <h1 className="text-2xl font-black text-white leading-tight truncate">
               {song?.title || 'PolyFauna Radio'}
             </h1>
             <p className="text-white/50 text-sm mt-1 truncate">
               {song?.artist || (isOnline ? 'Transmisión en vivo · 24/7' : 'Estación offline')}
             </p>
 
-            <div className="flex items-end gap-px h-10 mt-4">
-              {BARS.map((h, i) => (
-                <motion.div
-                  key={i}
-                  className="flex-1 rounded-t-sm"
-                  style={{ background: isPlaying ? '#00CFFF' : 'rgba(0,207,255,0.3)', opacity: 0.65 }}
-                  animate={isPlaying ? { height: [`${h * 0.3}%`, `${h}%`, `${h * 0.5}%`] } : { height: '15%' }}
-                  transition={{ duration: 0.7 + (i % 5) * 0.1, repeat: Infinity, repeatType: 'reverse', delay: i * 0.04 }}
-                />
-              ))}
+            {/* Holographic spectrum */}
+            <div className="mt-5">
+              <HoloSpectrum isPlaying={isPlaying} height={68} />
             </div>
           </div>
 
+          {/* Play controls */}
           <div className="flex flex-col items-center gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 text-white/50 text-xs">
+            <div className="flex items-center gap-1.5 text-white/40 text-xs">
               <Users className="w-3.5 h-3.5" />
               <span>{listeners > 0 ? `${listeners} oyente${listeners !== 1 ? 's' : ''}` : 'En vivo'}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg"
-              style={{ background: '#00CFFF', boxShadow: '0 0 24px rgba(0,207,255,0.35)' }}
-            >
-              {isPlaying ? (
-                <Pause className="w-5 h-5 fill-current" style={{ color: '#080B14' }} />
-              ) : (
-                <Play className="w-5 h-5 fill-current ml-0.5" style={{ color: '#080B14' }} />
+
+            {/* Play button with pulse ring */}
+            <div className="relative flex items-center justify-center">
+              {isPlaying && (
+                <>
+                  <motion.span
+                    className="absolute rounded-full pointer-events-none"
+                    style={{ inset: -8, border: '1.5px solid rgba(0,207,255,0.35)' }}
+                    animate={{ scale: [1, 1.4], opacity: [0.5, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+                  />
+                  <motion.span
+                    className="absolute rounded-full pointer-events-none"
+                    style={{ inset: -4, border: '1px solid rgba(0,207,255,0.2)' }}
+                    animate={{ scale: [1, 1.25], opacity: [0.4, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut', delay: 0.4 }}
+                  />
+                </>
               )}
-            </button>
+              <button
+                type="button"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
+                style={{
+                  background: 'linear-gradient(135deg, #00CFFF, #00AADD)',
+                  boxShadow: isPlaying
+                    ? '0 0 32px rgba(0,207,255,0.55), 0 4px 16px rgba(0,0,0,0.4)'
+                    : '0 0 20px rgba(0,207,255,0.3), 0 4px 12px rgba(0,0,0,0.3)',
+                }}
+              >
+                {isPlaying
+                  ? <Pause className="w-5 h-5 fill-current" style={{ color: '#080B14' }} />
+                  : <Play className="w-5 h-5 fill-current ml-0.5" style={{ color: '#080B14' }} />
+                }
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-5">
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2 mt-5 relative">
           {['Abrir sala en vivo', 'Preguntar al host', 'Compartir', 'Guardar sesión'].map((action) => (
             <button
               key={action}
               type="button"
               onClick={() => toast({ title: action, description: 'Próximamente disponible.' })}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white/50 transition-all duration-200 hover:text-white"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0,207,255,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(0,207,255,0.25)';
+                e.currentTarget.style.color = '#00CFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+              }}
             >
               {action}
             </button>
@@ -104,9 +188,9 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
         </div>
       </div>
 
-      {/* Upcoming Shows */}
+      {/* ── Upcoming Shows ── */}
       <div>
-        <h2 className="text-sm font-bold text-white mb-3">Próximos Programas</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Programas</h2>
 
         {loading && <LoadingSkeleton rows={4} />}
         {error && <ErrorState message={error} onRetry={refetch} />}
@@ -119,26 +203,25 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             {shows.map((show, i) => (
               <motion.div
                 key={show.id}
-                initial={{ opacity: 0, x: -12 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.07 }}
-                className="flex items-center gap-4 p-3 rounded-xl transition-colors hover:bg-white/5 cursor-pointer"
-                style={{ border: '1px solid rgba(255,255,255,0.05)' }}
+                transition={{ delay: i * 0.06 }}
+                className="glass-card flex items-center gap-4 p-3 rounded-xl transition-all duration-200 cursor-pointer group"
+                style={{ borderRadius: '12px' }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(0,207,255,0.15)')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)')}
               >
-                <span
-                  className="text-sm font-mono font-bold shrink-0 w-14 truncate"
-                  style={{ color: '#00CFFF' }}
-                >
+                <span className="text-sm font-mono font-bold shrink-0 w-14 truncate" style={{ color: '#00CFFF' }}>
                   {show.schedule || '—'}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{show.name}</p>
-                  <p className="text-xs text-white/40 truncate">{show.dj}</p>
+                  <p className="text-sm font-semibold text-white truncate group-hover:text-white transition-colors">{show.name}</p>
+                  <p className="text-xs text-white/35 truncate">{show.dj}</p>
                 </div>
                 {show.genre && (
                   <span
-                    className="text-[10px] font-bold px-2 py-1 rounded shrink-0"
-                    style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF' }}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
+                    style={{ background: 'rgba(0,207,255,0.08)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.15)' }}
                   >
                     {show.genre}
                   </span>
