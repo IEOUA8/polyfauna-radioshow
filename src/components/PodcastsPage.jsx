@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Headphones, Heart, Pause, Play } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Headphones, Heart, Pause, Play, Plus } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useLikes } from '@/hooks/useLikes';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
+import UploadPodcastModal from '@/components/UploadPodcastModal';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=400&auto=format&fit=crop';
 
@@ -68,10 +71,16 @@ function secondsToMMSS(secs) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+const CREATOR_ROLES = ['artist', 'club', 'promoter', 'admin'];
+
 export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying }) {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const { profile } = useProfile();
   const [activeGenre, setActiveGenre] = useState('All');
+  const [showUpload, setShowUpload] = useState(false);
   const { isLiked, toggle: toggleLike } = useLikes();
+  const isCreator = currentUser && CREATOR_ROLES.includes(profile?.role);
 
   const { data: podcasts, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('podcasts').select('*, artists(name)').order('created_at', { ascending: false }),
@@ -129,9 +138,19 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
 
   return (
     <div className="p-5 space-y-5">
-      <div>
-        <h1 className="text-xl font-black text-white">Podcasts</h1>
-        <p className="text-sm text-white/40 mt-1">Sesiones y mixes curados de la comunidad.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-black text-white">Podcasts</h1>
+          <p className="text-sm text-white/40 mt-1">Sesiones y mixes curados de la comunidad.</p>
+        </div>
+        {isCreator && (
+          <button type="button" onClick={() => setShowUpload(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all hover:scale-105 shrink-0"
+            style={{ background: 'linear-gradient(135deg,#A78BFA,#7B5CF0)', color: '#fff', boxShadow: '0 0 16px rgba(167,139,250,0.3)' }}>
+            <Plus className="w-3.5 h-3.5" />
+            Subir
+          </button>
+        )}
       </div>
 
       {/* Genre filter */}
@@ -303,6 +322,15 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
           })}
         </div>
       )}
+
+      <AnimatePresence>
+        {showUpload && (
+          <UploadPodcastModal
+            onClose={() => setShowUpload(false)}
+            onSuccess={() => { setShowUpload(false); refetch(); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

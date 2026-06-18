@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit3, Heart, ListMusic, Shield, User } from 'lucide-react';
+import { Edit3, Heart, ListMusic, Shield, Upload, User } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginRequired } from '@/components/SectionStates';
 import EditProfile from '@/components/EditProfile';
 import MyFavorites from '@/components/MyFavorites';
 import MyPlaylists from '@/components/MyPlaylists';
+import UploadPodcastModal from '@/components/UploadPodcastModal';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
@@ -18,9 +19,12 @@ const ROLE_LABEL = {
   admin:    { label: 'Admin',         color: '#F87171' },
 };
 
+const CREATOR_ROLES = ['artist', 'club', 'promoter', 'admin'];
+
 const TABS = [
-  { id: 'favoritos', label: 'Favoritos',  icon: Heart     },
-  { id: 'playlists', label: 'Playlists',  icon: ListMusic },
+  { id: 'favoritos', label: 'Favoritos',  icon: Heart,     roles: null           },
+  { id: 'playlists', label: 'Playlists',  icon: ListMusic, roles: null           },
+  { id: 'subir',     label: 'Subir',      icon: Upload,    roles: CREATOR_ROLES  },
 ];
 
 export default function MyPanel({ setCurrentSection }) {
@@ -28,6 +32,7 @@ export default function MyPanel({ setCurrentSection }) {
   const { profile, loading, refetch } = useProfile();
   const [activeTab, setActiveTab] = useState('favoritos');
   const [showEdit, setShowEdit] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
 
   if (!currentUser) {
     return (
@@ -39,6 +44,8 @@ export default function MyPanel({ setCurrentSection }) {
 
   const role = ROLE_LABEL[profile?.role] || ROLE_LABEL.citizen;
   const isPromoter = profile?.role === 'promoter' || profile?.role === 'club';
+  const isCreator  = CREATOR_ROLES.includes(profile?.role);
+  const visibleTabs = TABS.filter(t => !t.roles || t.roles.includes(profile?.role));
 
   return (
     <div className="p-5 space-y-6 max-w-4xl">
@@ -125,19 +132,23 @@ export default function MyPanel({ setCurrentSection }) {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" onClick={() => setActiveTab(id)}
-            className="flex items-center gap-1.5 text-sm font-semibold pb-3 px-1 relative transition-colors"
-            style={{ color: activeTab === id ? '#00CFFF' : 'rgba(255,255,255,0.35)' }}>
-            <Icon className="w-4 h-4" />
-            {label}
-            {activeTab === id && (
-              <motion.div layoutId="panel-tab-indicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
-                style={{ background: '#00CFFF' }} />
-            )}
-          </button>
-        ))}
+        {visibleTabs.map(({ id, label, icon: Icon, roles }) => {
+          const isUpload = id === 'subir';
+          const accentColor = isUpload ? '#A78BFA' : '#00CFFF';
+          return (
+            <button key={id} type="button" onClick={() => setActiveTab(id)}
+              className="flex items-center gap-1.5 text-sm font-semibold pb-3 px-1 relative transition-colors"
+              style={{ color: activeTab === id ? accentColor : 'rgba(255,255,255,0.35)' }}>
+              <Icon className="w-4 h-4" />
+              {label}
+              {activeTab === id && (
+                <motion.div layoutId="panel-tab-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
+                  style={{ background: accentColor }} />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}
@@ -147,6 +158,17 @@ export default function MyPanel({ setCurrentSection }) {
           exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
           {activeTab === 'favoritos' && <MyFavorites />}
           {activeTab === 'playlists' && <MyPlaylists />}
+          {activeTab === 'subir' && isCreator && (
+            <div className="py-4 space-y-4">
+              <p className="text-sm text-white/50">Sube tus mixes, sesiones y podcasts directamente a la plataforma.</p>
+              <button type="button" onClick={() => setShowUpload(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg,#A78BFA,#7B5CF0)', color: '#fff', boxShadow: '0 0 24px rgba(167,139,250,0.3)' }}>
+                <Upload className="w-4 h-4" />
+                Subir Podcast / Mix
+              </button>
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -157,6 +179,16 @@ export default function MyPanel({ setCurrentSection }) {
             profile={profile}
             onClose={() => setShowEdit(false)}
             onSave={() => { setShowEdit(false); refetch(); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Upload modal */}
+      <AnimatePresence>
+        {showUpload && (
+          <UploadPodcastModal
+            onClose={() => setShowUpload(false)}
+            onSuccess={() => setShowUpload(false)}
           />
         )}
       </AnimatePresence>
