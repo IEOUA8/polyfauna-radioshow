@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { UploadField } from './UploadField';
 
 const ArtistManager = () => {
   const { currentUser } = useAuth();
@@ -39,7 +40,7 @@ const ArtistManager = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error fetching artists",
+        title: "Error al cargar artistas",
         description: error.message,
       });
     } finally {
@@ -52,7 +53,7 @@ const ArtistManager = () => {
     
     try {
       if (editingArtist && currentUser?.role !== 'admin') {
-        toast({ variant: "destructive", title: "Unauthorized", description: "Only admins can update artists." });
+        toast({ variant: "destructive", title: "Sin permiso", description: "Solo los admins pueden editar artistas." });
         return;
       }
 
@@ -79,14 +80,14 @@ const ArtistManager = () => {
           .eq('id', editingArtist.id);
 
         if (error) throw error;
-        toast({ title: "Artist updated successfully" });
+        toast({ title: 'Artista actualizado' });
       } else {
         const { error } = await supabase
           .from('artists')
           .insert([artistData]);
 
         if (error) throw error;
-        toast({ title: "Artist created successfully" });
+        toast({ title: 'Artista creado' });
       }
 
       setIsDialogOpen(false);
@@ -95,7 +96,7 @@ const ArtistManager = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error saving artist",
+        title: "Error al guardar artista",
         description: error.message,
       });
     }
@@ -114,21 +115,21 @@ const ArtistManager = () => {
 
   const handleDelete = async (id) => {
     if (currentUser?.role !== 'admin') {
-      toast({ variant: "destructive", title: "Unauthorized", description: "Only admins can delete artists." });
+      toast({ variant: "destructive", title: "Sin permiso", description: "Solo los admins pueden eliminar artistas." });
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this artist?')) return;
+    if (!confirm('¿Eliminar este artista?')) return;
 
     try {
       const { error } = await supabase.from('artists').delete().eq('id', id);
       if (error) throw error;
-      toast({ title: "Artist deleted successfully" });
+      toast({ title: 'Artista eliminado' });
       fetchArtists();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error deleting artist",
+        title: "Error al eliminar artista",
         description: error.message,
       });
     }
@@ -147,7 +148,7 @@ const ArtistManager = () => {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-foreground">Artists Management</CardTitle>
+        <CardTitle className="text-foreground">Gestión de Artistas</CardTitle>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
@@ -155,16 +156,23 @@ const ArtistManager = () => {
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0">
               <Plus className="w-4 h-4 mr-2" />
-              Add Artist
+              Nuevo Artista
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border text-foreground max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingArtist ? 'Edit Artist' : 'Create Artist'}</DialogTitle>
+              <DialogTitle>{editingArtist ? 'Editar Artista' : 'Crear Artista'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <UploadField
+                label="Foto / Avatar"
+                bucket="avatars"
+                accept="image/jpeg,image/png,image/webp"
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+              />
               <div>
-                <Label htmlFor="name">Artist Name</Label>
+                <Label htmlFor="name">Nombre del artista *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -174,35 +182,28 @@ const ArtistManager = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="bio">Biografía</Label>
                 <textarea
                   id="bio"
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full min-h-[100px] bg-background border border-border text-foreground rounded-md p-3"
+                  rows={4}
+                  className="w-full bg-background border border-border text-foreground rounded-md p-3 text-sm resize-none"
+                  placeholder="Describe al artista, su sonido, trayectoria…"
                 />
               </div>
               <div>
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="bg-background border-border text-foreground"
-                />
-              </div>
-              <div>
-                <Label htmlFor="social_links">Social Links (JSON)</Label>
+                <Label htmlFor="social_links">Redes sociales (JSON)</Label>
                 <Input
                   id="social_links"
                   value={formData.social_links}
                   onChange={(e) => setFormData({ ...formData, social_links: e.target.value })}
                   className="bg-background border-border text-foreground"
-                  placeholder='{"instagram": "url", "soundcloud": "url"}'
+                  placeholder='{"instagram": "https://...", "soundcloud": "https://..."}'
                 />
               </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0">
-                {editingArtist ? 'Update Artist' : 'Create Artist'}
+                {editingArtist ? 'Guardar cambios' : 'Crear Artista'}
               </Button>
             </form>
           </DialogContent>
@@ -214,17 +215,24 @@ const ArtistManager = () => {
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : artists.length === 0 ? (
-          <p className="text-muted-foreground text-center py-12">No artists yet</p>
+          <p className="text-muted-foreground text-center py-12">No hay artistas aún</p>
         ) : (
           <div className="space-y-3">
             {artists.map((artist) => (
               <div
                 key={artist.id}
-                className="flex items-center justify-between p-4 bg-background rounded-xl border border-border"
+                className="flex items-center gap-4 p-4 bg-background rounded-xl border border-border"
               >
-                <div className="flex-1">
-                  <h3 className="text-foreground font-semibold">{artist.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-1">{artist.bio || 'No bio'}</p>
+                {artist.image_url ? (
+                  <img src={artist.image_url} alt={artist.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-bold text-muted-foreground">
+                    {artist.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-foreground font-semibold truncate">{artist.name}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{artist.bio || 'Sin bio'}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button

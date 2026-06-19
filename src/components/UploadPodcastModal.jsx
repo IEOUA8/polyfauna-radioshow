@@ -219,7 +219,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 pb-[106px] sm:pb-[106px]"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
       {/* Backdrop */}
@@ -231,13 +231,14 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
 
       {/* Panel */}
       <motion.div
-        className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-lg rounded-2xl shadow-2xl overflow-y-auto"
         initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 10 }}
         style={{
           background: 'rgba(10,13,26,0.98)',
           border: '1px solid rgba(255,255,255,0.1)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+          maxHeight: 'calc(100vh - 130px)',
         }}
       >
         {/* Header */}

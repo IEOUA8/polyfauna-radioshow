@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, ExternalLink, Loader2,
-  Plus, QrCode, Ticket, TrendingUp, Users, X,
+  Plus, QrCode, Ticket, TrendingUp, Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -11,87 +11,114 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { LoadingSkeleton, EmptyState, LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
+import FormModal, { FField, FInput, FTextarea, FSelect, FImageZone, FSubmit } from '@/components/ui/FormModal';
+
+const TICKET_TYPES = ['GA', 'VIP', 'Early Bird', 'Artist', 'Press'];
 
 // ── Create Event modal ────────────────────────────────────────
 function CreateEventModal({ onClose, onCreated }) {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [coverFile, setCoverFile] = useState(null);
   const [form, setForm] = useState({
     title: '', description: '', date: '', venue: '', city: '',
     price: '', tickets_total: '100', ticket_type: 'GA',
   });
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleCreate = async () => {
+  const handleCreate = async (e) => {
+    e.preventDefault();
     if (!form.title || !form.date) return;
     setSaving(true);
+
+    let image_url = null;
+    if (coverFile) {
+      const ext = coverFile.name.split('.').pop();
+      const path = `events/${Date.now()}.${ext}`;
+      const { data: up, error: upErr } = await supabase.storage
+        .from('album-covers')
+        .upload(path, coverFile, { upsert: true });
+      if (!upErr && up) {
+        const { data: { publicUrl } } = supabase.storage.from('album-covers').getPublicUrl(up.path);
+        image_url = publicUrl;
+      }
+    }
+
     const { data, error } = await supabase.from('events').insert({
-      title: form.title, description: form.description,
-      date: form.date, venue: form.venue, city: form.city,
+      title: form.title,
+      description: form.description || null,
+      date: form.date,
+      venue: form.venue || null,
+      city: form.city || null,
       price: parseFloat(form.price) || 0,
       tickets_total: parseInt(form.tickets_total) || 100,
-      owner_id: currentUser.id, status: 'published',
+      owner_id: currentUser.id,
+      status: 'published',
+      image_url,
     }).select().single();
+
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Evento creado', description: form.title });
+      toast({ title: '¡Evento publicado!', description: form.title });
       onCreated(data);
     }
     setSaving(false);
   };
 
-  const fields = [
-    { key: 'title',        label: 'Nombre del evento *',  placeholder: 'PolyFauna: Opening Night',   type: 'text' },
-    { key: 'date',         label: 'Fecha y hora *',       placeholder: '',                            type: 'datetime-local' },
-    { key: 'venue',        label: 'Venue / Lugar',        placeholder: 'Club Razzmatazz',             type: 'text' },
-    { key: 'city',         label: 'Ciudad',               placeholder: 'Bogotá',                      type: 'text' },
-    { key: 'price',        label: 'Precio entrada (COP)', placeholder: '35000',                       type: 'number' },
-    { key: 'tickets_total',label: 'Total de entradas',    placeholder: '100',                         type: 'number' },
-  ];
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)' }}>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md rounded-2xl overflow-y-auto max-h-[90vh]"
-        style={{ background: '#0F1322', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-white">Crear Evento</h3>
-            <button type="button" onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          {fields.map(({ key, label, placeholder, type }) => (
-            <div key={key}>
-              <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1">{label}</label>
-              <input type={type} value={form[key]} onChange={e => set(key, e.target.value)}
-                placeholder={placeholder}
-                className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
-                onFocus={e => (e.target.style.borderColor = '#00CFFF')}
-                onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />
-            </div>
-          ))}
-          <div>
-            <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1">Descripción</label>
-            <textarea value={form.description} onChange={e => set('description', e.target.value)}
-              rows={3} placeholder="Describe el evento…"
-              className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
-              onFocus={e => (e.target.style.borderColor = '#00CFFF')}
-              onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />
-          </div>
-          <button type="button" onClick={handleCreate} disabled={!form.title || !form.date || saving}
-            className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
-            style={{ background: '#00CFFF', color: '#080B14' }}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            {saving ? 'Creando…' : 'Publicar Evento'}
-          </button>
+    <FormModal title="Crear Evento" subtitle="Completa los datos y publica la preventa" onClose={onClose} maxWidth="max-w-lg">
+      <form onSubmit={handleCreate} className="space-y-4">
+        {/* Imagen de portada */}
+        <FImageZone
+          file={coverFile}
+          onFile={setCoverFile}
+          label="Subir imagen del evento"
+          hint="JPG, PNG, WEBP · Recomendado 16:9"
+          aspect="aspect-video"
+        />
+
+        {/* Grid 2 columnas */}
+        <div className="grid grid-cols-2 gap-3">
+          <FField label="Nombre del evento" required span={2}>
+            <FInput value={form.title} onChange={e => set('title', e.target.value)} placeholder="PolyFauna: Opening Night" />
+          </FField>
+
+          <FField label="Fecha y hora" required>
+            <FInput type="datetime-local" value={form.date} onChange={e => set('date', e.target.value)} />
+          </FField>
+          <FField label="Tipo de entrada">
+            <FSelect value={form.ticket_type} onChange={e => set('ticket_type', e.target.value)}>
+              {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </FSelect>
+          </FField>
+
+          <FField label="Venue / Lugar">
+            <FInput value={form.venue} onChange={e => set('venue', e.target.value)} placeholder="Club Razzmatazz" />
+          </FField>
+          <FField label="Ciudad">
+            <FInput value={form.city} onChange={e => set('city', e.target.value)} placeholder="Bogotá" />
+          </FField>
+
+          <FField label="Precio (COP)">
+            <FInput type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="35000" min="0" step="1000" />
+          </FField>
+          <FField label="Total entradas">
+            <FInput type="number" value={form.tickets_total} onChange={e => set('tickets_total', e.target.value)} placeholder="100" min="1" />
+          </FField>
+
+          <FField label="Descripción" span={2}>
+            <FTextarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe el evento, artistas, rooms…" rows={3} />
+          </FField>
+
+          <FSubmit loading={saving} disabled={!form.title || !form.date}>
+            <Plus className="w-4 h-4" />
+            {saving ? 'Publicando…' : 'Publicar Evento'}
+          </FSubmit>
         </div>
-      </motion.div>
-    </div>
+      </form>
+    </FormModal>
   );
 }
 
