@@ -225,7 +225,11 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
       {/* Backdrop */}
       <motion.div
         className="absolute inset-0"
-        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
+        style={{
+          background: 'rgba(2,4,18,0.72)',
+          backdropFilter: 'blur(20px) saturate(120%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        }}
         onClick={step !== 'uploading' ? onClose : undefined}
       />
 
@@ -235,9 +239,15 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
         initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 10 }}
         style={{
-          background: 'rgba(10,13,26,0.98)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+          background: 'rgba(8,11,26,0.52)',
+          backdropFilter: 'blur(32px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+          border: '1px solid rgba(255,255,255,0.13)',
+          boxShadow: [
+            '0 48px 120px rgba(0,0,0,0.75)',
+            '0 0 0 1px rgba(0,207,255,0.06)',
+            'inset 0 1px 0 rgba(255,255,255,0.08)',
+          ].join(', '),
           maxHeight: 'calc(100vh - 130px)',
         }}
       >
