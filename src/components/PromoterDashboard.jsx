@@ -1,109 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BarChart3, Calendar, CheckCircle, Loader2,
-  Plus, QrCode, Ticket, TrendingUp, Users, X, XCircle,
+  Calendar, ExternalLink, Loader2,
+  Plus, QrCode, Ticket, TrendingUp, Users, X,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { LoadingSkeleton, EmptyState, LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
-
-// ── QR Validator modal ────────────────────────────────────────
-function QRValidator({ eventId, onClose }) {
-  const { toast } = useToast();
-  const [input, setInput] = useState('');
-  const [result, setResult] = useState(null);
-  const [checking, setChecking] = useState(false);
-
-  const validate = async () => {
-    if (!input.trim()) return;
-    setChecking(true);
-    setResult(null);
-
-    const { data, error } = await supabase
-      .from('user_tickets')
-      .select('*, events(title)')
-      .eq('ticket_number', input.trim())
-      .eq('event_id', eventId)
-      .single();
-
-    if (error || !data) {
-      setResult({ valid: false, message: 'Ticket no encontrado o no pertenece a este evento.' });
-    } else if (data.status === 'used') {
-      setResult({ valid: false, message: 'Este ticket ya fue usado.', ticket: data });
-    } else {
-      // Mark as used
-      await supabase.from('user_tickets').update({ status: 'used' }).eq('id', data.id);
-      setResult({ valid: true, message: '¡Acceso autorizado!', ticket: data });
-      toast({ title: '✓ Entrada válida', description: `${data.ticket_type} — ${data.events?.title}` });
-    }
-    setChecking(false);
-    setInput('');
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-sm rounded-2xl p-6 space-y-5"
-        style={{ background: '#0F1322', border: '1px solid rgba(255,255,255,0.1)' }}>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" style={{ color: '#00CFFF' }} />
-            <h3 className="text-sm font-black text-white">Validar Entrada</h3>
-          </div>
-          <button type="button" onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <p className="text-xs text-white/40">Ingresa el número de ticket o escanea el QR.</p>
-
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && validate()}
-            placeholder="Número de ticket…"
-            className="flex-1 text-sm px-3 py-2.5 rounded-lg outline-none"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
-            autoFocus
-          />
-          <button type="button" onClick={validate} disabled={checking || !input.trim()}
-            className="px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 disabled:opacity-40"
-            style={{ background: '#00CFFF', color: '#080B14' }}>
-            {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'OK'}
-          </button>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {result && (
-            <motion.div key={result.valid ? 'ok' : 'fail'}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center gap-3 py-4 rounded-xl text-center"
-              style={{ background: result.valid ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${result.valid ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
-              {result.valid
-                ? <CheckCircle className="w-10 h-10" style={{ color: '#22c55e' }} />
-                : <XCircle className="w-10 h-10 text-red-400" />}
-              <p className="text-sm font-black" style={{ color: result.valid ? '#22c55e' : '#f87171' }}>
-                {result.message}
-              </p>
-              {result.ticket && (
-                <div className="text-[11px] text-white/40 space-y-0.5">
-                  <p>Tipo: {result.ticket.ticket_type}</p>
-                  <p className="font-mono">{result.ticket.ticket_number?.slice(0, 16)}</p>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </div>
-  );
-}
 
 // ── Create Event modal ────────────────────────────────────────
 function CreateEventModal({ onClose, onCreated }) {
@@ -189,7 +96,8 @@ function CreateEventModal({ onClose, onCreated }) {
 }
 
 // ── Event Card ────────────────────────────────────────────────
-function EventCard({ event, onValidate }) {
+function EventCard({ event }) {
+  const navigate = useNavigate();
   const sold = event.tickets_sold || 0;
   const total = event.tickets_total || 100;
   const pct = Math.round((sold / total) * 100);
@@ -239,13 +147,17 @@ function EventCard({ event, onValidate }) {
         </div>
       </div>
 
-      <button type="button" onClick={() => onValidate(event)}
+      <button
+        type="button"
+        onClick={() => navigate(`/validate?event=${event.id}`)}
         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors"
         style={{ background: 'rgba(0,207,255,0.08)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.2)' }}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.14)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.08)')}>
+        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.08)')}
+      >
         <QrCode className="w-3.5 h-3.5" />
         Validar entradas en puerta
+        <ExternalLink className="w-3 h-3 opacity-50" />
       </button>
     </motion.div>
   );
@@ -256,7 +168,6 @@ export default function PromoterDashboard() {
   const { currentUser } = useAuth();
   const { profile } = useProfile();
   const [showCreate, setShowCreate] = useState(false);
-  const [validatingEvent, setValidatingEvent] = useState(null);
 
   const { data: myEvents, loading, refetch } = useSupabaseQuery(
     () => currentUser
@@ -325,7 +236,7 @@ export default function PromoterDashboard() {
       {!loading && myEvents && myEvents.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {myEvents.map(event => (
-            <EventCard key={event.id} event={event} onValidate={setValidatingEvent} />
+            <EventCard key={event.id} event={event} />
           ))}
         </div>
       )}
@@ -333,9 +244,6 @@ export default function PromoterDashboard() {
       <AnimatePresence>
         {showCreate && (
           <CreateEventModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refetch(); }} />
-        )}
-        {validatingEvent && (
-          <QRValidator eventId={validatingEvent.id} onClose={() => setValidatingEvent(null)} />
         )}
       </AnimatePresence>
     </div>

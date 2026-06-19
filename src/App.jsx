@@ -8,6 +8,7 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import UserDashboard from '@/pages/UserDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
+import ValidatePage from '@/pages/ValidatePage';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/validate" element={<ValidatePage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <UserDashboard />
