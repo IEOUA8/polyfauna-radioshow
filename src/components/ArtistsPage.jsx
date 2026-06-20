@@ -93,7 +93,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
       </div>
 
       {/* Avatar (left) + Info (right) — items-end: ambos alineados abajo */}
-      <div className="px-5 flex items-end gap-4" style={{ marginTop: -64 }}>
+      <div className="px-5 flex items-end gap-4 relative" style={{ marginTop: -64, zIndex: 2 }}>
         {/* Avatar circle grande */}
         <div
           className="rounded-full overflow-hidden shrink-0"
