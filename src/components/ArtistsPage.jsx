@@ -90,51 +90,52 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
         </button>
       </div>
 
-      {/* Avatar circle — overlaps cover */}
-      <div className="flex flex-col items-center" style={{ marginTop: -52 }}>
+      {/* Avatar (left) + Info (right) — row overlapping cover bottom */}
+      <div className="px-5 flex items-end gap-4" style={{ marginTop: -46 }}>
+        {/* Avatar circle */}
         <div
-          className="w-24 h-24 rounded-full overflow-hidden shrink-0"
+          className="w-[90px] h-[90px] rounded-full overflow-hidden shrink-0 relative"
           style={{
             border: '3px solid #05090A',
-            boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.7)',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.13), 0 8px 28px rgba(0,0,0,0.70)',
+            zIndex: 10,
           }}
         >
           <img src={img} alt={artist.name} className="w-full h-full object-cover" />
         </div>
-      </div>
 
-      {/* Identity — centered */}
-      <div className="px-5 pt-3 pb-1 flex flex-col items-center gap-1.5 text-center">
-        {artist.type && (
-          <span
-            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            {artist.type}
-          </span>
-        )}
-        <h1 className="text-2xl font-black text-white leading-tight">{artist.name}</h1>
-        {artist.city && (
-          <p className="text-sm text-white/40">{artist.city}</p>
-        )}
-      </div>
-
-      {/* Social links — centered row */}
-      {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
-        <div className="px-5 pt-3 pb-1 flex justify-center gap-2 flex-wrap">
-          {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
-            links[key] ? (
-              <SocialButton
-                key={key}
-                href={build(links[key])}
-                icon={icon}
-                label={label}
-                color={color}
-              />
-            ) : null
+        {/* Info column aligned to avatar bottom */}
+        <div className="flex-1 min-w-0 pb-1">
+          {artist.type && (
+            <span
+              className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }}
+            >
+              {artist.type}
+            </span>
+          )}
+          <h1 className="text-xl font-black text-white leading-tight truncate">{artist.name}</h1>
+          {artist.city && (
+            <p className="text-xs text-white/40 mt-0.5">{artist.city}</p>
+          )}
+          {/* Social icons inline */}
+          {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
+            <div className="flex gap-1.5 mt-2 flex-wrap">
+              {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
+                links[key] ? (
+                  <SocialButton
+                    key={key}
+                    href={build(links[key])}
+                    icon={icon}
+                    label={label}
+                    color={color}
+                  />
+                ) : null
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Bio + Genres */}
       <div className="px-5 pt-5 pb-6 space-y-4">
