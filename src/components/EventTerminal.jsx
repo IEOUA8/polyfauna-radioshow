@@ -95,21 +95,27 @@ function BuyModal({ event, onClose }) {
   };
 
   return (
+    /* Overlay — se detiene justo en el borde superior del player (bottom-4 + h-[82px] = 98px) */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(4,7,7,0.88)', backdropFilter: 'blur(10px)' }}
+      className="fixed inset-x-0 top-0 z-[60] flex items-end justify-center px-4 pb-3"
+      style={{ bottom: 98, background: 'rgba(4,7,7,0.88)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.93, y: 16 }}
+        initial={{ opacity: 0, scale: 0.97, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.93, y: 16 }}
+        exit={{ opacity: 0, scale: 0.97, y: 20 }}
         transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-        className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-        style={{ background: 'rgba(8,14,9,0.96)', border: '1px solid rgba(255,255,255,0.09)' }}
+        className="relative w-full max-w-sm rounded-3xl flex flex-col"
+        style={{
+          background: 'rgba(8,14,9,0.98)',
+          border: '1px solid rgba(255,255,255,0.09)',
+          maxHeight: 'calc(100vh - 98px - 16px)',
+          overflow: 'hidden',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative h-40 overflow-hidden">
+        <div className="relative h-36 shrink-0 overflow-hidden">
           <img src={event.image_url || FALLBACK_IMG} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
           <button
@@ -121,7 +127,7 @@ function BuyModal({ event, onClose }) {
           </button>
         </div>
 
-        <div className="px-6 pb-6 pt-4 space-y-4">
+        <div className="px-6 pb-6 pt-4 space-y-4 overflow-y-auto overscroll-contain" style={{ scrollbarWidth: 'none' }}>
           {/* ── Éxito gratuito ── */}
           {status === 'success' && (
             <div className="flex flex-col items-center gap-3 py-2 text-center">
