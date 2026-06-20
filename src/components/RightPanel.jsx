@@ -325,7 +325,7 @@ export default function RightPanel({ setCurrentSection }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
-                  <p className="text-[11px] leading-tight truncate" style={{ color: 'rgba(255,255,255,0.5)'`>`{displayRole}}</p>
+                  <p className="text-[11px] leading-tight truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{displayRole}</p>
                 </div>
                 <motion.div animate={{ rotate: menuOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                   <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" />
