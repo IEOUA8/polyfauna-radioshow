@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     if (evErr || !event)
       return new Response(JSON.stringify({ error: 'Evento no encontrado' }), { status: 404, headers: CORS });
 
-    if (event.status !== 'published')
+    if (!['upcoming', 'live', 'published'].includes(event.status))
       return new Response(JSON.stringify({ error: 'El evento no está disponible' }), { status: 400, headers: CORS });
 
     const sold = event.tickets_sold ?? 0;

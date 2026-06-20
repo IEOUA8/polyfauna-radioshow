@@ -64,7 +64,7 @@ function CreateEventModal({ onClose, onCreated }) {
       price: parseFloat(form.price) || 0,
       tickets_total: parseInt(form.tickets_total) || 100,
       owner_id: currentUser.id,
-      status: 'published',
+      status: 'upcoming',
       image_url,
     }).select().single();
 

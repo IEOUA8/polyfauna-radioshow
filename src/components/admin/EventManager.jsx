@@ -55,7 +55,7 @@ const EventManager = () => {
         price:         formData.price         ? parseFloat(formData.price)         : null,
         tickets_total: formData.tickets_total  ? parseInt(formData.tickets_total)   : 100,
         owner_id:      currentUser.id,
-        status:        'published',
+        status:        'upcoming',
         lineup:        formData.lineup
           ? formData.lineup.split(',').map(s => s.trim()).filter(Boolean)
           : [],
