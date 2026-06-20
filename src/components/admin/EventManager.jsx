@@ -47,11 +47,16 @@ const EventManager = () => {
     e.preventDefault();
     setSaving(true);
     try {
+      const { ticket_type, ...rest } = formData;
       const payload = {
-        ...formData,
-        price: formData.price ? parseFloat(formData.price) : null,
+        ...rest,
+        price:        formData.price        ? parseFloat(formData.price)        : null,
         tickets_total: formData.tickets_total ? parseInt(formData.tickets_total) : 100,
-        owner_id: currentUser.id,
+        owner_id:     currentUser.id,
+        status:       'published',
+        lineup:       formData.lineup
+          ? formData.lineup.split(',').map(s => s.trim()).filter(Boolean)
+          : [],
       };
 
       if (editingEvent) {
