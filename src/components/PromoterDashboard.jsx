@@ -212,8 +212,9 @@ function WalletTab({ userId }) {
         supabase.from('transactions')
           .select('id, amount_total, promoter_amount, payment_method, status, paid_at, events(title)')
           .eq('promoter_id', userId)
+          .eq('status', 'approved')
           .order('paid_at', { ascending: false })
-          .limit(10),
+          .limit(50),
         supabase.from('payouts')
           .select('id, amount, status, requested_at, processed_at, transfer_reference')
           .eq('user_id', userId)
