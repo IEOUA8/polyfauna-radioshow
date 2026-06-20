@@ -40,6 +40,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
     ? (Array.isArray(artist.genres) ? artist.genres : String(artist.genres).split(','))
     : [];
   const favoured = isFav('artist', artist.id);
+  const img = artist.image_url || FALLBACK;
 
   return (
     <motion.div
@@ -48,56 +49,79 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -40 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="p-5 space-y-6"
+      className="space-y-0"
     >
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Artists & Labels
-      </button>
+      {/* Back */}
+      <div className="px-5 pt-5 pb-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm font-medium text-white/45 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Artists & Labels
+        </button>
+      </div>
 
-      {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 300 }}>
+      {/* Cover banner */}
+      <div className="relative overflow-hidden" style={{ height: 170 }}>
         <img
-          src={artist.image_url || FALLBACK}
-          alt={artist.name}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ filter: 'brightness(0.75)' }}
+          src={img}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 w-full h-full object-cover scale-110"
+          style={{ filter: 'blur(6px) brightness(0.40) saturate(0.7)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
-
-        {/* Favorite */}
+        {/* gradient fade to page bg at bottom */}
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(to bottom, rgba(5,9,10,0.10) 0%, rgba(5,9,10,0.55) 70%, #05090A 100%)',
+        }} />
+        {/* Favorite button */}
         <button
           type="button"
           onClick={() => toggleFav('artist', artist.id)}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-          style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.1)' }}
+          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all"
+          style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
         >
           <Heart
-            className="w-4 h-4"
-            style={{ fill: favoured ? '#F87171' : 'none', color: favoured ? '#F87171' : 'rgba(255,255,255,0.7)' }}
+            className="w-4 h-4 transition-colors"
+            style={{ fill: favoured ? '#F87171' : 'none', color: favoured ? '#F87171' : 'rgba(255,255,255,0.65)' }}
           />
         </button>
+      </div>
 
-        <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 300 }}>
-          {artist.type && (
-            <span className="inline-flex text-[10px] font-bold uppercase tracking-widest mb-2 px-2.5 py-0.5 rounded-full w-fit" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}>
-              {artist.type}
-            </span>
-          )}
-          <h1 className="text-3xl font-black text-white leading-tight">{artist.name}</h1>
-          {artist.city && (
-            <p className="text-sm text-white/50 mt-1">{artist.city}</p>
-          )}
+      {/* Avatar circle — overlaps cover */}
+      <div className="flex flex-col items-center" style={{ marginTop: -52 }}>
+        <div
+          className="w-24 h-24 rounded-full overflow-hidden shrink-0"
+          style={{
+            border: '3px solid #05090A',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.7)',
+          }}
+        >
+          <img src={img} alt={artist.name} className="w-full h-full object-cover" />
         </div>
       </div>
 
-      {/* Social links — icon only */}
+      {/* Identity — centered */}
+      <div className="px-5 pt-3 pb-1 flex flex-col items-center gap-1.5 text-center">
+        {artist.type && (
+          <span
+            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            {artist.type}
+          </span>
+        )}
+        <h1 className="text-2xl font-black text-white leading-tight">{artist.name}</h1>
+        {artist.city && (
+          <p className="text-sm text-white/40">{artist.city}</p>
+        )}
+      </div>
+
+      {/* Social links — centered row */}
       {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
-        <div className="flex flex-wrap gap-2">
+        <div className="px-5 pt-3 pb-1 flex justify-center gap-2 flex-wrap">
           {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
             links[key] ? (
               <SocialButton
@@ -112,31 +136,31 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
         </div>
       )}
 
-      {/* Bio */}
-      {artist.bio && (
-        <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-3">Biografía</h2>
-          <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{artist.bio}</p>
-        </div>
-      )}
-
-      {/* Genres */}
-      {genres.length > 0 && (
-        <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-3">Géneros</h2>
-          <div className="flex flex-wrap gap-2">
-            {genres.map((g) => (
-              <span
-                key={g}
-                className="text-xs font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
-              >
-                {g.trim()}
-              </span>
-            ))}
+      {/* Bio + Genres */}
+      <div className="px-5 pt-5 pb-6 space-y-4">
+        {artist.bio && (
+          <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Biografía</h2>
+            <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{artist.bio}</p>
           </div>
-        </div>
-      )}
+        )}
+        {genres.length > 0 && (
+          <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Géneros</h2>
+            <div className="flex flex-wrap gap-2">
+              {genres.map((g) => (
+                <span
+                  key={g}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
+                >
+                  {g.trim()}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
