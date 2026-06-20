@@ -80,12 +80,12 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
         transition={{ type: 'spring', stiffness: 280, damping: 30 }}
         className="h-16 flex items-center gap-3 px-4 md:px-5 shrink-0 sticky top-0 z-30"
         style={{
-          background: 'rgba(8, 10, 22, 0.80)',
+          background: 'rgba(8, 12, 11, 0.80)',
           backdropFilter: 'blur(40px) saturate(200%)',
           WebkitBackdropFilter: 'blur(40px) saturate(200%)',
           borderBottom: '1px solid transparent',
           backgroundClip: 'padding-box',
-          boxShadow: '0 1px 0 0 rgba(0,207,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
+          boxShadow: '0 1px 0 0 rgba(184,207,166,0.10), 0 4px 24px rgba(0,0,0,0.4)',
         }}
       >
         {/* Hamburger — mobile only */}
@@ -108,8 +108,8 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
               onChange={(e) => { setQuery(e.target.value); setShowResults(true); }}
               onFocus={(e) => {
                 setShowResults(true);
-                e.currentTarget.style.borderColor = 'rgba(0,207,255,0.4)';
-                e.currentTarget.style.boxShadow = '0 0 0 1px rgba(0,207,255,0.15)';
+                e.currentTarget.style.borderColor = 'rgba(32,199,232,0.4)';
+                e.currentTarget.style.boxShadow = '0 0 0 1px rgba(32,199,232,0.15)';
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
@@ -134,7 +134,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
                 className="absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-50 shadow-2xl"
-                style={{ background: 'rgba(12, 15, 28, 0.98)', border: '1px solid rgba(255,255,255,0.09)' }}
+                style={{ background: 'rgba(8, 12, 11, 0.98)', border: '1px solid rgba(255,255,255,0.09)' }}
               >
                 {searching && <div className="p-3 text-center text-xs text-white/30">Buscando...</div>}
                 {!searching && results.length === 0 && (
@@ -160,7 +160,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-white truncate">{name}</p>
                           </div>
-                          <span className="flex items-center gap-1 text-[10px] font-bold shrink-0" style={{ color: '#00CFFF' }}>
+                          <span className="flex items-center gap-1 text-[10px] font-bold shrink-0" style={{ color: '#20C7E8' }}>
                             <Icon className="w-3 h-3" />
                             {meta.label}
                           </span>
@@ -186,9 +186,9 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
             animate={isOnline ? { opacity: [1, 0.3, 1] } : { opacity: 0.4 }}
             transition={{ duration: 1.2, repeat: Infinity }}
             className="w-2 h-2 rounded-full shrink-0"
-            style={{ background: isOnline ? '#FF7043' : 'rgba(255,255,255,0.3)' }}
+            style={{ background: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.3)' }}
           />
-          <span className="text-sm font-semibold" style={{ color: isOnline ? '#FF7043' : 'rgba(255,255,255,0.4)' }}>
+          <span className="text-sm font-semibold" style={{ color: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.4)' }}>
             {isOnline ? (isLive ? `En vivo — ${streamerName || 'DJ'}` : 'Live') : 'Offline'}
           </span>
         </div>

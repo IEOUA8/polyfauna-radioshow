@@ -68,6 +68,10 @@ function BuyModal({ event, onClose }) {
         if (error) throw new Error(error.message || 'Error al crear el pago');
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
 
+        const origin = window.location.origin;
+        const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        const redirectParam = isLocal ? '' : `&redirect-url=${encodeURIComponent(origin + '/')}`;
+
         const checkoutUrl =
           `https://checkout.wompi.co/p/?` +
           `public-key=${data.public_key}` +
@@ -75,13 +79,9 @@ function BuyModal({ event, onClose }) {
           `&amount-in-cents=${data.amount_in_cents}` +
           `&reference=${data.reference}` +
           `&signature:integrity=${data.signature}` +
-          `&redirect-url=${encodeURIComponent(window.location.origin + '/')}`;
+          redirectParam;
 
-        console.log('[Wompi checkout URL]', checkoutUrl);
-
-        // Navegar en la misma pestaña para que el referrer llegue a Wompi
-        window.location.href = checkoutUrl;
-        setWompiRef(data.reference);
+        setWompiRef(checkoutUrl);
         setStatus('pending');
       } catch (err) {
         setStatus('error');
@@ -140,28 +140,38 @@ function BuyModal({ event, onClose }) {
             </div>
           )}
 
-          {/* ── Pago Wompi iniciado ── */}
+          {/* ── Pago Wompi: URL lista para navegar ── */}
           {status === 'pending' && (
-            <div className="flex flex-col items-center gap-3 py-2 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,138,31,0.12)' }}>
-                <ExternalLink className="w-7 h-7" style={{ color: '#FF8A1F' }} />
+            <div className="flex flex-col gap-3 py-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(255,138,31,0.12)' }}>
+                  <ExternalLink className="w-5 h-5" style={{ color: '#FF8A1F' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-white">Checkout listo</p>
+                  <p className="text-xs text-white/40">Haz clic para ir a Wompi a completar el pago</p>
+                </div>
               </div>
-              <div>
-                <p className="text-base font-black text-white">Pago iniciado</p>
-                <p className="text-xs text-white/40 mt-1">Completa el pago en la nueva pestaña</p>
-              </div>
-              <p className="text-xs text-white/30 leading-relaxed px-2">
-                Tu ticket aparecerá en el Ticket Vault unos segundos después de confirmar el pago.
-              </p>
+
               {wompiRef && (
-                <p className="text-[10px] font-mono text-white/20 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  Ref: {wompiRef}
-                </p>
+                <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1">URL generada (debug)</p>
+                  <p className="text-[9px] font-mono text-white/40 break-all leading-relaxed select-all">{wompiRef}</p>
+                </div>
               )}
+
+              <button type="button"
+                onClick={() => { window.location.href = wompiRef; }}
+                className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2"
+                style={{ background: '#FF8A1F', color: '#fff' }}>
+                <ExternalLink className="w-4 h-4" />
+                Ir a Wompi
+              </button>
+
               <button type="button" onClick={onClose}
-                className="w-full py-3 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}>
-                Cerrar
+                className="w-full py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
+                Cancelar
               </button>
             </div>
           )}

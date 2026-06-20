@@ -69,8 +69,8 @@ export default function HoloSpectrum({ isPlaying = false, height = 80, className
         className="absolute bottom-0 left-0 right-0"
         style={{
           height: '1px',
-          background: 'linear-gradient(to right, transparent 0%, rgba(0,207,255,0.7) 20%, rgba(123,92,240,0.6) 55%, rgba(236,72,153,0.5) 80%, transparent 100%)',
-          boxShadow: '0 0 10px rgba(0,207,255,0.35), 0 0 20px rgba(123,92,240,0.2)',
+          background: 'linear-gradient(to right, transparent 0%, rgba(32,199,232,0.7) 20%, rgba(123,92,240,0.6) 55%, rgba(236,72,153,0.5) 80%, transparent 100%)',
+          boxShadow: '0 0 10px rgba(32,199,232,0.35), 0 0 20px rgba(123,92,240,0.2)',
           pointerEvents: 'none',
         }}
         aria-hidden="true"
@@ -81,7 +81,7 @@ export default function HoloSpectrum({ isPlaying = false, height = 80, className
         className="absolute bottom-0 left-0 right-0"
         style={{
           height: '35%',
-          background: 'linear-gradient(to top, rgba(0,207,255,0.05), transparent)',
+          background: 'linear-gradient(to top, rgba(32,199,232,0.05), transparent)',
           pointerEvents: 'none',
         }}
         aria-hidden="true"

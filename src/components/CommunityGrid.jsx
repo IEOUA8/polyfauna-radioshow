@@ -7,7 +7,7 @@ import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
-const STATUS_COLORS = ['#22c55e', '#00CFFF', '#F59E0B', 'rgba(255,255,255,0.2)'];
+const STATUS_COLORS = ['#22c55e', '#20C7E8', '#F59E0B', 'rgba(255,255,255,0.2)'];
 
 function MemberCard({ member, index }) {
   const status = STATUS_COLORS[index % STATUS_COLORS.length];
@@ -18,8 +18,8 @@ function MemberCard({ member, index }) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.04 }}
       className="rounded-xl p-4 flex flex-col items-center text-center gap-2 cursor-pointer transition-colors group"
-      style={{ background: 'rgba(15, 19, 34, 0.9)', border: '1px solid rgba(255,255,255,0.07)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(0,207,255,0.25)')}
+      style={{ background: 'rgba(11, 16, 15, 0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(32,199,232,0.25)')}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
     >
       <div className="relative">
@@ -32,7 +32,7 @@ function MemberCard({ member, index }) {
         </div>
         <span
           className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2"
-          style={{ background: status, borderColor: '#0F1322' }}
+          style={{ background: status, borderColor: '#080E09' }}
         />
       </div>
       <div className="min-w-0 w-full">
@@ -67,7 +67,7 @@ export default function CommunityGrid() {
         <>
           <div className="flex items-center gap-4 text-xs text-white/30">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#22c55e' }} /> Online</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#00CFFF' }} /> En vivo</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#20C7E8' }} /> En vivo</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#F59E0B' }} /> Grabando</span>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">

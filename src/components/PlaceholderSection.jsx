@@ -16,7 +16,7 @@ const SECTION_META = {
 };
 
 export default function PlaceholderSection({ id, label }) {
-  const meta = SECTION_META[id] || { icon: LayoutGrid, color: '#00CFFF', label: label || id, desc: 'Próximamente disponible.' };
+  const meta = SECTION_META[id] || { icon: LayoutGrid, color: '#20C7E8', label: label || id, desc: 'Próximamente disponible.' };
   const Icon = meta.icon;
   const color = meta.color;
 
@@ -35,7 +35,7 @@ export default function PlaceholderSection({ id, label }) {
           animate={{ scale: [1.1, 1, 1.1], opacity: [0.04, 0.08, 0.04] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
           className="absolute bottom-1/4 left-1/3 w-64 h-64 rounded-full"
-          style={{ background: '#7B5CF0', filter: 'blur(60px)' }}
+          style={{ background: '#7C5CFF', filter: 'blur(60px)' }}
         />
       </div>
 

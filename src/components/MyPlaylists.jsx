@@ -36,7 +36,7 @@ function CreatePlaylistModal({ onClose, onCreated }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-sm rounded-2xl p-6 space-y-4"
-        style={{ background: '#0F1322', border: '1px solid rgba(255,255,255,0.1)' }}>
+        style={{ background: 'rgba(11,16,15,0.96)', border: '1px solid rgba(255,255,255,0.1)' }}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black text-white">Nueva Playlist</h3>
           <button onClick={onClose} type="button" className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">
@@ -46,22 +46,22 @@ function CreatePlaylistModal({ onClose, onCreated }) {
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la playlist"
           className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
           style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
-          onFocus={e => (e.target.style.borderColor = '#00CFFF')}
+          onFocus={e => (e.target.style.borderColor = '#20C7E8')}
           onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')} />
         <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Descripción (opcional)" rows={2}
           className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none"
           style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
-          onFocus={e => (e.target.style.borderColor = '#00CFFF')}
+          onFocus={e => (e.target.style.borderColor = '#20C7E8')}
           onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')} />
         <button type="button" onClick={() => setIsPublic(p => !p)}
           className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg w-full transition-colors"
-          style={{ background: 'rgba(255,255,255,0.05)', color: isPublic ? '#00CFFF' : 'rgba(255,255,255,0.4)' }}>
+          style={{ background: 'rgba(255,255,255,0.05)', color: isPublic ? '#20C7E8' : 'rgba(255,255,255,0.4)' }}>
           {isPublic ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
           {isPublic ? 'Pública — visible para todos' : 'Privada — solo tú'}
         </button>
         <button type="button" onClick={handleCreate} disabled={!name.trim() || saving}
           className="w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
-          style={{ background: '#00CFFF', color: '#080B14' }}>
+          style={{ background: '#20C7E8', color: '#080B14' }}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           {saving ? 'Creando…' : 'Crear playlist'}
         </button>
@@ -81,7 +81,7 @@ function PlaylistCard({ playlist, onDelete }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       className="rounded-xl overflow-hidden flex flex-col group"
-      style={{ background: 'rgba(15, 19, 34, 0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      style={{ background: 'rgba(11, 16, 15, 0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
       {/* Cover grid */}
       <div className="relative aspect-square grid grid-cols-2 gap-0.5 overflow-hidden bg-black">
         {covers.length >= 4
@@ -91,7 +91,7 @@ function PlaylistCard({ playlist, onDelete }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute top-2 left-2 flex items-center gap-1">
           {playlist.is_public
-            ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,207,255,0.15)', color: '#00CFFF' }}>Pública</span>
+            ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(32,199,232,0.15)', color: '#20C7E8' }}>Pública</span>
             : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>Privada</span>
           }
         </div>
@@ -135,7 +135,7 @@ export default function MyPlaylists() {
         <p className="text-xs text-white/40">{(playlists || []).length} playlist{(playlists || []).length !== 1 ? 's' : ''}</p>
         <button type="button" onClick={() => setShowCreate(true)}
           className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-          style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.2)' }}>
+          style={{ background: 'rgba(32,199,232,0.1)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}>
           <Plus className="w-3.5 h-3.5" />
           Nueva
         </button>

@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const ROLES = ['citizen', 'artist', 'promoter', 'club', 'admin'];
 const ROLE_COLOR = {
-  citizen: '#00CFFF', artist: '#A78BFA', promoter: '#F59E0B',
+  citizen: '#20C7E8', artist: '#A78BFA', promoter: '#F59E0B',
   club: '#34D399', admin: '#F87171',
 };
 
@@ -98,9 +98,9 @@ const UserManager = () => {
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded"
                     style={{
-                      background: `${ROLE_COLOR[user.role] || '#00CFFF'}18`,
-                      color: ROLE_COLOR[user.role] || '#00CFFF',
-                      border: `1px solid ${ROLE_COLOR[user.role] || '#00CFFF'}30`,
+                      background: `${ROLE_COLOR[user.role] || '#20C7E8'}18`,
+                      color: ROLE_COLOR[user.role] || '#20C7E8',
+                      border: `1px solid ${ROLE_COLOR[user.role] || '#20C7E8'}30`,
                     }}
                   >
                     {user.role || 'citizen'}

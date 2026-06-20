@@ -15,9 +15,9 @@ const GENRES = [
 ];
 
 const GENRE_COLORS = {
-  techno: '#FF8C00', house: '#00CFFF', 'tech house': '#00CFFF', 'deep house': '#00B4DD',
+  techno: '#FF8C00', house: '#20C7E8', 'tech house': '#20C7E8', 'deep house': '#00B4DD',
   trance: '#4CAF50', 'psy trance': '#81C784', disco: '#E879A0', 'nu disco': '#FF69B4',
-  downtempo: '#9C27B0', ambient: '#7B5CF0', idm: '#4527A0', experimental: '#7C4DFF',
+  downtempo: '#9C27B0', ambient: '#7C5CFF', idm: '#4527A0', experimental: '#7C4DFF',
   'drum and bass': '#0277BD', breaks: '#4FC3F7', breakbeat: '#29B6F6',
   garage: '#00BCD4', 'uk garage': '#00ACC1', grime: '#00838F',
   'hip hop': '#F44336', 'trip hop': '#EF5350', industrial: '#FFD700',
@@ -25,7 +25,7 @@ const GENRE_COLORS = {
 };
 
 function getGenreColor(g) {
-  return GENRE_COLORS[g?.toLowerCase()] ?? '#00CFFF';
+  return GENRE_COLORS[g?.toLowerCase()] ?? '#20C7E8';
 }
 
 function uploadWithProgress(file, presignedUrl, onProgress) {
@@ -70,7 +70,7 @@ async function getPresignedUrl(token, filename, contentType, folder, fileSizeByt
 }
 
 // ── Drop Zone ─────────────────────────────────────────────────────────────────
-function DropZone({ accept, label, hint, icon: Icon, file, onFile, color = '#00CFFF' }) {
+function DropZone({ accept, label, hint, icon: Icon, file, onFile, color = '#20C7E8' }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
 
@@ -215,7 +215,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
     }
   };
 
-  const gColor = form.genre ? getGenreColor(form.genre) : '#00CFFF';
+  const gColor = form.genre ? getGenreColor(form.genre) : '#20C7E8';
 
   return (
     <motion.div
@@ -226,7 +226,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
       <motion.div
         className="absolute inset-0"
         style={{
-          background: 'rgba(2,4,18,0.72)',
+          background: 'rgba(4,7,7,0.65)',
           backdropFilter: 'blur(20px) saturate(120%)',
           WebkitBackdropFilter: 'blur(20px) saturate(120%)',
         }}
@@ -239,13 +239,13 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
         initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 10 }}
         style={{
-          background: 'rgba(8,11,26,0.52)',
+          background: 'rgba(13,20,19,0.54)',
           backdropFilter: 'blur(32px) saturate(180%)',
           WebkitBackdropFilter: 'blur(32px) saturate(180%)',
           border: '1px solid rgba(255,255,255,0.13)',
           boxShadow: [
             '0 48px 120px rgba(0,0,0,0.75)',
-            '0 0 0 1px rgba(0,207,255,0.06)',
+            '0 0 0 1px rgba(32,199,232,0.06)',
             'inset 0 1px 0 rgba(255,255,255,0.08)',
           ].join(', '),
           maxHeight: 'calc(100vh - 130px)',
@@ -282,7 +282,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
         <div className="flex gap-1.5 px-5 pt-4">
           {['files', 'info', 'uploading'].map((s, i) => (
             <div key={s} className="h-0.5 flex-1 rounded-full transition-all duration-300"
-              style={{ background: ['files','info','uploading','done'].indexOf(step) >= i ? '#00CFFF' : 'rgba(255,255,255,0.1)' }} />
+              style={{ background: ['files','info','uploading','done'].indexOf(step) >= i ? '#20C7E8' : 'rgba(255,255,255,0.1)' }} />
           ))}
         </div>
 
@@ -297,7 +297,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 icon={Music}
                 file={audioFile}
                 onFile={setAudioFile}
-                color="#00CFFF"
+                color="#20C7E8"
               />
               <DropZone
                 accept="image/jpeg,image/png,image/webp"
@@ -314,7 +314,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 onClick={() => setStep('info')}
                 className="w-full py-3 rounded-xl text-sm font-bold transition-all"
                 style={{
-                  background: canGoToInfo ? 'linear-gradient(135deg,#00CFFF,#7B5CF0)' : 'rgba(255,255,255,0.06)',
+                  background: canGoToInfo ? 'linear-gradient(135deg,#20C7E8,#7C5CFF)' : 'rgba(255,255,255,0.06)',
                   color: canGoToInfo ? '#080B14' : 'rgba(255,255,255,0.25)',
                   cursor: canGoToInfo ? 'pointer' : 'not-allowed',
                 }}
@@ -404,7 +404,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 disabled={!form.title.trim()}
                 className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all"
                 style={{
-                  background: form.title.trim() ? `linear-gradient(135deg, ${gColor}, #7B5CF0)` : 'rgba(255,255,255,0.06)',
+                  background: form.title.trim() ? `linear-gradient(135deg, ${gColor}, #7C5CFF)` : 'rgba(255,255,255,0.06)',
                   color: form.title.trim() ? '#080B14' : 'rgba(255,255,255,0.25)',
                   cursor: form.title.trim() ? 'pointer' : 'not-allowed',
                 }}>
@@ -429,7 +429,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
               </div>
 
               <div className="space-y-4">
-                <ProgressBar label="Audio" pct={audioProgress} color="#00CFFF" />
+                <ProgressBar label="Audio" pct={audioProgress} color="#20C7E8" />
                 <ProgressBar label="Cover" pct={coverProgress} color="#A78BFA" />
               </div>
 
@@ -449,8 +449,8 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 initial={{ scale: 0 }} animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.1 }}
                 className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-                style={{ background: 'rgba(0,207,255,0.12)', border: '2px solid rgba(0,207,255,0.3)' }}>
-                <CheckCircle className="w-8 h-8" style={{ color: '#00CFFF' }} />
+                style={{ background: 'rgba(32,199,232,0.12)', border: '2px solid rgba(32,199,232,0.3)' }}>
+                <CheckCircle className="w-8 h-8" style={{ color: '#20C7E8' }} />
               </motion.div>
 
               <div>
@@ -478,7 +478,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 <button type="button"
                   onClick={() => { setStep('files'); setAudioFile(null); setCoverFile(null); setForm({ title: '', description: '', genre: '' }); setAudioProgress(0); setCoverProgress(0); }}
                   className="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
-                  style={{ background: 'linear-gradient(135deg,#00CFFF,#7B5CF0)', color: '#080B14' }}>
+                  style={{ background: 'linear-gradient(135deg,#20C7E8,#7C5CFF)', color: '#080B14' }}>
                   Subir otro
                 </button>
               </div>

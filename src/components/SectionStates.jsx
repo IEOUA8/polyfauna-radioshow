@@ -59,7 +59,7 @@ export function CardSkeleton({ count = 4 }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.08 }}
           className="rounded-xl overflow-hidden"
-          style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.06)' }}
+          style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           <div className="relative aspect-square overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <Shimmer />
@@ -91,9 +91,9 @@ export function EmptyState({ label = 'No hay contenido aún', icon: Icon }) {
           animate={{ y: [0, -4, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
-          style={{ background: 'rgba(0,207,255,0.08)', border: '1px solid rgba(0,207,255,0.12)' }}
+          style={{ background: 'rgba(32,199,232,0.08)', border: '1px solid rgba(32,199,232,0.12)' }}
         >
-          <Icon className="w-5 h-5" style={{ color: '#00CFFF' }} />
+          <Icon className="w-5 h-5" style={{ color: '#20C7E8' }} />
         </motion.div>
       )}
       <p className="text-sm font-semibold text-white/50">{label}</p>
@@ -120,9 +120,9 @@ export function ErrorState({ message, onRetry }) {
           type="button"
           onClick={onRetry}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg mt-1 transition-all"
-          style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.15)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,207,255,0.18)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,207,255,0.1)'; }}
+          style={{ background: 'rgba(32,199,232,0.1)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.15)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(32,199,232,0.18)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(32,199,232,0.1)'; }}
         >
           <RefreshCw className="w-3 h-3" />
           Reintentar
@@ -141,9 +141,9 @@ export function LoginRequired({ message = 'Inicia sesión para ver este contenid
     >
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center"
-        style={{ background: 'rgba(0,207,255,0.08)', border: '1px solid rgba(0,207,255,0.15)' }}
+        style={{ background: 'rgba(32,199,232,0.08)', border: '1px solid rgba(32,199,232,0.15)' }}
       >
-        <svg className="w-5 h-5" style={{ color: '#00CFFF' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" style={{ color: '#20C7E8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       </div>
@@ -151,7 +151,7 @@ export function LoginRequired({ message = 'Inicia sesión para ver este contenid
       <a
         href="/login"
         className="text-xs font-bold px-4 py-2 rounded-lg transition-opacity hover:opacity-80"
-        style={{ background: '#00CFFF', color: '#080B14' }}
+        style={{ background: '#20C7E8', color: '#080B14' }}
       >
         Iniciar sesión
       </a>

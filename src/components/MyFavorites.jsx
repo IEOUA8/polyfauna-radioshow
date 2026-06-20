@@ -25,7 +25,7 @@ function FavCard({ item, type, onRemove }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       className="rounded-xl overflow-hidden flex flex-col group relative"
-      style={{ background: 'rgba(15, 19, 34, 0.9)', border: '1px solid rgba(255,255,255,0.07)' }}
+      style={{ background: 'rgba(11, 16, 15, 0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
     >
       <div className="relative aspect-video overflow-hidden">
         <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -81,7 +81,7 @@ export default function MyFavorites() {
           <button key={id} type="button" onClick={() => setActiveTab(id)}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
             style={{
-              background: activeTab === id ? '#00CFFF' : 'rgba(255,255,255,0.05)',
+              background: activeTab === id ? '#20C7E8' : 'rgba(255,255,255,0.05)',
               color: activeTab === id ? '#080B14' : 'rgba(255,255,255,0.5)',
               border: activeTab === id ? 'none' : '1px solid rgba(255,255,255,0.08)',
             }}>

@@ -4,32 +4,32 @@ import { ImageIcon, Loader2, X } from 'lucide-react';
 
 const PLAYER_H = 98;
 
-/* ── Tokens glassmorphism ── */
+/* ── Tokens glassmorphism — dark botanical ── */
 const glass = {
   panel: {
-    background: 'rgba(8,11,26,0.52)',
-    backdropFilter: 'blur(32px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-    border: '1px solid rgba(255,255,255,0.13)',
+    background: 'rgba(13,20,19,0.54)',
+    backdropFilter: 'blur(48px) saturate(200%) brightness(1.04)',
+    WebkitBackdropFilter: 'blur(48px) saturate(200%) brightness(1.04)',
+    border: '1px solid rgba(184,207,166,0.10)',
     boxShadow: [
-      '0 48px 120px rgba(0,0,0,0.75)',
-      '0 0 0 1px rgba(0,207,255,0.06)',
-      'inset 0 1px 0 rgba(255,255,255,0.08)',
-      'inset 0 -1px 0 rgba(0,0,0,0.3)',
+      '0 48px 120px rgba(0,0,0,0.72)',
+      '0 0 0 1px rgba(184,207,166,0.05)',
+      'inset 0 1px 0 rgba(255,255,255,0.06)',
+      'inset 0 -1px 0 rgba(0,0,0,0.28)',
     ].join(', '),
   },
   input: {
-    background: 'rgba(255,255,255,0.055)',
+    background: 'rgba(255,255,255,0.045)',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.09)',
     color: 'white',
     outline: 'none',
     transition: 'border-color 0.15s, box-shadow 0.15s',
   },
   header: {
-    background: 'rgba(255,255,255,0.03)',
-    borderBottom: '1px solid rgba(255,255,255,0.07)',
+    background: 'rgba(255,255,255,0.025)',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
   },
 };
 
@@ -63,9 +63,9 @@ export function FInput({ value, onChange, placeholder, type = 'text', min, step,
       className="w-full text-sm px-3 py-2.5 rounded-xl placeholder:text-white/20"
       style={{
         ...glass.input,
-        borderColor: focused ? 'rgba(0,207,255,0.6)' : 'rgba(255,255,255,0.1)',
+        borderColor: focused ? 'rgba(32,199,232,0.6)' : 'rgba(255,255,255,0.1)',
         boxShadow: focused
-          ? '0 0 0 3px rgba(0,207,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
+          ? '0 0 0 3px rgba(32,199,232,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
           : 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
       onFocus={() => setFocused(true)}
@@ -85,9 +85,9 @@ export function FTextarea({ value, onChange, placeholder, rows = 3 }) {
       className="w-full text-sm px-3 py-2.5 rounded-xl resize-none placeholder:text-white/20"
       style={{
         ...glass.input,
-        borderColor: focused ? 'rgba(0,207,255,0.6)' : 'rgba(255,255,255,0.1)',
+        borderColor: focused ? 'rgba(32,199,232,0.6)' : 'rgba(255,255,255,0.1)',
         boxShadow: focused
-          ? '0 0 0 3px rgba(0,207,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
+          ? '0 0 0 3px rgba(32,199,232,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
           : 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
       onFocus={() => setFocused(true)}
@@ -105,9 +105,9 @@ export function FSelect({ value, onChange, children, placeholder }) {
       className="w-full text-sm px-3 py-2.5 rounded-xl appearance-none"
       style={{
         ...glass.input,
-        borderColor: focused ? 'rgba(0,207,255,0.6)' : 'rgba(255,255,255,0.1)',
+        borderColor: focused ? 'rgba(32,199,232,0.6)' : 'rgba(255,255,255,0.1)',
         boxShadow: focused
-          ? '0 0 0 3px rgba(0,207,255,0.08)'
+          ? '0 0 0 3px rgba(32,199,232,0.08)'
           : 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
       onFocus={() => setFocused(true)}
@@ -136,15 +136,15 @@ export function FImageZone({ file, onFile, previewUrl, label = 'Subir portada', 
     <div
       className={`relative ${aspect} w-full rounded-2xl overflow-hidden cursor-pointer transition-all duration-200`}
       style={{
-        border: `2px dashed ${dragging ? 'rgba(0,207,255,0.8)' : preview ? 'rgba(0,207,255,0.3)' : 'rgba(255,255,255,0.13)'}`,
+        border: `2px dashed ${dragging ? 'rgba(32,199,232,0.8)' : preview ? 'rgba(32,199,232,0.3)' : 'rgba(255,255,255,0.13)'}`,
         background: dragging
-          ? 'rgba(0,207,255,0.07)'
+          ? 'rgba(32,199,232,0.07)'
           : preview
           ? 'transparent'
           : 'rgba(255,255,255,0.025)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        boxShadow: dragging ? '0 0 0 4px rgba(0,207,255,0.1)' : 'none',
+        boxShadow: dragging ? '0 0 0 4px rgba(32,199,232,0.1)' : 'none',
       }}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
@@ -168,8 +168,8 @@ export function FImageZone({ file, onFile, previewUrl, label = 'Subir portada', 
         style={{ background: preview ? 'rgba(0,0,0,0.6)' : 'transparent', backdropFilter: preview ? 'blur(4px)' : 'none' }}
       >
         <div className="w-11 h-11 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(0,207,255,0.12)', border: '1px solid rgba(0,207,255,0.2)' }}>
-          <ImageIcon className="w-5 h-5" style={{ color: '#00CFFF' }} />
+          style={{ background: 'rgba(32,199,232,0.12)', border: '1px solid rgba(32,199,232,0.2)' }}>
+          <ImageIcon className="w-5 h-5" style={{ color: '#20C7E8' }} />
         </div>
         <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
           {preview ? 'Cambiar imagen' : label}
@@ -189,11 +189,11 @@ export function FSubmit({ children, loading, disabled }) {
       style={{
         background: disabled || loading
           ? 'rgba(255,255,255,0.07)'
-          : 'linear-gradient(135deg, rgba(0,207,255,0.9) 0%, rgba(0,180,221,0.9) 100%)',
+          : 'linear-gradient(135deg, rgba(32,199,232,0.9) 0%, rgba(0,180,221,0.9) 100%)',
         color: disabled || loading ? 'rgba(255,255,255,0.25)' : '#080B14',
         backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(0,207,255,0.2)',
-        boxShadow: disabled || loading ? 'none' : '0 4px 20px rgba(0,207,255,0.25), inset 0 1px 0 rgba(255,255,255,0.25)',
+        border: '1px solid rgba(32,199,232,0.2)',
+        boxShadow: disabled || loading ? 'none' : '0 4px 20px rgba(32,199,232,0.25), inset 0 1px 0 rgba(255,255,255,0.25)',
         cursor: disabled || loading ? 'not-allowed' : 'pointer',
       }}
     >
@@ -221,9 +221,9 @@ export default function FormModal({ title, subtitle, onClose, children, maxWidth
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={{
-            background: 'rgba(2,4,18,0.72)',
-            backdropFilter: 'blur(20px) saturate(120%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+            background: 'rgba(4,7,7,0.65)',
+            backdropFilter: 'blur(24px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(140%)',
           }}
           onClick={closeable ? onClose : undefined}
         />

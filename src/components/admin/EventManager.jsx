@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Loader2, Ticket } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 
@@ -18,6 +18,205 @@ const EMPTY = {
 
 const TICKET_TYPES = ['GA', 'VIP', 'Early Bird', 'Artist', 'Press'];
 
+/* ── Attendees Modal ─────────────────────────────────────── */
+function AttendeesModal({ event, onClose }) {
+  const { toast } = useToast();
+  const [attendees, setAttendees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ display_name: '', phone: '' });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAttendees();
+  }, [event.id]);
+
+  const fetchAttendees = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_event_attendees', { p_event_id: event.id });
+      if (error) throw error;
+      setAttendees(data || []);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEdit = (attendee) => {
+    setEditingId(attendee.user_id);
+    setEditForm({ display_name: attendee.display_name || '', phone: attendee.phone || '' });
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditForm({ display_name: '', phone: '' }); };
+
+  const saveEdit = async (userId) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc('update_attendee_profile', {
+        p_user_id:      userId,
+        p_display_name: editForm.display_name,
+        p_phone:        editForm.phone,
+      });
+      if (error) throw error;
+      toast({ title: 'Datos actualizados' });
+      setEditingId(null);
+      fetchAttendees();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl overflow-hidden"
+        style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-foreground">Lista de asistentes</h2>
+            <p className="text-sm text-muted-foreground truncate">{event.title}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {attendees.length} {attendees.length === 1 ? 'comprador' : 'compradores'}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-background transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-7 h-7 text-primary animate-spin" />
+            </div>
+          ) : attendees.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <Users className="w-10 h-10 text-muted-foreground/30" />
+              <p className="text-muted-foreground text-sm">Nadie ha comprado entradas aún</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {attendees.map((a) => (
+                <div
+                  key={a.ticket_id}
+                  className="rounded-xl p-4 space-y-3"
+                  style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                >
+                  {editingId === a.user_id ? (
+                    /* ── Edit mode ── */
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">Nombre completo</Label>
+                          <Input
+                            value={editForm.display_name}
+                            onChange={(e) => setEditForm(f => ({ ...f, display_name: e.target.value }))}
+                            className="bg-card border-border text-foreground h-9 text-sm"
+                            placeholder="Nombre del asistente"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">Teléfono</Label>
+                          <Input
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                            className="bg-card border-border text-foreground h-9 text-sm"
+                            placeholder="+57 300 000 0000"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>
+                          Cancelar
+                        </Button>
+                        <Button size="sm" onClick={() => saveEdit(a.user_id)} disabled={saving}
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 gap-1.5">
+                          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                          Guardar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── View mode ── */
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm text-foreground font-medium truncate">
+                            {a.display_name || <span className="text-muted-foreground italic">Sin nombre</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm text-muted-foreground truncate">{a.email || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm text-muted-foreground">{a.phone || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Hash className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-[11px] font-mono text-muted-foreground truncate">
+                            {a.wompi_reference || a.ticket_number?.slice(0, 20) || '—'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                          style={{
+                            background: a.ticket_status === 'used' ? 'rgba(255,255,255,0.06)' : 'rgba(34,197,94,0.1)',
+                            color: a.ticket_status === 'used' ? 'rgba(255,255,255,0.3)' : '#22c55e',
+                          }}>
+                          {a.ticket_status === 'used' ? 'USADO' : 'VÁLIDO'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => startEdit(a)}
+                          title="Editar datos"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ticket number footer */}
+                  {editingId !== a.user_id && (
+                    <p className="text-[10px] font-mono text-muted-foreground/40 pt-1 border-t border-border">
+                      Ticket #{a.ticket_number?.slice(0, 32)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Event Manager ───────────────────────────────────────── */
 const EventManager = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -28,6 +227,7 @@ const EventManager = () => {
   const [formData, setFormData] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [attendeesEvent, setAttendeesEvent] = useState(null);
 
   useEffect(() => { fetchEvents(); }, []);
 
@@ -113,154 +313,172 @@ const EventManager = () => {
   const set = (k, v) => setFormData(p => ({ ...p, [k]: v }));
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-foreground">Gestión de Eventos</CardTitle>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Evento
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border text-foreground max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{editingEvent ? 'Editar Evento' : 'Crear Evento'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Portada */}
-              <UploadField
-                label="Imagen del evento"
-                bucket="album-covers"
-                accept="image/jpeg,image/png,image/webp"
-                value={formData.image_url}
-                onChange={(url) => set('image_url', url)}
-              />
+    <>
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-foreground">Gestión de Eventos</CardTitle>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0">
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Evento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border text-foreground max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{editingEvent ? 'Editar Evento' : 'Crear Evento'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Portada */}
+                <UploadField
+                  label="Imagen del evento"
+                  bucket="album-covers"
+                  accept="image/jpeg,image/png,image/webp"
+                  value={formData.image_url}
+                  onChange={(url) => set('image_url', url)}
+                />
 
-              {/* Título */}
-              <div>
-                <Label>Título *</Label>
-                <Input value={formData.title} onChange={(e) => set('title', e.target.value)}
-                  className="bg-background border-border text-foreground" required />
-              </div>
-
-              {/* Fecha + Precio */}
-              <div className="grid grid-cols-2 gap-4">
+                {/* Título */}
                 <div>
-                  <Label>Fecha y hora *</Label>
-                  <Input type="datetime-local" value={formData.date} onChange={(e) => set('date', e.target.value)}
+                  <Label>Título *</Label>
+                  <Input value={formData.title} onChange={(e) => set('title', e.target.value)}
                     className="bg-background border-border text-foreground" required />
                 </div>
+
+                {/* Fecha + Precio */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Fecha y hora *</Label>
+                    <Input type="datetime-local" value={formData.date} onChange={(e) => set('date', e.target.value)}
+                      className="bg-background border-border text-foreground" required />
+                  </div>
+                  <div>
+                    <Label>Precio (COP)</Label>
+                    <Input type="number" value={formData.price} onChange={(e) => set('price', e.target.value)}
+                      className="bg-background border-border text-foreground" placeholder="35000" min="0" />
+                  </div>
+                </div>
+
+                {/* Venue + Ciudad */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Venue / Lugar</Label>
+                    <Input value={formData.venue} onChange={(e) => set('venue', e.target.value)}
+                      className="bg-background border-border text-foreground" placeholder="Club Razzmatazz" />
+                  </div>
+                  <div>
+                    <Label>Ciudad</Label>
+                    <Input value={formData.city} onChange={(e) => set('city', e.target.value)}
+                      className="bg-background border-border text-foreground" placeholder="Bogotá" />
+                  </div>
+                </div>
+
+                {/* Tickets total + Tipo */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Total entradas</Label>
+                    <Input type="number" value={formData.tickets_total} onChange={(e) => set('tickets_total', e.target.value)}
+                      className="bg-background border-border text-foreground" placeholder="100" min="1" />
+                  </div>
+                  <div>
+                    <Label>Tipo de entrada</Label>
+                    <select value={formData.ticket_type} onChange={(e) => set('ticket_type', e.target.value)}
+                      className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3">
+                      {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Lineup */}
                 <div>
-                  <Label>Precio (COP)</Label>
-                  <Input type="number" value={formData.price} onChange={(e) => set('price', e.target.value)}
-                    className="bg-background border-border text-foreground" placeholder="35000" min="0" />
+                  <Label>Lineup</Label>
+                  <Input value={formData.lineup} onChange={(e) => set('lineup', e.target.value)}
+                    className="bg-background border-border text-foreground" placeholder="Artista 1, Artista 2…" />
                 </div>
-              </div>
 
-              {/* Venue + Ciudad */}
-              <div className="grid grid-cols-2 gap-4">
+                {/* Descripción */}
                 <div>
-                  <Label>Venue / Lugar</Label>
-                  <Input value={formData.venue} onChange={(e) => set('venue', e.target.value)}
-                    className="bg-background border-border text-foreground" placeholder="Club Razzmatazz" />
+                  <Label>Descripción</Label>
+                  <textarea value={formData.description} onChange={(e) => set('description', e.target.value)}
+                    rows={3} placeholder="Describe el evento…"
+                    className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm resize-none" />
                 </div>
-                <div>
-                  <Label>Ciudad</Label>
-                  <Input value={formData.city} onChange={(e) => set('city', e.target.value)}
-                    className="bg-background border-border text-foreground" placeholder="Bogotá" />
-                </div>
-              </div>
 
-              {/* Tickets total + Tipo */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Total entradas</Label>
-                  <Input type="number" value={formData.tickets_total} onChange={(e) => set('tickets_total', e.target.value)}
-                    className="bg-background border-border text-foreground" placeholder="100" min="1" />
-                </div>
-                <div>
-                  <Label>Tipo de entrada</Label>
-                  <select value={formData.ticket_type} onChange={(e) => set('ticket_type', e.target.value)}
-                    className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3">
-                    {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              {/* Lineup */}
-              <div>
-                <Label>Lineup</Label>
-                <Input value={formData.lineup} onChange={(e) => set('lineup', e.target.value)}
-                  className="bg-background border-border text-foreground" placeholder="Artista 1, Artista 2…" />
-              </div>
-
-              {/* Descripción */}
-              <div>
-                <Label>Descripción</Label>
-                <textarea value={formData.description} onChange={(e) => set('description', e.target.value)}
-                  rows={3} placeholder="Describe el evento…"
-                  className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm resize-none" />
-              </div>
-
-              {formError && (
-                <div className="rounded-lg px-4 py-3 text-sm font-medium text-red-300 text-center"
-                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
-                  {formError}
-                </div>
-              )}
-
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0" disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                {editingEvent ? 'Guardar cambios' : 'Crear Evento'}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-
-      <CardContent>
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-        ) : events.length === 0 ? (
-          <p className="text-muted-foreground text-center py-12">No hay eventos aún</p>
-        ) : (
-          <div className="space-y-3">
-            {events.map((event) => (
-              <div key={event.id} className="flex items-center gap-4 p-4 bg-background rounded-xl border border-border">
-                {event.image_url && (
-                  <img src={event.image_url} alt={event.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                {formError && (
+                  <div className="rounded-lg px-4 py-3 text-sm font-medium text-red-300 text-center"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    {formError}
+                  </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-foreground font-semibold truncate">{event.title}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {event.venue && ` · ${event.venue}`}
-                    {event.city && `, ${event.city}`}
-                  </p>
-                  {event.tickets_total && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <Ticket className="w-3 h-3" />
-                      {event.tickets_sold || 0} / {event.tickets_total} entradas
-                    </p>
+
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  {editingEvent ? 'Guardar cambios' : 'Crear Evento'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : events.length === 0 ? (
+            <p className="text-muted-foreground text-center py-12">No hay eventos aún</p>
+          ) : (
+            <div className="space-y-3">
+              {events.map((event) => (
+                <div key={event.id} className="flex items-center gap-4 p-4 bg-background rounded-xl border border-border">
+                  {event.image_url && (
+                    <img src={event.image_url} alt={event.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-foreground font-semibold truncate">{event.title}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {event.venue && ` · ${event.venue}`}
+                      {event.city && `, ${event.city}`}
+                    </p>
+                    {event.tickets_total && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Ticket className="w-3 h-3" />
+                        {event.tickets_sold || 0} / {event.tickets_total} entradas
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAttendeesEvent(event)}
+                      className="text-xs gap-1.5 text-muted-foreground hover:text-foreground h-8 px-3"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      Ver lista
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(event)} className="text-secondary hover:text-secondary/80">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-destructive hover:text-destructive/80">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(event)} className="text-secondary hover:text-secondary/80">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-destructive hover:text-destructive/80">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {attendeesEvent && (
+        <AttendeesModal
+          event={attendeesEvent}
+          onClose={() => setAttendeesEvent(null)}
+        />
+      )}
+    </>
   );
 };
 
