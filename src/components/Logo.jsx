@@ -13,7 +13,7 @@ const Logo = ({ size = 'md', className = '' }) => {
       src="/logo-header.png"
       alt="POLYFAUNA - Radio · Podcasts · Events"
       className={`${sizes[size]} w-auto object-contain transition-all duration-300 ${className}`}
-      style={{ mixBlendMode: 'screen' }}
+      style={{ filter: 'brightness(0) invert(1)' }}
     />
   );
 };

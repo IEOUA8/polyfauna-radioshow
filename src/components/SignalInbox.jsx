@@ -18,14 +18,14 @@ function MessageRow({ msg, isSelected, onSelect, onMarkRead }) {
       animate={{ opacity: 1, x: 0 }}
       className="flex items-start gap-3 p-4 rounded-xl cursor-pointer transition-colors"
       style={{
-        background: isSelected ? 'rgba(32,199,232,0.07)' : 'rgba(11, 16, 15, 0.90)',
+        background: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(11, 16, 15, 0.90)',
         border: `1px solid ${isSelected ? 'rgba(32,199,232,0.25)' : 'rgba(255,255,255,0.07)'}`,
       }}
       onClick={() => { onSelect(msg.id); if (!msg.is_read) onMarkRead(msg.id); }}
     >
       <div
         className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-black mt-0.5"
-        style={{ background: 'linear-gradient(135deg, #20C7E822, #7C5CFF22)', color: '#20C7E8' }}
+        style={{ background: 'linear-gradient(135deg, #20C7E822, #7C5CFF22)', color: 'rgba(255,255,255,0.9)' }}
       >
         {msg.from_name?.slice(0, 1).toUpperCase()}
       </div>
@@ -42,7 +42,7 @@ function MessageRow({ msg, isSelected, onSelect, onMarkRead }) {
         )}
       </div>
       {!msg.is_read && (
-        <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: '#20C7E8' }} />
+        <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: 'rgba(255,255,255,0.9)' }} />
       )}
     </motion.div>
   );
@@ -79,7 +79,7 @@ export default function SignalInbox() {
           <p className="text-sm text-white/40 mt-1">Mensajes de la comunidad PolyFauna.</p>
         </div>
         {unread > 0 && (
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: '#20C7E8', color: '#080B14' }}>
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
             {unread} nuevo{unread !== 1 ? 's' : ''}
           </span>
         )}

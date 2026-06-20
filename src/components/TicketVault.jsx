@@ -12,7 +12,7 @@ const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q
 
 const STATUS_CONFIG = {
   valid: { label: 'Válido',  color: '#22c55e', Icon: CheckCircle },
-  ready: { label: 'Listo',   color: '#20C7E8', Icon: CheckCircle },
+  ready: { label: 'Listo',   color: 'rgba(255,255,255,0.85)', Icon: CheckCircle },
   used:  { label: 'Usado',   color: 'rgba(255,255,255,0.25)', Icon: XCircle },
 };
 
@@ -29,7 +29,7 @@ async function generateTicketPDF(ticket, qrCanvas) {
   doc.rect(0, 0, 85, 170, 'F');
 
   // Accent bar top
-  doc.setFillColor(32, 199, 232);
+  doc.setFillColor(220, 220, 220);
   doc.rect(0, 0, 85, 1.5, 'F');
 
   // Header: event image
@@ -47,7 +47,7 @@ async function generateTicketPDF(ticket, qrCanvas) {
   // Brand label
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6);
-  doc.setTextColor(32, 199, 232);
+  doc.setTextColor(200, 200, 200);
   doc.text('POLYFAUNA', 7, 50);
 
   // Event title
@@ -88,7 +88,7 @@ async function generateTicketPDF(ticket, qrCanvas) {
   // Ticket type badge
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
-  doc.setTextColor(32, 199, 232);
+  doc.setTextColor(200, 200, 200);
   doc.text((ticket.ticket_type || 'GA').toUpperCase(), 85 / 2, 142, { align: 'center' });
 
   // Ticket number
@@ -103,7 +103,7 @@ async function generateTicketPDF(ticket, qrCanvas) {
   doc.line(7, 153, 78, 153);
 
   // Status
-  const statusColors = { valid: [34, 197, 94], ready: [32, 199, 232], used: [80, 90, 85] };
+  const statusColors = { valid: [34, 197, 94], ready: [220, 220, 220], used: [80, 90, 85] };
   const sc = statusColors[ticket.status] || statusColors.valid;
   doc.setFillColor(...sc);
   doc.circle(12, 159, 2, 'F');
@@ -177,7 +177,7 @@ function QRModal({ ticket, onClose }) {
           <div className="px-6 pb-6 pt-4 flex flex-col items-center gap-5">
             {/* Event info */}
             <div className="w-full text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#20C7E8' }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {ticket.ticket_type || 'GA'}
               </p>
               <h2 className="text-lg font-black text-white leading-tight">
@@ -232,7 +232,7 @@ function QRModal({ ticket, onClose }) {
               onClick={handleDownload}
               disabled={downloading}
               className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
-              style={{ background: 'rgba(32,199,232,0.12)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}
+              style={{ background: 'rgba(32,199,232,0.12)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(32,199,232,0.2)' }}
             >
               {downloading
                 ? <><Clock className="w-4 h-4 animate-spin" /> Generando PDF…</>
@@ -285,7 +285,7 @@ function TicketCard({ ticket, index, onShowQR }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#20C7E8' }}>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.85)' }}>
               {ticket.ticket_type || 'GA'}
             </p>
             <p className="text-base font-black text-white leading-tight mt-0.5 truncate">

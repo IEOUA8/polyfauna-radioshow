@@ -7,46 +7,46 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/30;
+    @apply bg-background text-foreground antialiased selection:bg-white/10;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   :root {
-    /* ── Music spectrum accents ── */
-    --primary: 192 78% 52%;          /* #20C7E8 cyan musical */
-    --primary-foreground: 173 44% 5%;
-    --secondary: 252 100% 68%;       /* #7C5CFF violet/podcast */
-    --secondary-foreground: 0 0% 100%;
-    --accent: 33 100% 56%;           /* #FF8A1F orange live */
+    /* ── White minimal system ── */
+    --primary: 0 0% 95%;                /* #F2F2F2 — blanco operativo */
+    --primary-foreground: 174 18% 4%;   /* fondo oscuro para texto sobre botón blanco */
+    --secondary: 0 0% 70%;             /* blanco atenuado — secundario */
+    --secondary-foreground: 174 18% 4%;
+    --accent: 33 100% 56%;              /* #FF8A1F — SOLO para Live/broadcast */
     --accent-foreground: 0 0% 100%;
 
     /* ── Dark petroleum backgrounds ── */
-    --background: 174 18% 3%;        /* ~#050909 negro orgánico suave */
-    --foreground: 120 10% 96%;       /* #F3F7F2 text primary */
-    --border: 170 10% 11%;           /* border sutil petróleo */
+    --background: 174 18% 3%;           /* ~#050909 negro orgánico */
+    --foreground: 120 10% 96%;          /* #F3F7F2 text primary */
+    --border: 170 10% 11%;
     --input: 170 10% 8%;
-    --ring: 192 78% 52%;
+    --ring: 0 0% 60%;
 
-    --card: 170 14% 7%;              /* card interior — barely-tinted */
+    --card: 170 14% 7%;
     --card-foreground: 120 10% 96%;
-    --popover: 170 12% 6%;           /* panel — casi negro */
+    --popover: 170 12% 6%;
     --popover-foreground: 120 10% 96%;
 
     --muted: 170 8% 9%;
-    --muted-foreground: 150 8% 55%;  /* #AAB7AE text secondary */
-    --destructive: 349 100% 67%;     /* #FF5C7A coral */
+    --muted-foreground: 150 8% 55%;
+    --destructive: 349 100% 67%;
     --destructive-foreground: 0 0% 98%;
     --radius: 0.75rem;
   }
   .dark {
-    --background: 174 18% 3%;
-    --foreground: 120 10% 96%;
-    --primary: 192 78% 52%;
-    --primary-foreground: 174 18% 3%;
-    --secondary: 252 100% 68%;
-    --secondary-foreground: 0 0% 100%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 174 18% 4%;
+    --secondary: 0 0% 70%;
+    --secondary-foreground: 174 18% 4%;
     --accent: 33 100% 56%;
     --accent-foreground: 0 0% 100%;
 
+    --background: 174 18% 3%;
+    --foreground: 120 10% 96%;
     --card: 170 14% 7%;
     --card-foreground: 120 10% 96%;
     --popover: 170 12% 6%;
@@ -56,7 +56,7 @@
     --muted-foreground: 150 8% 50%;
     --border: 170 10% 11%;
     --input: 170 10% 8%;
-    --ring: 192 78% 52%;
+    --ring: 0 0% 60%;
   }
 }
 
@@ -66,16 +66,16 @@
   }
   .poly-bg {
     background:
-      radial-gradient(circle at top left, rgba(32,199,232,0.04), transparent 30%),
-      radial-gradient(circle at bottom right, rgba(184,207,166,0.04), transparent 32%),
+      radial-gradient(circle at top left, rgba(255,255,255,0.02), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(184,207,166,0.03), transparent 32%),
       linear-gradient(160deg, #05090A 0%, #060D0B 50%, #030606 100%);
   }
   .poly-texture {
     @apply absolute inset-0 pointer-events-none;
     background-image:
-      radial-gradient(circle at 15% 0%, hsla(195, 100%, 50%, 0.06) 0%, transparent 50%),
-      radial-gradient(circle at 85% 100%, hsla(270, 60%, 55%, 0.06) 0%, transparent 50%),
-      radial-gradient(circle at 50% 50%, hsla(195, 100%, 50%, 0.02) 0%, transparent 60%),
+      radial-gradient(circle at 15% 0%, rgba(255,255,255,0.025) 0%, transparent 50%),
+      radial-gradient(circle at 85% 100%, rgba(255,255,255,0.015) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.008) 0%, transparent 60%),
       radial-gradient(circle at 2px 2px, rgba(255,255,255,0.012) 1px, transparent 0);
     background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px;
     z-index: 0;
@@ -83,26 +83,26 @@
   .poly-surface {
     @apply backdrop-blur-xl border shadow-2xl;
     background: rgba(9, 14, 13, 0.94);
-    border-color: rgba(184,207,166,0.07);
+    border-color: rgba(255,255,255,0.06);
   }
   .poly-surface-elevated {
     @apply backdrop-blur-2xl border shadow-2xl;
     background: rgba(11, 17, 16, 0.97);
-    border-color: rgba(184,207,166,0.09);
+    border-color: rgba(255,255,255,0.08);
   }
-  /* ── Glassmorphism card — dark petroleum ── */
+  /* ── Glassmorphism card ── */
   .glass-card {
     background: rgba(13, 22, 21, 0.56);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid rgba(184, 207, 166, 0.08);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     box-shadow:
       0 8px 32px rgba(0, 0, 0, 0.52),
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       inset 0 -1px 0 rgba(0, 0, 0, 0.22);
   }
 
-  /* ── Holographic gradient border ── */
+  /* ── Minimal border — single white line ── */
   .holo-border {
     position: relative;
   }
@@ -114,10 +114,9 @@
     padding: 1px;
     background: linear-gradient(
       135deg,
-      rgba(32, 199, 232, 0.45) 0%,
-      rgba(124, 92, 255, 0.30) 40%,
-      rgba(217, 70, 239, 0.20) 70%,
-      rgba(32, 199, 232, 0.15) 100%
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(255, 255, 255, 0.10) 100%
     );
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -125,7 +124,7 @@
     pointer-events: none;
   }
 
-  /* ── Shimmer animation ── */
+  /* ── Shimmer — white ── */
   @keyframes shimmer-slide {
     0%   { background-position: -250% center; }
     100% { background-position: 250% center; }
@@ -133,13 +132,13 @@
   .shimmer-text {
     background: linear-gradient(
       90deg,
-      rgba(32, 199, 232, 0.9) 0%,
-      rgba(255, 255, 255, 1) 45%,
-      rgba(32, 199, 232, 0.9) 55%,
-      rgba(32, 199, 232, 0.9) 100%
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 1.0) 45%,
+      rgba(255, 255, 255, 0.5) 55%,
+      rgba(255, 255, 255, 0.5) 100%
     );
     background-size: 250% auto;
-    animation: shimmer-slide 2.8s linear infinite;
+    animation: shimmer-slide 3.2s linear infinite;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -147,23 +146,19 @@
 
   /* ── Subtle grid overlay ── */
   .poly-grid {
-    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0);
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0);
     background-size: 24px 24px;
   }
 
   /* Scrollbar */
-  ::-webkit-scrollbar {
-    width: 4px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgba(32, 199, 232, 0.22);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 2px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(32, 199, 232, 0.40);
+    background: rgba(255, 255, 255, 0.25);
   }
 }
 

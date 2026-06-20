@@ -93,7 +93,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
           {/* Avatar */}
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0"
-              style={{ border: '2px solid rgba(32,199,232,0.3)' }}>
+              style={{ border: '2px solid rgba(255,255,255,0.18)' }}>
               <img src={avatarPreview || FALLBACK} alt="avatar" className="w-full h-full object-cover" />
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
@@ -104,7 +104,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
             <div>
               <button type="button" onClick={() => fileRef.current?.click()}
                 className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors"
-                style={{ background: 'rgba(32,199,232,0.1)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}>
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}>
                 <Camera className="w-3.5 h-3.5" />
                 {uploading ? 'Subiendo…' : 'Cambiar foto'}
               </button>
@@ -121,10 +121,10 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 <button key={r.value} type="button" onClick={() => set('role', r.value)}
                   className="p-3 rounded-xl text-left transition-all"
                   style={{
-                    background: form.role === r.value ? 'rgba(32,199,232,0.1)' : 'rgba(255,255,255,0.04)',
+                    background: form.role === r.value ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
                     border: `1px solid ${form.role === r.value ? 'rgba(32,199,232,0.4)' : 'rgba(255,255,255,0.07)'}`,
                   }}>
-                  <p className="text-xs font-bold" style={{ color: form.role === r.value ? '#20C7E8' : 'rgba(255,255,255,0.7)' }}>
+                  <p className="text-xs font-bold" style={{ color: form.role === r.value ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.7)' }}>
                     {r.label}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">{r.desc}</p>
@@ -196,7 +196,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
           {/* Save button */}
           <button type="button" onClick={handleSave} disabled={saving}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#20C7E8', color: '#080B14' }}>
+            style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>

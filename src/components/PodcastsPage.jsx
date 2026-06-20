@@ -13,7 +13,7 @@ import UploadPodcastModal from '@/components/UploadPodcastModal';
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=400&auto=format&fit=crop';
 
 const GENRE_COLORS = {
-  'house': '#20C7E8', 'tech house': '#20C7E8', 'deep house': '#00B4DD',
+  'house': 'rgba(255,255,255,0.9)', 'tech house': 'rgba(255,255,255,0.9)', 'deep house': '#00B4DD',
   'acid house': '#00AADD', 'funky house': '#33DDFF', 'micro house': '#00BBEE',
   'french house': '#0088BB', 'electro house': '#00CCDD', 'disco house': '#00BBEE',
   'disco': '#E879A0', 'nu disco': '#FF69B4', 'italo disco': '#FF85C0',
@@ -46,8 +46,8 @@ const GENRE_COLORS = {
 };
 
 function getGenreColor(genre) {
-  if (!genre) return '#20C7E8';
-  return GENRE_COLORS[genre.toLowerCase()] || '#20C7E8';
+  if (!genre) return 'rgba(255,255,255,0.9)';
+  return GENRE_COLORS[genre.toLowerCase()] || 'rgba(255,255,255,0.9)';
 }
 
 function fmtDuration(secs) {
@@ -337,7 +337,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
             {/* ── Genre filter pills ── */}
             <div className="flex flex-wrap gap-2">
               {genres.map((g) => {
-                const gColor = g === 'All' ? '#20C7E8' : getGenreColor(g);
+                const gColor = g === 'All' ? 'rgba(255,255,255,0.9)' : getGenreColor(g);
                 const isActive = activeGenre === g;
                 return (
                   <motion.button

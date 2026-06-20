@@ -10,14 +10,14 @@ import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
 
 const ROLE_META = {
-  citizen:  { label: 'Wave Citizen',  color: '#20C7E8', glow: 'rgba(32,199,232,0.2)'  },
+  citizen:  { label: 'Wave Citizen',  color: 'rgba(255,255,255,0.9)', glow: 'rgba(255,255,255,0.12)'  },
   artist:   { label: 'Artista',       color: '#7C5CFF', glow: 'rgba(124,92,255,0.2)'  },
   promoter: { label: 'Promotor',      color: '#FF8A1F', glow: 'rgba(255,138,31,0.2)'  },
   club:     { label: 'Club / Venue',  color: '#5DE0A3', glow: 'rgba(93,224,163,0.2)'  },
   admin:    { label: 'Admin',         color: '#D946EF', glow: 'rgba(217,70,239,0.2)'  },
 };
 
-function SettingsTile({ icon: Icon, label, description, color = '#20C7E8', onClick, badge, delay = 0 }) {
+function SettingsTile({ icon: Icon, label, description, color = 'rgba(255,255,255,0.9)', onClick, badge, delay = 0 }) {
   return (
     <motion.button
       type="button"
@@ -175,7 +175,7 @@ export default function ControlCenter({ setCurrentSection }) {
               icon={Edit3}
               label="Editar Perfil"
               description="Nombre, bio, avatar y redes sociales"
-              color="#20C7E8"
+              color="rgba(255,255,255,0.9)"
               onClick={() => setEditOpen(true)}
               delay={0.05}
             />

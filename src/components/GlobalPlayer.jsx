@@ -149,7 +149,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           WebkitBackdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
           borderRadius: '24px',
           border: '1px solid rgba(32,199,232,0.18)',
-          boxShadow: '0 8px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(123,92,240,0.1), 0 0 32px rgba(32,199,232,0.08), inset 0 1px 0 rgba(255,255,255,0.07)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(123,92,240,0.1), 0 0 32px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.07)',
         }}
       >
         {/* ── Track Info ── */}
@@ -159,7 +159,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               className="w-12 h-12 rounded-xl overflow-hidden"
               style={{
                 border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: isPlaying ? '0 0 16px rgba(32,199,232,0.2)' : 'none',
+                boxShadow: isPlaying ? '0 0 16px rgba(255,255,255,0.12)' : 'none',
               }}
             >
               <img src={trackArt} alt="Now playing" className="w-full h-full object-cover" />
@@ -225,7 +225,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               onClick={() => setShuffle(s => !s)}
               className="hidden md:flex transition-colors"
               title={shuffle ? 'Aleatorio activo' : 'Aleatorio'}
-              style={{ color: shuffle ? '#20C7E8' : 'rgba(255,255,255,0.20)' }}
+              style={{ color: shuffle ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.20)' }}
             >
               <Shuffle className="w-4 h-4" />
             </button>
@@ -244,7 +244,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               {isPlaying && (
                 <motion.span
                   className="absolute rounded-full pointer-events-none"
-                  style={{ inset: -6, border: '1.5px solid rgba(32,199,232,0.3)' }}
+                  style={{ inset: -6, border: '1.5px solid rgba(255,255,255,0.18)' }}
                   animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
                 />
@@ -254,7 +254,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
-                  background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
+                  background: 'rgba(255,255,255,0.95)',
                   boxShadow: isPlaying
                     ? '0 0 24px rgba(32,199,232,0.5), 0 4px 12px rgba(0,0,0,0.4)'
                     : '0 0 14px rgba(32,199,232,0.25), 0 4px 10px rgba(0,0,0,0.3)',
@@ -281,7 +281,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               onClick={() => setRepeat(r => !r)}
               className="hidden md:flex transition-colors"
               title={repeat ? 'Repetir activo' : 'Repetir'}
-              style={{ color: repeat ? '#20C7E8' : 'rgba(255,255,255,0.20)' }}
+              style={{ color: repeat ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.20)' }}
             >
               <Repeat className="w-4 h-4" />
             </button>
@@ -301,7 +301,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                     className="h-full rounded-full"
                     style={{
                       width: `${progressPct}%`,
-                      background: 'linear-gradient(to right, #20C7E8, #7C5CFF)',
+                      background: 'rgba(255,255,255,0.9)',
                       boxShadow: '0 0 6px rgba(32,199,232,0.4)',
                       transition: 'width 0.25s linear',
                     }}
@@ -316,7 +316,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                   {isPlaying && (
                     <motion.div
                       className="h-full rounded-full"
-                      style={{ background: 'linear-gradient(to right, #20C7E8, #7C5CFF, #EC4899)' }}
+                      style={{ background: 'rgba(255,255,255,0.8)' }}
                       animate={{ width: ['0%', '100%'] }}
                       transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
                     />
@@ -342,7 +342,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               value={muted ? 0 : volume}
               onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
               className="w-full h-1 cursor-pointer appearance-none rounded-full"
-              style={{ accentColor: '#20C7E8' }}
+              style={{ accentColor: 'rgba(255,255,255,0.9)' }}
             />
           </div>
           <button

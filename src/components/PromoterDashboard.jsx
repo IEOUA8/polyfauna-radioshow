@@ -158,7 +158,7 @@ function EventCard({ event }) {
         </div>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
           <div className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: pct >= 80 ? '#F59E0B' : '#20C7E8' }} />
+            style={{ width: `${pct}%`, background: pct >= 80 ? '#F59E0B' : 'rgba(255,255,255,0.9)' }} />
         </div>
         <p className="text-[10px] text-white/30">{pct}% de capacidad</p>
       </div>
@@ -178,9 +178,9 @@ function EventCard({ event }) {
         type="button"
         onClick={() => navigate(`/validate?event=${event.id}`)}
         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors"
-        style={{ background: 'rgba(32,199,232,0.08)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.14)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.08)')}
+        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.11)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
       >
         <QrCode className="w-3.5 h-3.5" />
         Validar entradas en puerta
@@ -274,7 +274,7 @@ function WalletTab({ userId }) {
         <div className="grid grid-cols-3 gap-4 relative z-10">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Disponible</p>
-            <p className="text-2xl font-black" style={{ color: '#5DE0A3' }}>${available.toLocaleString('es-CO')}</p>
+            <p className="text-2xl font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>${available.toLocaleString('es-CO')}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">En espera</p>
@@ -325,7 +325,7 @@ function WalletTab({ userId }) {
                 </button>
                 <button type="button" onClick={handleRequestPayout} disabled={requesting}
                   className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-60"
-                  style={{ background: '#5DE0A3', color: '#080B14' }}>
+                  style={{ background: 'rgba(255,255,255,0.85)', color: '#080B14' }}>
                   {requesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                   Solicitar
                 </button>
@@ -334,7 +334,7 @@ function WalletTab({ userId }) {
           ) : (
             <button type="button" onClick={() => setShowRequest(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(93,224,163,0.1)', color: '#5DE0A3', border: '1px solid rgba(93,224,163,0.2)' }}>
+              style={{ background: 'rgba(93,224,163,0.1)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(93,224,163,0.2)' }}>
               <ArrowUpRight className="w-4 h-4" />
               Solicitar Retiro · ${available.toLocaleString('es-CO')} disponibles
             </button>
@@ -383,7 +383,7 @@ function WalletTab({ userId }) {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold" style={{ color: '#5DE0A3' }}>+${tx.promoter_amount.toLocaleString('es-CO')}</p>
+                  <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>+${tx.promoter_amount.toLocaleString('es-CO')}</p>
                   <p className="text-[10px] text-white/30">de ${tx.amount_total.toLocaleString('es-CO')}</p>
                 </div>
               </div>
@@ -529,7 +529,7 @@ function BankAccountTab({ userId }) {
 
         <button type="submit" disabled={saving || !form.account_holder || !form.account_number || !form.document_number}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
-          style={{ background: '#FF8A1F', color: '#fff' }}>
+          style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
           {saving ? 'Guardando…' : exists ? 'Actualizar cuenta' : 'Registrar cuenta'}
         </button>
@@ -558,8 +558,8 @@ export default function PromoterDashboard() {
   if (profile && !canAccess) {
     return (
       <div className="p-5 flex flex-col items-center justify-center py-16 gap-3 text-center">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-1" style={{ background: 'rgba(32,199,232,0.08)' }}>
-          <Users className="w-6 h-6" style={{ color: '#20C7E8' }} />
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <Users className="w-6 h-6" style={{ color: 'rgba(255,255,255,0.9)' }} />
         </div>
         <p className="text-sm font-bold text-white/60">Acceso restringido</p>
         <p className="text-xs text-white/30 max-w-xs">Este panel es exclusivo para Promotores y Clubs. Edita tu perfil y cambia tu rol para solicitar acceso.</p>
@@ -581,7 +581,7 @@ export default function PromoterDashboard() {
         {activeTab === 'events' && (
           <button type="button" onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl"
-            style={{ background: '#20C7E8', color: '#080B14' }}>
+            style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
             <Plus className="w-4 h-4" />
             Nuevo Evento
           </button>
@@ -592,7 +592,7 @@ export default function PromoterDashboard() {
       {activeTab === 'events' && myEvents && myEvents.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Eventos',  value: myEvents.length, icon: Calendar,   color: '#20C7E8' },
+            { label: 'Eventos',  value: myEvents.length, icon: Calendar,   color: 'rgba(255,255,255,0.9)' },
             { label: 'Tickets',  value: totalSold,        icon: Ticket,     color: '#A78BFA' },
             { label: 'Ingresos', value: `$${totalRevenue.toLocaleString('es-CO')}`, icon: TrendingUp, color: '#34D399' },
           ].map(({ label, value, icon: Icon, color }) => (

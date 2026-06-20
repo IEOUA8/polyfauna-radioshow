@@ -81,7 +81,7 @@ export default function MyFavorites() {
           <button key={id} type="button" onClick={() => setActiveTab(id)}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
             style={{
-              background: activeTab === id ? '#20C7E8' : 'rgba(255,255,255,0.05)',
+              background: activeTab === id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
               color: activeTab === id ? '#080B14' : 'rgba(255,255,255,0.5)',
               border: activeTab === id ? 'none' : '1px solid rgba(255,255,255,0.08)',
             }}>

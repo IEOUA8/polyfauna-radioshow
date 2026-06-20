@@ -154,7 +154,7 @@ function ScannerView({ onDetected, eventName }) {
               'bottom-0 left-0 border-b-2 border-l-2 rounded-bl-xl',
               'bottom-0 right-0 border-b-2 border-r-2 rounded-br-xl',
             ].map((cls, i) => (
-              <div key={i} className={`absolute w-8 h-8 ${cls}`} style={{ borderColor: '#20C7E8' }} />
+              <div key={i} className={`absolute w-8 h-8 ${cls}`} style={{ borderColor: 'rgba(255,255,255,0.9)' }} />
             ))}
             {/* Scan line animation */}
             <motion.div
@@ -168,7 +168,7 @@ function ScannerView({ onDetected, eventName }) {
 
         {!scannerReady && !cameraError && (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl" style={{ background: 'rgba(8,13,9,0.80)' }}>
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#20C7E8' }} />
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'rgba(255,255,255,0.9)' }} />
           </div>
         )}
       </div>
@@ -203,7 +203,7 @@ function ManualEntry({ onSubmit, loading }) {
         type="submit"
         disabled={!value.trim() || loading}
         className="px-4 py-2.5 rounded-xl text-xs font-black disabled:opacity-40"
-        style={{ background: '#20C7E8', color: '#080B14' }}
+        style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}
       >
         {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'OK'}
       </button>
@@ -263,7 +263,7 @@ export default function ValidatePage() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#050814' }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#20C7E8' }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'rgba(255,255,255,0.9)' }} />
       </div>
     );
   }
@@ -271,7 +271,7 @@ export default function ValidatePage() {
   if (!currentUser) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6 text-center" style={{ background: '#050814' }}>
-        <QrCode className="w-12 h-12" style={{ color: '#20C7E8' }} />
+        <QrCode className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.9)' }} />
         <div>
           <p className="text-lg font-black text-white">Validador de Entradas</p>
           <p className="text-sm text-white/40 mt-1">Inicia sesión como promotor o admin para continuar.</p>
@@ -280,7 +280,7 @@ export default function ValidatePage() {
           type="button"
           onClick={() => navigate('/login')}
           className="px-8 py-3 rounded-xl text-sm font-black"
-          style={{ background: '#20C7E8', color: '#080B14' }}
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}
         >
           Iniciar sesión
         </button>
@@ -315,7 +315,7 @@ export default function ValidatePage() {
           Volver
         </button>
         <div className="flex items-center gap-2">
-          <QrCode className="w-4 h-4" style={{ color: '#20C7E8' }} />
+          <QrCode className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.9)' }} />
           <span className="text-xs font-black text-white">Validador PolyFauna</span>
         </div>
         {phase !== 'scanning' && (
@@ -342,7 +342,7 @@ export default function ValidatePage() {
             >
               {phase === 'checking' ? (
                 <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="w-16 h-16 animate-spin" style={{ color: '#20C7E8' }} />
+                  <Loader2 className="w-16 h-16 animate-spin" style={{ color: 'rgba(255,255,255,0.9)' }} />
                   <p className="text-sm text-white/50">Verificando ticket…</p>
                 </div>
               ) : (

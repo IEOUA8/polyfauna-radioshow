@@ -12,7 +12,7 @@ const ROLE_LABEL = { citizen: 'Wave Citizen', artist: 'Artista', promoter: 'Prom
 
 const DEMO_NOTIFS = [
   { id: 1, icon: Radio,     color: '#FF8A1F', title: 'Polyfauna Radio en vivo',       body: 'Underground Frequencies con Nox Vega.',      time: 'Hace 5 min' },
-  { id: 2, icon: Headphones, color: '#20C7E8', title: 'Nuevo podcast disponible',       body: 'Frecuencias Oscuras #12 — HVBER.',            time: 'Hace 1h'    },
+  { id: 2, icon: Headphones, color: 'rgba(255,255,255,0.85)', title: 'Nuevo podcast disponible',       body: 'Frecuencias Oscuras #12 — HVBER.',            time: 'Hace 1h'    },
   { id: 3, icon: Bell,       color: '#FBBF24', title: 'Evento próximo: Subterranea',    body: 'Este lunes — Teatro Metropol.',               time: 'Hace 3h'    },
   { id: 4, icon: FileText,   color: '#A78BFA', title: 'Nuevo artículo en el blog',      body: 'El sonido del techno industrial colombiano.', time: 'Ayer'       },
 ];
@@ -103,7 +103,7 @@ function SectionHeader({ title, onViewAll }) {
       {onViewAll && (
         <button type="button" onClick={onViewAll}
           className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors hover:opacity-80"
-          style={{ color: '#20C7E8' }}>
+          style={{ color: 'rgba(255,255,255,0.85)' }}>
           Ver todo <ChevronRight className="w-3 h-3" />
         </button>
       )}
@@ -216,8 +216,8 @@ function PodcastRow({ pod, isPlaying, onPlay }) {
       <button type="button" onClick={onPlay}
         className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all"
         style={{
-          background: isPlaying ? '#20C7E8' : 'rgba(32,199,232,0.1)',
-          color: isPlaying ? '#080B14' : '#20C7E8',
+          background: isPlaying ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.08)',
+          color: isPlaying ? '#06090A' : 'rgba(255,255,255,0.8)',
           boxShadow: isPlaying ? '0 0 12px rgba(32,199,232,0.4)' : 'none',
         }}>
         <Play className="w-3 h-3 ml-0.5" />
@@ -316,7 +316,7 @@ export default function RightPanel({ setCurrentSection }) {
               >
                 <div
                   className="w-9 h-9 rounded-full overflow-hidden shrink-0"
-                  style={{ background: 'linear-gradient(135deg,#FF8A1F 0%,#7C5CFF 100%)', border: '2px solid rgba(255,255,255,0.1)' }}
+                  style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.06) 100%)', border: '2px solid rgba(255,255,255,0.1)' }}
                 >
                   {profile?.avatar_url
                     ? <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
@@ -325,7 +325,7 @@ export default function RightPanel({ setCurrentSection }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
-                  <p className="text-[11px] leading-tight truncate" style={{ color: '#FF8A1F' }}>{displayRole}</p>
+                  <p className="text-[11px] leading-tight truncate" style={{ color: 'rgba(255,255,255,0.5)'`>`{displayRole}}</p>
                 </div>
                 <motion.div animate={{ rotate: menuOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                   <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" />
@@ -356,12 +356,12 @@ export default function RightPanel({ setCurrentSection }) {
                     {/* Opciones de navegación */}
                     <div className="py-1.5">
                       {[
-                        { label: 'Mi Panel',     icon: User,     color: '#20C7E8', onClick: () => { setCurrentSection?.('mi-panel'); setMenuOpen(false); } },
+                        { label: 'Mi Panel',     icon: User,     color: 'rgba(255,255,255,0.85)', onClick: () => { setCurrentSection?.('mi-panel'); setMenuOpen(false); } },
                         ...(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin'
                           ? [{ label: 'Promoter Hub', icon: Settings, color: '#FF8A1F', onClick: () => { setCurrentSection?.('promoter'); setMenuOpen(false); } }]
                           : []),
                         ...(userRole === 'admin'
-                          ? [{ label: 'Admin Panel', icon: Shield, color: '#7C5CFF', onClick: () => { navigate('/admin'); setMenuOpen(false); } }]
+                          ? [{ label: 'Admin Panel', icon: Shield, color: 'rgba(255,255,255,0.75)', onClick: () => { navigate('/admin'); setMenuOpen(false); } }]
                           : []),
                       ].map(({ label, icon: Icon, color, onClick }) => (
                         <button
@@ -433,7 +433,7 @@ export default function RightPanel({ setCurrentSection }) {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-white/50">Sin sesión activa</p>
               <div className="flex gap-2 mt-0.5">
-                <a href="/login" className="text-[10px] font-bold hover:underline" style={{ color: '#20C7E8' }}>Ingresar</a>
+                <a href="/login" className="text-[10px] font-bold hover:underline" style={{ color: 'rgba(255,255,255,0.85)' }}>Ingresar</a>
                 <span className="text-[10px] text-white/20">·</span>
                 <a href="/signup" className="text-[10px] font-bold hover:underline" style={{ color: '#FF8A1F' }}>Crear cuenta</a>
               </div>

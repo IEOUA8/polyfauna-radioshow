@@ -156,8 +156,8 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               style={{
                 border: '3px solid rgba(32,199,232,0.25)',
                 boxShadow: isPlaying
-                  ? '0 0 32px rgba(32,199,232,0.3), 0 0 64px rgba(123,92,240,0.15), 0 8px 32px rgba(0,0,0,0.5)'
-                  : '0 0 16px rgba(32,199,232,0.1), 0 8px 24px rgba(0,0,0,0.4)',
+                  ? '0 0 32px rgba(255,255,255,0.18), 0 0 64px rgba(123,92,240,0.15), 0 8px 32px rgba(0,0,0,0.5)'
+                  : '0 0 16px rgba(255,255,255,0.07), 0 8px 24px rgba(0,0,0,0.4)',
               }}
             >
               <img
@@ -239,7 +239,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                   />
                   <motion.span
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -4, border: '1px solid rgba(32,199,232,0.2)' }}
+                    style={{ inset: -4, border: '1px solid rgba(255,255,255,0.12)' }}
                     animate={{ scale: [1, 1.25], opacity: [0.4, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut', delay: 0.4 }}
                   />
@@ -253,7 +253,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                   background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
                   boxShadow: isPlaying
                     ? '0 0 32px rgba(32,199,232,0.55), 0 4px 16px rgba(0,0,0,0.4)'
-                    : '0 0 20px rgba(32,199,232,0.3), 0 4px 12px rgba(0,0,0,0.3)',
+                    : '0 0 20px rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.3)',
                 }}
               >
                 {isPlaying
@@ -320,11 +320,11 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="mt-5 flex items-center gap-4 px-4 py-3 rounded-xl"
-            style={{ background: 'rgba(32,199,232,0.06)', border: '1px solid rgba(32,199,232,0.14)' }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.11)' }}
           >
             <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center"
-              style={{ background: 'rgba(32,199,232,0.12)' }}>
-              <User className="w-4 h-4" style={{ color: '#20C7E8' }} />
+              style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <User className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.9)' }} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-white leading-tight">Únete a la comunidad</p>
@@ -333,7 +333,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             <a
               href="/signup"
               className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-              style={{ background: '#20C7E8', color: '#080B14' }}
+              style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}
             >
               Crear cuenta
             </a>
@@ -365,10 +365,10 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 transition={{ delay: i * 0.06 }}
                 className="glass-card flex items-center gap-4 p-3 rounded-xl transition-all duration-200 cursor-pointer group"
                 style={{ borderRadius: '12px' }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(32,199,232,0.15)')}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)')}
               >
-                <span className="text-sm font-mono font-bold shrink-0 w-14 truncate" style={{ color: '#20C7E8' }}>
+                <span className="text-sm font-mono font-bold shrink-0 w-14 truncate" style={{ color: 'rgba(255,255,255,0.9)' }}>
                   {show.schedule || '—'}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -378,7 +378,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 {show.genre && (
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
-                    style={{ background: 'rgba(32,199,232,0.08)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.15)' }}
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.1)' }}
                   >
                     {show.genre}
                   </span>

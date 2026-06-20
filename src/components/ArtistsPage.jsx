@@ -13,7 +13,7 @@ const SOCIAL_DETAIL = [
   { key: 'twitter',   icon: Twitter,   label: 'Twitter / X', color: '#94A3B8', build: (h) => `https://x.com/${h}` },
   { key: 'bandcamp',  icon: Music,     label: 'Bandcamp',  color: '#1DA0C3', build: (h) => h.includes('.') ? `https://${h}` : `https://${h}.bandcamp.com` },
   { key: 'soundcloud',icon: Music,     label: 'SoundCloud',color: '#FF5500', build: (h) => `https://soundcloud.com/${h}` },
-  { key: 'website',   icon: Globe,     label: 'Website',   color: '#20C7E8', build: (h) => h.startsWith('http') ? h : `https://${h}` },
+  { key: 'website',   icon: Globe,     label: 'Website',   color: 'rgba(255,255,255,0.9)', build: (h) => h.startsWith('http') ? h : `https://${h}` },
 ];
 
 function SocialButton({ href, icon: Icon, label, color }) {
@@ -84,7 +84,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
 
         <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 300 }}>
           {artist.type && (
-            <span className="inline-flex text-[10px] font-bold uppercase tracking-widest mb-2 px-2.5 py-0.5 rounded-full w-fit" style={{ background: 'rgba(32,199,232,0.15)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.25)' }}>
+            <span className="inline-flex text-[10px] font-bold uppercase tracking-widest mb-2 px-2.5 py-0.5 rounded-full w-fit" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(32,199,232,0.25)' }}>
               {artist.type}
             </span>
           )}
@@ -172,7 +172,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
         {artist.type && (
           <span
             className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded"
-            style={{ background: 'rgba(0,0,0,0.7)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.25)' }}
+            style={{ background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(32,199,232,0.25)' }}
           >
             {artist.type}
           </span>
@@ -217,7 +217,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
         <div className="flex items-center gap-1.5 mt-auto pt-2">
           <SocialButton href={links.instagram} icon={Instagram} label="Instagram" color="#E1306C" />
           <SocialButton href={links.twitter} icon={Twitter} label="Twitter" color="#94A3B8" />
-          <SocialButton href={links.website} icon={Globe} label="Website" color="#20C7E8" />
+          <SocialButton href={links.website} icon={Globe} label="Website" color="rgba(255,255,255,0.9)" />
           {(!links.instagram && !links.twitter && !links.website) && (
             <span className="text-[10px] text-white/20">Sin redes</span>
           )}

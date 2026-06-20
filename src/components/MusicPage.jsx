@@ -108,7 +108,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
             {selectedAlbum.genre && (
               <span
                 className="inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded"
-                style={{ background: 'rgba(32,199,232,0.1)', color: '#20C7E8' }}
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)' }}
               >
                 {selectedAlbum.genre}
               </span>
@@ -146,8 +146,8 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                     transition={{ delay: i * 0.04 }}
                     className={`group flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${track.audio_url ? 'cursor-pointer hover:bg-white/5' : 'opacity-50'}`}
                     style={{
-                      background: isActive ? 'rgba(32,199,232,0.08)' : 'transparent',
-                      border: `1px solid ${isActive ? 'rgba(32,199,232,0.15)' : 'rgba(255,255,255,0.04)'}`,
+                      background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      border: `1px solid ${isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`,
                     }}
                     onClick={() => handlePlayTrack(track, selectedAlbum)}
                   >
@@ -158,7 +158,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                             <motion.div
                               key={j}
                               className="w-0.5 rounded-t-sm"
-                              style={{ background: '#20C7E8' }}
+                              style={{ background: 'rgba(255,255,255,0.9)' }}
                               animate={{ height: [`${h * 2}px`, `${h * 3.5}px`] }}
                               transition={{ duration: 0.4 + j * 0.1, repeat: Infinity, repeatType: 'reverse' }}
                             />
@@ -226,14 +226,14 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               className="text-xs font-semibold px-3 py-1.5 rounded-full"
               style={{
-                background: activeGenre === g ? '#20C7E8' : 'rgba(255,255,255,0.05)',
+                background: activeGenre === g ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
                 color: activeGenre === g ? '#080B14' : 'rgba(255,255,255,0.5)',
                 border: activeGenre === g ? 'none' : '1px solid rgba(255,255,255,0.08)',
               }}
               onMouseEnter={activeGenre !== g ? (e) => {
-                e.currentTarget.style.background = 'rgba(32,199,232,0.12)';
-                e.currentTarget.style.color = '#20C7E8';
-                e.currentTarget.style.borderColor = 'rgba(32,199,232,0.3)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
               } : undefined}
               onMouseLeave={activeGenre !== g ? (e) => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
@@ -273,7 +273,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <div
                     className="w-11 h-11 rounded-full flex items-center justify-center shadow-2xl"
-                    style={{ background: '#20C7E8', boxShadow: '0 0 24px rgba(32,199,232,0.5)' }}
+                    style={{ background: 'rgba(255,255,255,0.9)', boxShadow: '0 0 24px rgba(32,199,232,0.5)' }}
                   >
                     <Play className="w-5 h-5 fill-current ml-0.5" style={{ color: '#080B14' }} />
                   </div>

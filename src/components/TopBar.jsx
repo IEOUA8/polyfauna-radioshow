@@ -109,7 +109,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
               onFocus={(e) => {
                 setShowResults(true);
                 e.currentTarget.style.borderColor = 'rgba(32,199,232,0.4)';
-                e.currentTarget.style.boxShadow = '0 0 0 1px rgba(32,199,232,0.15)';
+                e.currentTarget.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.1)';
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
@@ -160,7 +160,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-white truncate">{name}</p>
                           </div>
-                          <span className="flex items-center gap-1 text-[10px] font-bold shrink-0" style={{ color: '#20C7E8' }}>
+                          <span className="flex items-center gap-1 text-[10px] font-bold shrink-0" style={{ color: 'rgba(255,255,255,0.9)' }}>
                             <Icon className="w-3 h-3" />
                             {meta.label}
                           </span>

@@ -145,7 +145,7 @@ function BuyModal({ event, onClose }) {
             <div className="flex flex-col gap-3 py-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(255,138,31,0.12)' }}>
-                  <ExternalLink className="w-5 h-5" style={{ color: '#FF8A1F' }} />
+                  <ExternalLink className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.85)' }} />
                 </div>
                 <div>
                   <p className="text-sm font-black text-white">Checkout listo</p>
@@ -163,7 +163,7 @@ function BuyModal({ event, onClose }) {
               <button type="button"
                 onClick={() => { window.location.href = wompiRef; }}
                 className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2"
-                style={{ background: '#FF8A1F', color: '#fff' }}>
+                style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
                 <ExternalLink className="w-4 h-4" />
                 Ir a Wompi
               </button>
@@ -204,7 +204,7 @@ function BuyModal({ event, onClose }) {
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] text-white/35 uppercase tracking-wider">Precio</p>
-                  <p className="text-lg font-black mt-0.5" style={{ color: '#FF8A1F' }}>{formatPrice(event.price)}</p>
+                  <p className="text-lg font-black mt-0.5" style={{ color: 'rgba(255,255,255,0.85)' }}>{formatPrice(event.price)}</p>
                 </div>
               </div>
 
@@ -223,7 +223,7 @@ function BuyModal({ event, onClose }) {
               {!currentUser ? (
                 <button type="button" onClick={handleConfirm}
                   className="w-full py-3 rounded-xl text-sm font-black"
-                  style={{ background: '#FF8A1F', color: '#fff' }}>
+                  style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
                   Iniciar sesión para comprar
                 </button>
               ) : isSoldOut ? (
@@ -235,7 +235,7 @@ function BuyModal({ event, onClose }) {
               ) : (
                 <button type="button" onClick={handleConfirm} disabled={isBusy}
                   className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60"
-                  style={{ background: '#FF8A1F', color: '#fff' }}>
+                  style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
                   {isBusy
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> {status === 'processing' ? 'Preparando pago…' : 'Procesando…'}</>
                     : isFree
@@ -307,7 +307,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
 
         <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 280 }}>
           {event.category && (
-            <span className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#FF8A1F' }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.85)' }}>
               {event.category}
             </span>
           )}
@@ -319,7 +319,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {event.date && (
           <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <Calendar className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+            <Calendar className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
             <p className="text-[10px] text-white/40 uppercase tracking-wider">Fecha</p>
             <p className="text-xs font-bold text-white mt-0.5">
               {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -328,22 +328,22 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
         )}
         {event.venue && (
           <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <Building className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+            <Building className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
             <p className="text-[10px] text-white/40 uppercase tracking-wider">Venue</p>
             <p className="text-xs font-bold text-white mt-0.5 truncate">{event.venue}</p>
           </div>
         )}
         {event.city && (
           <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <MapPin className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+            <MapPin className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
             <p className="text-[10px] text-white/40 uppercase tracking-wider">Ciudad</p>
             <p className="text-xs font-bold text-white mt-0.5">{event.city}</p>
           </div>
         )}
         <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <Ticket className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+          <Ticket className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
           <p className="text-[10px] text-white/40 uppercase tracking-wider">Precio</p>
-          <p className="text-sm font-black mt-0.5" style={{ color: '#FF8A1F' }}>{formatPrice(event.price)}</p>
+          <p className="text-sm font-black mt-0.5" style={{ color: 'rgba(255,255,255,0.85)' }}>{formatPrice(event.price)}</p>
         </div>
       </div>
 
@@ -367,7 +367,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
               <span
                 key={i}
                 className="text-xs font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,138,31,0.1)', color: '#FF8A1F', border: '1px solid rgba(255,138,31,0.2)' }}
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
                 {artist.trim()}
               </span>
@@ -383,7 +383,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className="w-full py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3"
-        style={{ background: 'linear-gradient(135deg, #FF8A1F, #E07010)', color: '#fff', boxShadow: '0 8px 32px rgba(255,138,31,0.35)' }}
+        style={{ background: 'rgba(255,255,255,0.95)', color: '#fff', boxShadow: '0 8px 32px rgba(255,255,255,0.12)' }}
       >
         <Ticket className="w-5 h-5" />
         Comprar Ticket
@@ -484,7 +484,7 @@ export default function EventTerminal() {
 
               <div className="relative z-10 p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: '#FF8A1F' }}>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.85)' }}>
                     Featured Event
                   </span>
                   <AnimatePresence mode="wait">
@@ -531,7 +531,7 @@ export default function EventTerminal() {
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setBuyingEvent(featured); }}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
-                      style={{ background: '#FF8A1F', color: '#fff' }}
+                      style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}
                     >
                       <Ticket className="w-4 h-4" />
                       Comprar Ticket
@@ -557,7 +557,7 @@ export default function EventTerminal() {
                         style={{
                           width: i === safeIndex ? 20 : 7,
                           height: 7,
-                          background: i === safeIndex ? '#FF8A1F' : 'rgba(255,255,255,0.3)',
+                          background: i === safeIndex ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)',
                         }}
                       />
                     ))}
@@ -623,14 +623,14 @@ export default function EventTerminal() {
                         )}
                       </div>
                       <div className="flex items-center justify-between mt-auto pt-2">
-                        <span className="text-sm font-bold" style={{ color: '#FF8A1F' }}>
+                        <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
                           {formatPrice(event.price)}
                         </span>
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setBuyingEvent(event); }}
                           className="text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
-                          style={{ background: '#FF8A1F', color: '#fff' }}
+                          style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}
                         >
                           Comprar
                         </button>

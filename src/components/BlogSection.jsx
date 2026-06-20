@@ -11,13 +11,13 @@ const CATEGORY_COLORS = {
   'Crónica':      '#B8CFA6',
   'Entrevista':   '#D946EF',
   'Reseña':       '#7C5CFF',
-  'Noticias':     '#20C7E8',
+  'Noticias':     'rgba(255,255,255,0.9)',
   'Opinión':      '#FF8A1F',
   'Tutorial':     '#5DE0A3',
 };
 
 function getCategoryColor(cat) {
-  return CATEGORY_COLORS[cat] || '#20C7E8';
+  return CATEGORY_COLORS[cat] || 'rgba(255,255,255,0.9)';
 }
 
 function formatDate(str) {
@@ -216,7 +216,7 @@ export default function BlogSection() {
           {!loading && !error && categories.length > 1 && (
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => {
-                const color = cat === 'Todos' ? '#20C7E8' : getCategoryColor(cat);
+                const color = cat === 'Todos' ? 'rgba(255,255,255,0.9)' : getCategoryColor(cat);
                 const isActive = activeCategory === cat;
                 return (
                   <motion.button

@@ -7,7 +7,7 @@ import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
-const STATUS_COLORS = ['#22c55e', '#20C7E8', '#F59E0B', 'rgba(255,255,255,0.2)'];
+const STATUS_COLORS = ['#22c55e', 'rgba(255,255,255,0.9)', '#F59E0B', 'rgba(255,255,255,0.2)'];
 
 function MemberCard({ member, index }) {
   const status = STATUS_COLORS[index % STATUS_COLORS.length];
@@ -67,7 +67,7 @@ export default function CommunityGrid() {
         <>
           <div className="flex items-center gap-4 text-xs text-white/30">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#22c55e' }} /> Online</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#20C7E8' }} /> En vivo</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: 'rgba(255,255,255,0.9)' }} /> En vivo</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: '#F59E0B' }} /> Grabando</span>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
