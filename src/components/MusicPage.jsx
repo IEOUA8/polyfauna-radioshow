@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, Disc3, Music, Play } from 'lucide-react';
+import { ArrowLeft, Clock, Disc3, Heart, Music, Play } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { useFavorites } from '@/hooks/useFavorites';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
@@ -17,6 +18,7 @@ function formatDuration(secs) {
 export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack }) {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [activeGenre, setActiveGenre] = useState('All');
+  const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: albums, loading, error, refetch } = useSupabaseQuery(
     () => supabase
@@ -105,14 +107,32 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                 <span className="text-white/30"> · {selectedAlbum.release_year}</span>
               )}
             </p>
-            {selectedAlbum.genre && (
-              <span
-                className="inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)' }}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {selectedAlbum.genre && (
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)' }}
+                >
+                  {selectedAlbum.genre}
+                </span>
+              )}
+              <motion.button
+                type="button"
+                onClick={e => { e.stopPropagation(); toggleFav('album', selectedAlbum.id); }}
+                whileTap={{ scale: 0.85 }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all"
+                style={{
+                  background: isFav('album', selectedAlbum.id) ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${isFav('album', selectedAlbum.id) ? 'rgba(248,113,113,0.30)' : 'rgba(255,255,255,0.09)'}`,
+                }}
               >
-                {selectedAlbum.genre}
-              </span>
-            )}
+                <Heart className="w-3.5 h-3.5"
+                  style={{ fill: isFav('album', selectedAlbum.id) ? '#F87171' : 'none', color: isFav('album', selectedAlbum.id) ? '#F87171' : 'rgba(255,255,255,0.40)' }} />
+                <span className="text-[10px] font-bold" style={{ color: isFav('album', selectedAlbum.id) ? '#F87171' : 'rgba(255,255,255,0.35)' }}>
+                  {isFav('album', selectedAlbum.id) ? 'Guardado' : 'Me encanta'}
+                </span>
+              </motion.button>
+            </div>
             {selectedAlbum.description && (
               <p className="text-xs text-white/35 mt-2 line-clamp-3">{selectedAlbum.description}</p>
             )}
@@ -177,7 +197,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isActive ? 'text-[#20C7E8]' : 'text-white'}`}>
+                      <p className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-white/80'}`}>
                         {track.title}
                       </p>
                       {track.artists?.name && (
@@ -185,7 +205,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       {track.duration && (
                         <span className="text-xs text-white/30 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -195,6 +215,16 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                       {!track.audio_url && (
                         <span className="text-[10px] text-white/20">Sin audio</span>
                       )}
+                      <motion.button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); toggleFav('track', track.id); }}
+                        whileTap={{ scale: 0.80 }}
+                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                        style={{ background: isFav('track', track.id) ? 'rgba(248,113,113,0.12)' : 'transparent' }}
+                      >
+                        <Heart className="w-3.5 h-3.5"
+                          style={{ fill: isFav('track', track.id) ? '#F87171' : 'none', color: isFav('track', track.id) ? '#F87171' : 'rgba(255,255,255,0.35)' }} />
+                      </motion.button>
                     </div>
                   </motion.div>
                 );
