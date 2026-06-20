@@ -68,16 +68,19 @@ function BuyModal({ event, onClose }) {
         if (error) throw new Error(error.message || 'Error al crear el pago');
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
 
-        const params = new URLSearchParams({
-          'public-key':          data.public_key,
-          currency:              'COP',
-          'amount-in-cents':     String(data.amount_in_cents),
-          reference:             data.reference,
-          'signature:integrity': data.signature,
-          'redirect-url':        `${window.location.origin}/`,
-        });
+        // URLSearchParams encodes ":" como "%3A" y Wompi no lo reconoce.
+        // Se construye la query string manualmente.
+        const checkoutUrl = [
+          `https://checkout.wompi.co/p/?`,
+          `public-key=${encodeURIComponent(data.public_key)}`,
+          `&currency=COP`,
+          `&amount-in-cents=${data.amount_in_cents}`,
+          `&reference=${encodeURIComponent(data.reference)}`,
+          `&signature:integrity=${data.signature}`,
+          `&redirect-url=${encodeURIComponent(window.location.origin + '/')}`,
+        ].join('');
 
-        window.open(`https://checkout.wompi.co/p/?${params.toString()}`, '_blank', 'noopener,noreferrer');
+        window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
         setWompiRef(data.reference);
         setStatus('pending');
       } catch (err) {
