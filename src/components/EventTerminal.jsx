@@ -383,7 +383,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className="w-full py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3"
-        style={{ background: 'rgba(255,255,255,0.95)', color: '#fff', boxShadow: '0 8px 32px rgba(255,255,255,0.12)' }}
+        style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A', boxShadow: '0 8px 32px rgba(255,255,255,0.08)' }}
       >
         <Ticket className="w-5 h-5" />
         Comprar Ticket

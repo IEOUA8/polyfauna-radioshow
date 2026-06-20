@@ -27,30 +27,30 @@ const NAV_GROUPS = [
   {
     label: 'Gestión',
     items: [
-      { id: 'dashboard', label: 'Dashboard',   icon: BarChart2,   color: '#20C7E8' },
-      { id: 'events',    label: 'Eventos',      icon: CalendarDays,color: '#FF8A1F' },
-      { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: '#FFB020' },
+      { id: 'dashboard', label: 'Dashboard',   icon: BarChart2,   color: 'rgba(255,255,255,0.85)' },
+      { id: 'events',    label: 'Eventos',      icon: CalendarDays,color: 'rgba(255,255,255,0.85)' },
+      { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: 'rgba(255,255,255,0.85)' },
       { id: 'qr',        label: 'Lector QR',    icon: QrCode,      color: '#22c55e' },
-      { id: 'wallet',    label: 'Wallet',        icon: Banknote,    color: '#5DE0A3' },
-      { id: 'payouts',   label: 'Retiros',       icon: ArrowUpRight, color: '#D946EF' },
+      { id: 'wallet',    label: 'Wallet',        icon: Banknote,    color: 'rgba(255,255,255,0.85)' },
+      { id: 'payouts',   label: 'Retiros',       icon: ArrowUpRight, color: 'rgba(255,255,255,0.85)' },
     ],
   },
   {
     label: 'Contenido',
     items: [
-      { id: 'podcasts',   label: 'Podcasts',    icon: Headphones,  color: '#7C5CFF' },
-      { id: 'blog',       label: 'Blog',         icon: FileText,    color: '#B8CFA6' },
-      { id: 'interviews', label: 'Interviews',   icon: Mic,         color: '#D946EF' },
-      { id: 'shows',      label: 'Shows',        icon: Radio,       color: '#20C7E8' },
-      { id: 'artists',    label: 'Artistas',     icon: Disc3,       color: '#7C5CFF' },
-      { id: 'albums',     label: 'Álbumes',      icon: Music,       color: '#3A86FF' },
-      { id: 'tracks',     label: 'Tracks',       icon: ListMusic,   color: '#3A86FF' },
+      { id: 'podcasts',   label: 'Podcasts',    icon: Headphones,  color: 'rgba(255,255,255,0.85)' },
+      { id: 'blog',       label: 'Blog',         icon: FileText,    color: 'rgba(255,255,255,0.7)' },
+      { id: 'interviews', label: 'Interviews',   icon: Mic,         color: 'rgba(255,255,255,0.85)' },
+      { id: 'shows',      label: 'Shows',        icon: Radio,       color: 'rgba(255,255,255,0.85)' },
+      { id: 'artists',    label: 'Artistas',     icon: Disc3,       color: 'rgba(255,255,255,0.85)' },
+      { id: 'albums',     label: 'Álbumes',      icon: Music,       color: 'rgba(255,255,255,0.85)' },
+      { id: 'tracks',     label: 'Tracks',       icon: ListMusic,   color: 'rgba(255,255,255,0.85)' },
     ],
   },
   {
     label: 'Usuarios',
     items: [
-      { id: 'users', label: 'Usuarios', icon: Users, color: '#94A3B8' },
+      { id: 'users', label: 'Usuarios', icon: Users, color: 'rgba(255,255,255,0.6)' },
     ],
   },
 ];
@@ -191,11 +191,11 @@ function QRScannerWidget({ scanKey }) {
                   'bottom-0 left-0 border-b-2 border-l-2 rounded-bl-xl',
                   'bottom-0 right-0 border-b-2 border-r-2 rounded-br-xl',
                 ].map((cls, i) => (
-                  <div key={i} className={`absolute w-7 h-7 pointer-events-none ${cls}`} style={{ borderColor: checking ? '#FFB020' : '#22c55e' }} />
+                  <div key={i} className={`absolute w-7 h-7 pointer-events-none ${cls}`} style={{ borderColor: checking ? '#F59E0B' : '#22c55e' }} />
                 ))}
                 <motion.div
                   className="absolute left-3 right-3 h-0.5 rounded-full pointer-events-none"
-                  style={{ background: `linear-gradient(90deg, transparent, ${checking ? '#FFB020' : '#22c55e'}, transparent)` }}
+                  style={{ background: `linear-gradient(90deg, transparent, ${checking ? '#F59E0B' : '#22c55e'}, transparent)` }}
                   animate={{ top: ['12%', '88%'] }}
                   transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse', ease: 'linear' }}
                 />
@@ -209,7 +209,7 @@ function QRScannerWidget({ scanKey }) {
             {checking && (
               <div className="absolute inset-0 flex items-center justify-center rounded-2xl" style={{ background: 'rgba(8,13,9,0.7)' }}>
                 <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#FFB020' }} />
+                  <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'rgba(255,255,255,0.85)' }} />
                   <p className="text-xs text-white/60">Verificando…</p>
                 </div>
               </div>
@@ -248,25 +248,25 @@ function QRScannerWidget({ scanKey }) {
 }
 
 /* ─────────────────────── DASHBOARD SECTION ─────────────────────── */
-function StatTile({ label, value, icon: Icon, color, loading, sub }) {
+function StatTile({ label, value, icon: Icon, loading, sub }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="p-5 rounded-2xl flex flex-col gap-3"
-      style={{ background: 'rgba(11,16,15,0.90)', border: `1px solid ${color}20` }}
+      style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">{label}</p>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18` }}>
-          <Icon className="w-4 h-4" style={{ color }} />
+        <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">{label}</p>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <Icon className="w-4 h-4 text-white/50" />
         </div>
       </div>
       {loading
         ? <div className="h-8 w-20 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
         : <p className="text-3xl font-black text-white">{value}</p>
       }
-      {sub && <p className="text-[11px] text-white/30">{sub}</p>}
+      {sub && <p className="text-[11px] text-white/25">{sub}</p>}
     </motion.div>
   );
 }
@@ -308,14 +308,13 @@ function DashboardSection() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile label="Usuarios" value={stats.users} icon={Users} color="#20C7E8" loading={loading} sub="Registrados" />
-        <StatTile label="Eventos" value={stats.events} icon={CalendarDays} color="#FF8A1F" loading={loading} sub="Creados" />
-        <StatTile label="Tickets" value={stats.tickets} icon={Ticket} color="#FFB020" loading={loading} sub="Vendidos" />
+        <StatTile label="Usuarios" value={stats.users} icon={Users} loading={loading} sub="Registrados" />
+        <StatTile label="Eventos" value={stats.events} icon={CalendarDays} loading={loading} sub="Creados" />
+        <StatTile label="Tickets" value={stats.tickets} icon={Ticket} loading={loading} sub="Vendidos" />
         <StatTile
           label="Ingresos"
           value={loading ? '—' : `$${stats.revenue.toLocaleString('es-CO')}`}
           icon={Banknote}
-          color="#5DE0A3"
           loading={loading}
           sub="COP total"
         />
@@ -344,7 +343,7 @@ function DashboardSection() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-black" style={{ color: '#5DE0A3' }}>
+                  <p className="text-xs font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>
                     ${(t.events?.price || 0).toLocaleString('es-CO')}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">
@@ -435,20 +434,20 @@ function TicketsSection() {
                   <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 w-32">
                     <div className="flex items-center justify-between w-full text-[10px]">
                       <span className="text-white/40">{sold}/{total || '∞'}</span>
-                      <span className="font-bold" style={{ color: pct > 80 ? '#ef4444' : pct > 50 ? '#FFB020' : '#22c55e' }}>{pct}%</span>
+                      <span className="font-bold" style={{ color: pct > 80 ? '#ef4444' : pct > 50 ? '#F59E0B' : '#22c55e' }}>{pct}%</span>
                     </div>
                     {total > 0 && (
                       <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
                         <div
                           className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, background: pct > 80 ? '#ef4444' : pct > 50 ? '#FFB020' : '#22c55e' }}
+                          style={{ width: `${pct}%`, background: pct > 80 ? '#ef4444' : pct > 50 ? '#F59E0B' : '#22c55e' }}
                         />
                       </div>
                     )}
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-black" style={{ color: '#5DE0A3' }}>${revenue.toLocaleString('es-CO')}</p>
+                    <p className="text-sm font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>${revenue.toLocaleString('es-CO')}</p>
                     <p className="text-[10px] text-white/30">${(ev.price || 0).toLocaleString('es-CO')} c/u</p>
                   </div>
 
@@ -596,13 +595,13 @@ function WalletSection() {
                     <p className="text-sm font-bold text-white truncate">{ev.title}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: '#5DE0A3' }} />
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'rgba(255,255,255,0.5)' }} />
                       </div>
                       <span className="text-[10px] text-white/30 shrink-0">{ev.count} tickets</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-black" style={{ color: '#5DE0A3' }}>${evRevenue.toLocaleString('es-CO')}</p>
+                    <p className="text-sm font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>${evRevenue.toLocaleString('es-CO')}</p>
                     <p className="text-[10px] text-white/30">{Math.round(pct)}% del total</p>
                   </div>
                 </div>
@@ -702,13 +701,13 @@ function PayoutsSection() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Pendientes ({pending.length})</p>
               {pending.map(p => (
                 <div key={p.id} className="rounded-xl p-4 space-y-3"
-                  style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(217,70,239,0.2)' }}>
+                  style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold text-white">{p.profiles?.display_name || p.profiles?.email || 'Usuario'}</p>
                       <p className="text-xs text-white/40">{p.profiles?.email}</p>
                     </div>
-                    <p className="text-lg font-black shrink-0" style={{ color: '#D946EF' }}>${p.amount.toLocaleString('es-CO')} COP</p>
+                    <p className="text-lg font-black shrink-0" style={{ color: 'rgba(255,255,255,0.85)' }}>${p.amount.toLocaleString('es-CO')} COP</p>
                   </div>
                   {p.account_snapshot && (
                     <div className="text-[11px] text-white/40 space-y-0.5">
@@ -735,7 +734,7 @@ function PayoutsSection() {
                     </button>
                     <button type="button" onClick={() => handleApprove(p)} disabled={processing === p.id}
                       className="px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
-                      style={{ background: '#5DE0A3', color: '#080B14' }}>
+                      style={{ background: 'rgba(255,255,255,0.9)', color: '#06090A' }}>
                       {processing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                       Marcar pagado
                     </button>
@@ -850,8 +849,8 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
         <div>
           <p className="text-xs font-black text-white tracking-widest uppercase">PolyFauna</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <Shield className="w-3 h-3" style={{ color: '#D946EF' }} />
-            <p className="text-[10px] font-bold" style={{ color: '#D946EF' }}>Admin Panel</p>
+            <Shield className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.85)' }} />
+            <p className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>Admin Panel</p>
           </div>
         </div>
         {mobileOpen !== undefined && (
@@ -876,16 +875,16 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
                     onClick={() => { setActive(item.id); setMobileOpen?.(false); }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative"
                     style={{
-                      background: isActive ? `${item.color}15` : 'transparent',
-                      color: isActive ? item.color : 'rgba(255,255,255,0.45)',
+                      background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.40)',
                     }}
                     onMouseEnter={!isActive ? e => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)') : undefined}
-                    onMouseLeave={!isActive ? e => (e.currentTarget.style.color = 'rgba(255,255,255,0.45)') : undefined}
+                    onMouseLeave={!isActive ? e => (e.currentTarget.style.color = 'rgba(255,255,255,0.40)') : undefined}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: item.color }} />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full bg-white/80" />
                     )}
-                    <item.icon className="w-4 h-4 shrink-0" style={{ color: isActive ? item.color : `${item.color}70` }} />
+                    <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white/90' : 'text-white/30'}`} />
                     {item.label}
                   </button>
                 );
@@ -902,7 +901,7 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
           onClick={onGoHome}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-white/50 hover:text-white transition-colors group"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(32,199,232,0.08)'; e.currentTarget.style.borderColor = 'rgba(32,199,232,0.2)'; e.currentTarget.style.color = '#20C7E8'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
         >
           <Home className="w-4 h-4 shrink-0" />
@@ -1011,9 +1010,9 @@ const AdminDashboard = () => {
             type="button"
             onClick={() => navigate('/')}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: 'rgba(32,199,232,0.08)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}
+            style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.12)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.15)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.08)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
           >
             <Home className="w-3.5 h-3.5" />
             Inicio
