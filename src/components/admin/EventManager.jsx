@@ -27,6 +27,7 @@ const EventManager = () => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [formData, setFormData] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => { fetchEvents(); }, []);
 
@@ -46,15 +47,16 @@ const EventManager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setFormError('');
     try {
       const { ticket_type, ...rest } = formData;
       const payload = {
         ...rest,
-        price:        formData.price        ? parseFloat(formData.price)        : null,
-        tickets_total: formData.tickets_total ? parseInt(formData.tickets_total) : 100,
-        owner_id:     currentUser.id,
-        status:       'published',
-        lineup:       formData.lineup
+        price:         formData.price         ? parseFloat(formData.price)         : null,
+        tickets_total: formData.tickets_total  ? parseInt(formData.tickets_total)   : 100,
+        owner_id:      currentUser.id,
+        status:        'published',
+        lineup:        formData.lineup
           ? formData.lineup.split(',').map(s => s.trim()).filter(Boolean)
           : [],
       };
@@ -66,13 +68,13 @@ const EventManager = () => {
       } else {
         const { error } = await supabase.from('events').insert([payload]);
         if (error) throw error;
-        toast({ title: 'Evento creado' });
+        toast({ title: '¡Evento publicado!' });
       }
       setIsDialogOpen(false);
       resetForm();
       fetchEvents();
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error al guardar', description: error.message });
+    } catch (err) {
+      setFormError(err.message || 'Error al guardar el evento');
     } finally {
       setSaving(false);
     }
@@ -107,7 +109,7 @@ const EventManager = () => {
     }
   };
 
-  const resetForm = () => { setEditingEvent(null); setFormData(EMPTY); };
+  const resetForm = () => { setEditingEvent(null); setFormData(EMPTY); setFormError(''); };
   const set = (k, v) => setFormData(p => ({ ...p, [k]: v }));
 
   return (
@@ -200,6 +202,13 @@ const EventManager = () => {
                   rows={3} placeholder="Describe el evento…"
                   className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm resize-none" />
               </div>
+
+              {formError && (
+                <div className="rounded-lg px-4 py-3 text-sm font-medium text-red-300 text-center"
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  {formError}
+                </div>
+              )}
 
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0" disabled={saving}>
                 {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
