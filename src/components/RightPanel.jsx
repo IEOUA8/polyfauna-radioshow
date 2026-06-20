@@ -342,49 +342,52 @@ export default function RightPanel({ setCurrentSection }) {
                     transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                     className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50"
                     style={{
-                      background: 'rgba(10,15,14,0.92)',
-                      backdropFilter: 'blur(48px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(48px) saturate(180%)',
-                      border: '1px solid rgba(184,207,166,0.12)',
-                      boxShadow: '0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.07)',
+                      background: 'rgba(8,13,12,0.78)',
+                      backdropFilter: 'blur(64px) saturate(200%)',
+                      WebkitBackdropFilter: 'blur(64px) saturate(200%)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      boxShadow: '0 32px 72px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.03)',
                     }}
                   >
-                    {/* Brillo superior */}
-                    <div className="absolute top-0 left-6 right-6 h-px"
-                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />
+                    {/* Brillo superior glass */}
+                    <div className="absolute top-0 left-0 right-0 h-px"
+                      style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.18) 50%, transparent 90%)' }} />
+                    {/* Reflejo lateral izquierdo */}
+                    <div className="absolute top-2 left-0 bottom-2 w-px"
+                      style={{ background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.07) 40%, rgba(255,255,255,0.07) 60%, transparent)' }} />
 
                     {/* Opciones de navegación */}
-                    <div className="py-1.5">
+                    <div className="py-2 px-1.5">
                       {[
-                        { label: 'Mi Panel',     icon: User,     color: 'rgba(255,255,255,0.85)', onClick: () => { setCurrentSection?.('mi-panel'); setMenuOpen(false); } },
+                        { label: 'Mi Panel',     icon: User,    onClick: () => { setCurrentSection?.('mi-panel'); setMenuOpen(false); } },
                         ...(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin'
-                          ? [{ label: 'Promoter Hub', icon: Settings, color: '#FF8A1F', onClick: () => { setCurrentSection?.('promoter'); setMenuOpen(false); } }]
+                          ? [{ label: 'Promoter Hub', icon: Settings, onClick: () => { setCurrentSection?.('promoter'); setMenuOpen(false); } }]
                           : []),
                         ...(userRole === 'admin'
-                          ? [{ label: 'Admin Panel', icon: Shield, color: 'rgba(255,255,255,0.75)', onClick: () => { navigate('/admin'); setMenuOpen(false); } }]
+                          ? [{ label: 'Admin Panel', icon: Shield, onClick: () => { navigate('/admin'); setMenuOpen(false); } }]
                           : []),
-                      ].map(({ label, icon: Icon, color, onClick }) => (
+                      ].map(({ label, icon: Icon, onClick }) => (
                         <button
                           key={label}
                           type="button"
                           onClick={onClick}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all duration-150 group"
-                          style={{ color: 'rgba(255,255,255,0.65)' }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 group"
+                          style={{ color: 'rgba(255,255,255,0.60)' }}
                           onMouseEnter={e => {
-                            e.currentTarget.style.background = `${color}12`;
-                            e.currentTarget.style.color = color;
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+                            e.currentTarget.style.color = 'rgba(255,255,255,0.92)';
                           }}
                           onMouseLeave={e => {
                             e.currentTarget.style.background = 'transparent';
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.65)';
+                            e.currentTarget.style.color = 'rgba(255,255,255,0.60)';
                           }}
                         >
                           <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors"
-                            style={{ background: `${color}15`, border: `1px solid ${color}25` }}>
-                            <Icon className="w-3.5 h-3.5" style={{ color }} />
+                            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}>
+                            <Icon className="w-3.5 h-3.5 text-white/60 group-hover:text-white/90 transition-colors" />
                           </span>
                           {label}
-                          <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-30 group-hover:opacity-70 transition-opacity" />
+                          <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-20 group-hover:opacity-60 transition-opacity" />
                         </button>
                       ))}
                     </div>

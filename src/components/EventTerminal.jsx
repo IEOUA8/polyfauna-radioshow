@@ -382,8 +382,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
         onClick={onBuy}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3"
-        style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A', boxShadow: '0 8px 32px rgba(255,255,255,0.08)' }}
+        className="btn-cta w-full py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3 transition-all duration-200"
       >
         <Ticket className="w-5 h-5" />
         Comprar Ticket
@@ -530,8 +529,7 @@ export default function EventTerminal() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setBuyingEvent(featured); }}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
-                      style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}
+                      className="btn-cta flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
                     >
                       <Ticket className="w-4 h-4" />
                       Comprar Ticket
@@ -629,8 +627,7 @@ export default function EventTerminal() {
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setBuyingEvent(event); }}
-                          className="text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
-                          style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}
+                          className="btn-cta text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200"
                         >
                           Comprar
                         </button>

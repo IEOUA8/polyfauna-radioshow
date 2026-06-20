@@ -150,6 +150,20 @@
     background-size: 24px 24px;
   }
 
+  /* ── CTA button pulse glow ── */
+  @keyframes cta-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,138,31,0.40), 0 6px 20px rgba(255,138,31,0.25); }
+    50%       { box-shadow: 0 0 0 6px rgba(255,138,31,0.00), 0 6px 20px rgba(255,138,31,0.35); }
+  }
+  .btn-cta {
+    background: linear-gradient(135deg, #FF8A1F 0%, #F59E0B 100%);
+    color: #06090A;
+    animation: cta-glow 2.4s ease-in-out infinite;
+  }
+  .btn-cta:hover {
+    background: linear-gradient(135deg, #FFA040 0%, #FFBE30 100%);
+  }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
