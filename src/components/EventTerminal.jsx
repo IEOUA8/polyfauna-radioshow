@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, Loader2, MapPin, Star, Ticket, Users, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, ExternalLink, Loader2, MapPin, Star, Ticket, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -29,6 +29,12 @@ function BuyModal({ event, onClose }) {
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
+  const [wompiRef, setWompiRef] = useState('');
+
+  const isFree = !event.price || event.price === 0;
+  const availableLeft = (event.tickets_total || 0) - (event.tickets_sold || 0);
+  const isSoldOut = availableLeft <= 0;
+  const isBusy = status === 'buying' || status === 'processing';
 
   const handleConfirm = async () => {
     if (!currentUser) {
@@ -36,23 +42,50 @@ function BuyModal({ event, onClose }) {
       navigate('/login');
       return;
     }
-    setStatus('buying');
-    const { data, error } = await supabase.rpc('purchase_ticket', {
-      p_event_id: event.id,
-      p_ticket_type: 'GA',
-    });
-    if (error || !data?.success) {
-      setStatus('error');
-      setErrorMsg(data?.error || error?.message || 'Error al procesar la compra');
+
+    if (isFree) {
+      // Evento gratuito: compra directa vía RPC
+      setStatus('buying');
+      const { data, error } = await supabase.rpc('purchase_ticket', {
+        p_event_id: event.id,
+        p_ticket_type: 'GA',
+      });
+      if (error || !data?.success) {
+        setStatus('error');
+        setErrorMsg(data?.error || error?.message || 'Error al procesar la compra');
+      } else {
+        setTicketNumber(data.ticket_number);
+        setStatus('success');
+        toast({ title: '¡Entrada confirmada!', description: `#${data.ticket_number} · ${event.title}` });
+      }
     } else {
-      setTicketNumber(data.ticket_number);
-      setStatus('success');
-      toast({ title: '¡Entrada confirmada!', description: `#${data.ticket_number} · ${event.title}` });
+      // Evento de pago: flujo Wompi
+      setStatus('processing');
+      try {
+        const { data, error } = await supabase.functions.invoke('create-payment', {
+          body: { event_id: event.id, ticket_type: 'GA' },
+        });
+        if (error) throw new Error(error.message || 'Error al crear el pago');
+        if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
+
+        const params = new URLSearchParams({
+          'public-key':          data.public_key,
+          currency:              'COP',
+          'amount-in-cents':     String(data.amount_in_cents),
+          reference:             data.reference,
+          'signature:integrity': data.signature,
+          'redirect-url':        `${window.location.origin}/`,
+        });
+
+        window.open(`https://checkout.wompi.co/p/?${params.toString()}`, '_blank', 'noopener,noreferrer');
+        setWompiRef(data.reference);
+        setStatus('pending');
+      } catch (err) {
+        setStatus('error');
+        setErrorMsg(err.message || 'Error al iniciar el pago');
+      }
     }
   };
-
-  const availableLeft = (event.tickets_total || 0) - (event.tickets_sold || 0);
-  const isSoldOut = availableLeft <= 0;
 
   return (
     <div
@@ -82,7 +115,8 @@ function BuyModal({ event, onClose }) {
         </div>
 
         <div className="px-6 pb-6 pt-4 space-y-4">
-          {status === 'success' ? (
+          {/* ── Éxito gratuito ── */}
+          {status === 'success' && (
             <div className="flex flex-col items-center gap-3 py-2 text-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.12)' }}>
                 <CheckCircle className="w-7 h-7" style={{ color: '#22c55e' }} />
@@ -94,17 +128,43 @@ function BuyModal({ event, onClose }) {
               <div className="px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <p className="text-xs font-mono text-white/50">#{ticketNumber}</p>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
+              <button type="button" onClick={onClose}
                 className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                style={{ background: '#22c55e', color: '#fff' }}
-              >
+                style={{ background: '#22c55e', color: '#fff' }}>
                 <Ticket className="w-4 h-4" />
                 Ver en Ticket Vault
               </button>
             </div>
-          ) : (
+          )}
+
+          {/* ── Pago Wompi iniciado ── */}
+          {status === 'pending' && (
+            <div className="flex flex-col items-center gap-3 py-2 text-center">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,138,31,0.12)' }}>
+                <ExternalLink className="w-7 h-7" style={{ color: '#FF8A1F' }} />
+              </div>
+              <div>
+                <p className="text-base font-black text-white">Pago iniciado</p>
+                <p className="text-xs text-white/40 mt-1">Completa el pago en la nueva pestaña</p>
+              </div>
+              <p className="text-xs text-white/30 leading-relaxed px-2">
+                Tu ticket aparecerá en el Ticket Vault unos segundos después de confirmar el pago.
+              </p>
+              {wompiRef && (
+                <p className="text-[10px] font-mono text-white/20 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  Ref: {wompiRef}
+                </p>
+              )}
+              <button type="button" onClick={onClose}
+                className="w-full py-3 rounded-xl text-sm font-bold"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}>
+                Cerrar
+              </button>
+            </div>
+          )}
+
+          {/* ── Formulario de compra ── */}
+          {(status === 'idle' || status === 'buying' || status === 'processing' || status === 'error') && (
             <>
               <div>
                 <p className="text-base font-black text-white leading-tight">{event.title}</p>
@@ -160,17 +220,19 @@ function BuyModal({ event, onClose }) {
                   Entradas agotadas
                 </button>
               ) : (
-                <button type="button" onClick={handleConfirm} disabled={status === 'buying'}
+                <button type="button" onClick={handleConfirm} disabled={isBusy}
                   className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60"
                   style={{ background: '#FF8A1F', color: '#fff' }}>
-                  {status === 'buying'
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando…</>
-                    : <><Ticket className="w-4 h-4" /> Confirmar compra</>}
+                  {isBusy
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> {status === 'processing' ? 'Preparando pago…' : 'Procesando…'}</>
+                    : isFree
+                      ? <><Ticket className="w-4 h-4" /> Confirmar (Gratis)</>
+                      : <><ExternalLink className="w-4 h-4" /> Pagar con Wompi</>}
                 </button>
               )}
 
               <p className="text-[11px] text-white/25 text-center">
-                La entrada aparecerá en tu Ticket Vault con QR.
+                {isFree ? 'La entrada aparecerá en tu Ticket Vault con QR.' : 'Pago seguro · PSE · Nequi · Tarjeta'}
               </p>
             </>
           )}

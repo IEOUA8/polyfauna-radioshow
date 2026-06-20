@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar, ExternalLink, Loader2,
-  Plus, QrCode, Ticket, TrendingUp, Users,
+  AlertCircle, ArrowUpRight, Banknote, Calendar, CheckCircle,
+  CreditCard, ExternalLink, Loader2, Plus, QrCode, Ticket, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -14,6 +14,16 @@ import { useToast } from '@/components/ui/use-toast';
 import FormModal, { FField, FInput, FTextarea, FSelect, FImageZone, FSubmit } from '@/components/ui/FormModal';
 
 const TICKET_TYPES = ['GA', 'VIP', 'Early Bird', 'Artist', 'Press'];
+const BANKS = [
+  'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA', 'Banco Popular',
+  'Banco de Occidente', 'Nequi', 'Daviplata', 'Otro',
+];
+
+const TABS = [
+  { id: 'events',   label: 'Mis Eventos',     icon: Calendar },
+  { id: 'wallet',   label: 'Wallet',           icon: Wallet   },
+  { id: 'account',  label: 'Cuenta Bancaria',  icon: CreditCard },
+];
 
 // ── Create Event modal ────────────────────────────────────────
 function CreateEventModal({ onClose, onCreated }) {
@@ -70,7 +80,6 @@ function CreateEventModal({ onClose, onCreated }) {
   return (
     <FormModal title="Crear Evento" subtitle="Completa los datos y publica la preventa" onClose={onClose} maxWidth="max-w-lg">
       <form onSubmit={handleCreate} className="space-y-4">
-        {/* Imagen de portada */}
         <FImageZone
           file={coverFile}
           onFile={setCoverFile}
@@ -78,13 +87,10 @@ function CreateEventModal({ onClose, onCreated }) {
           hint="JPG, PNG, WEBP · Recomendado 16:9"
           aspect="aspect-video"
         />
-
-        {/* Grid 2 columnas */}
         <div className="grid grid-cols-2 gap-3">
           <FField label="Nombre del evento" required span={2}>
             <FInput value={form.title} onChange={e => set('title', e.target.value)} placeholder="PolyFauna: Opening Night" />
           </FField>
-
           <FField label="Fecha y hora" required>
             <FInput type="datetime-local" value={form.date} onChange={e => set('date', e.target.value)} />
           </FField>
@@ -93,25 +99,21 @@ function CreateEventModal({ onClose, onCreated }) {
               {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </FSelect>
           </FField>
-
           <FField label="Venue / Lugar">
             <FInput value={form.venue} onChange={e => set('venue', e.target.value)} placeholder="Club Razzmatazz" />
           </FField>
           <FField label="Ciudad">
             <FInput value={form.city} onChange={e => set('city', e.target.value)} placeholder="Bogotá" />
           </FField>
-
           <FField label="Precio (COP)">
             <FInput type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="35000" min="0" step="1000" />
           </FField>
           <FField label="Total entradas">
             <FInput type="number" value={form.tickets_total} onChange={e => set('tickets_total', e.target.value)} placeholder="100" min="1" />
           </FField>
-
           <FField label="Descripción" span={2}>
             <FTextarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe el evento, artistas, rooms…" rows={3} />
           </FField>
-
           <FSubmit loading={saving} disabled={!form.title || !form.date}>
             <Plus className="w-4 h-4" />
             {saving ? 'Publicando…' : 'Publicar Evento'}
@@ -132,7 +134,7 @@ function EventCard({ event }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       className="rounded-xl p-4 space-y-3"
-      style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-white leading-tight truncate">{event.title}</p>
@@ -149,7 +151,6 @@ function EventCard({ event }) {
         </span>
       </div>
 
-      {/* Ticket progress */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-white/40">Tickets vendidos</span>
@@ -157,12 +158,11 @@ function EventCard({ event }) {
         </div>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
           <div className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: pct >= 80 ? '#F59E0B' : '#00CFFF' }} />
+            style={{ width: `${pct}%`, background: pct >= 80 ? '#F59E0B' : '#20C7E8' }} />
         </div>
         <p className="text-[10px] text-white/30">{pct}% de capacidad</p>
       </div>
 
-      {/* Stats row */}
       <div className="flex items-center gap-3 pt-1">
         <div className="flex items-center gap-1 text-xs text-white/50">
           <Ticket className="w-3 h-3" />
@@ -178,9 +178,9 @@ function EventCard({ event }) {
         type="button"
         onClick={() => navigate(`/validate?event=${event.id}`)}
         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors"
-        style={{ background: 'rgba(0,207,255,0.08)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.2)' }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.14)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,207,255,0.08)')}
+        style={{ background: 'rgba(32,199,232,0.08)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.14)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.08)')}
       >
         <QrCode className="w-3.5 h-3.5" />
         Validar entradas en puerta
@@ -190,10 +190,359 @@ function EventCard({ event }) {
   );
 }
 
+// ── Wallet Tab ─────────────────────────────────────────────────
+function WalletTab({ userId }) {
+  const { toast } = useToast();
+  const [wallet, setWallet] = useState(null);
+  const [txs, setTxs] = useState([]);
+  const [payouts, setPayouts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+  const [requestAmount, setRequestAmount] = useState('');
+  const [showRequest, setShowRequest] = useState(false);
+  const [hasAccount, setHasAccount] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    const load = async () => {
+      setLoading(true);
+      const [walletRes, acctRes, txRes, payoutRes] = await Promise.all([
+        supabase.rpc('get_or_create_wallet', { p_user_id: userId }),
+        supabase.from('promoter_accounts').select('id').eq('user_id', userId).maybeSingle(),
+        supabase.from('transactions')
+          .select('id, amount_total, promoter_amount, payment_method, status, paid_at, events(title)')
+          .eq('promoter_id', userId)
+          .order('paid_at', { ascending: false })
+          .limit(10),
+        supabase.from('payouts')
+          .select('id, amount, status, requested_at, processed_at, transfer_reference')
+          .eq('user_id', userId)
+          .order('requested_at', { ascending: false })
+          .limit(5),
+      ]);
+      setWallet(walletRes.data);
+      setHasAccount(!!acctRes.data?.id);
+      setTxs(txRes.data || []);
+      setPayouts(payoutRes.data || []);
+      setLoading(false);
+    };
+    load();
+  }, [userId]);
+
+  const handleRequestPayout = async () => {
+    const amount = parseInt(requestAmount.replace(/\D/g, ''), 10);
+    if (!amount || amount <= 0) return;
+    if (amount > (wallet?.balance_available || 0)) {
+      toast({ title: 'Monto inválido', description: 'El monto supera tu saldo disponible.', variant: 'destructive' });
+      return;
+    }
+    setRequesting(true);
+    const { data: acct } = await supabase.from('promoter_accounts').select('*').eq('user_id', userId).single();
+    const { error } = await supabase.from('payouts').insert({
+      user_id: userId,
+      amount,
+      account_snapshot: acct,
+    });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitud enviada', description: 'El equipo procesará tu retiro en 1-2 días hábiles.' });
+      setShowRequest(false);
+      setRequestAmount('');
+      setWallet(w => ({ ...w, balance_available: (w?.balance_available || 0) - amount }));
+      setPayouts(p => [{ id: Date.now(), amount, status: 'pending', requested_at: new Date().toISOString() }, ...p]);
+    }
+    setRequesting(false);
+  };
+
+  if (loading) return <LoadingSkeleton rows={4} />;
+
+  const available = wallet?.balance_available || 0;
+  const pending   = wallet?.balance_pending   || 0;
+  const total     = wallet?.total_earned      || 0;
+
+  return (
+    <div className="space-y-5">
+      {/* Balance hero */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative rounded-2xl overflow-hidden p-6"
+        style={{ background: 'linear-gradient(135deg, rgba(93,224,163,0.14), rgba(10,15,14,0.95))', border: '1px solid rgba(93,224,163,0.2)' }}
+      >
+        <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(93,224,163,0.18), transparent 70%)', transform: 'translate(30%,-30%)' }} />
+        <div className="grid grid-cols-3 gap-4 relative z-10">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Disponible</p>
+            <p className="text-2xl font-black" style={{ color: '#5DE0A3' }}>${available.toLocaleString('es-CO')}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">En espera</p>
+            <p className="text-2xl font-black text-white/60">${pending.toLocaleString('es-CO')}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Total ganado</p>
+            <p className="text-2xl font-black text-white/40">${total.toLocaleString('es-CO')}</p>
+          </div>
+        </div>
+
+        {pending > 0 && (
+          <p className="text-[11px] text-white/30 mt-3 relative z-10">
+            El saldo en espera se libera 48h después de cada evento.
+          </p>
+        )}
+      </motion.div>
+
+      {/* Solicitar retiro */}
+      {available > 0 && (
+        <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(93,224,163,0.15)' }}>
+          {!hasAccount ? (
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 shrink-0" style={{ color: '#F59E0B' }} />
+              <p className="text-xs text-white/50">Registra una cuenta bancaria en la pestaña <span className="text-white/80 font-bold">Cuenta Bancaria</span> para poder solicitar retiros.</p>
+            </div>
+          ) : showRequest ? (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-white">Solicitar retiro</p>
+              <div>
+                <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Monto (COP)</label>
+                <input
+                  type="number"
+                  value={requestAmount}
+                  onChange={e => setRequestAmount(e.target.value)}
+                  placeholder="0"
+                  max={available}
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                  style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)' }}
+                />
+                <p className="text-[10px] text-white/30 mt-1">Disponible: ${available.toLocaleString('es-CO')} COP</p>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowRequest(false)}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleRequestPayout} disabled={requesting}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  style={{ background: '#5DE0A3', color: '#080B14' }}>
+                  {requesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                  Solicitar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setShowRequest(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(93,224,163,0.1)', color: '#5DE0A3', border: '1px solid rgba(93,224,163,0.2)' }}>
+              <ArrowUpRight className="w-4 h-4" />
+              Solicitar Retiro · ${available.toLocaleString('es-CO')} disponibles
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Retiros recientes */}
+      {payouts.length > 0 && (
+        <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-widest px-4 pt-4 pb-2">Retiros solicitados</p>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {payouts.map(p => (
+              <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-white">${p.amount.toLocaleString('es-CO')} COP</p>
+                  <p className="text-[11px] text-white/30 mt-0.5">
+                    {new Date(p.requested_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                    {p.transfer_reference && ` · Ref: ${p.transfer_reference}`}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full`} style={{
+                  background: p.status === 'completed' ? 'rgba(34,197,94,0.1)' : p.status === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                  color: p.status === 'completed' ? '#22c55e' : p.status === 'rejected' ? '#ef4444' : '#F59E0B',
+                }}>
+                  {p.status === 'completed' ? 'Completado' : p.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Historial de transacciones */}
+      {txs.length > 0 && (
+        <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-widest px-4 pt-4 pb-2">Pagos recibidos</p>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {txs.map(tx => (
+              <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{tx.events?.title || 'Evento'}</p>
+                  <p className="text-[11px] text-white/30 mt-0.5">
+                    {tx.payment_method || 'Pago'}
+                    {tx.paid_at && ` · ${new Date(tx.paid_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}`}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold" style={{ color: '#5DE0A3' }}>+${tx.promoter_amount.toLocaleString('es-CO')}</p>
+                  <p className="text-[10px] text-white/30">de ${tx.amount_total.toLocaleString('es-CO')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {txs.length === 0 && payouts.length === 0 && available === 0 && pending === 0 && (
+        <EmptyState label="Aún no hay pagos registrados" icon={Banknote} />
+      )}
+    </div>
+  );
+}
+
+// ── Cuenta Bancaria Tab ────────────────────────────────────────
+function BankAccountTab({ userId }) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    account_holder: '', document_type: 'CC', document_number: '',
+    bank_name: 'Bancolombia', account_type: 'ahorros', account_number: '',
+  });
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const [exists, setExists] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('promoter_accounts').select('*').eq('user_id', userId).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setForm({
+            account_holder: data.account_holder || '',
+            document_type:  data.document_type  || 'CC',
+            document_number: data.document_number || '',
+            bank_name:      data.bank_name      || 'Bancolombia',
+            account_type:   data.account_type   || 'ahorros',
+            account_number: data.account_number || '',
+          });
+          setExists(true);
+          setVerified(data.verified);
+        }
+        setLoading(false);
+      });
+  }, [userId]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!form.account_holder || !form.account_number || !form.document_number) return;
+    setSaving(true);
+
+    const payload = { ...form, user_id: userId, updated_at: new Date().toISOString() };
+    const { error } = exists
+      ? await supabase.from('promoter_accounts').update(payload).eq('user_id', userId)
+      : await supabase.from('promoter_accounts').insert(payload);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: exists ? 'Cuenta actualizada' : 'Cuenta registrada', description: 'Tus datos bancarios han sido guardados.' });
+      setExists(true);
+    }
+    setSaving(false);
+  };
+
+  if (loading) return <LoadingSkeleton rows={3} />;
+
+  return (
+    <div className="space-y-5">
+      {verified && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
+          <CheckCircle className="w-4 h-4 shrink-0" style={{ color: '#22c55e' }} />
+          <p className="text-xs text-white/60">Cuenta bancaria verificada por el equipo PolyFauna.</p>
+        </div>
+      )}
+      {exists && !verified && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          <AlertCircle className="w-4 h-4 shrink-0" style={{ color: '#F59E0B' }} />
+          <p className="text-xs text-white/60">Tu cuenta está pendiente de verificación. El equipo la revisará en 1-2 días hábiles.</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSave} className="space-y-4">
+        <div className="rounded-xl p-5 space-y-4" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-sm font-bold text-white">Datos del titular</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Nombre completo del titular *</label>
+              <input type="text" value={form.account_holder} onChange={e => set('account_holder', e.target.value)}
+                placeholder="Nombre Apellido"
+                className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)' }} />
+            </div>
+            <div>
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Tipo de documento</label>
+              <select value={form.document_type} onChange={e => set('document_type', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(11,16,15,0.95)' }}>
+                {['CC','NIT','CE','Pasaporte'].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Número de documento *</label>
+              <input type="text" value={form.document_number} onChange={e => set('document_number', e.target.value)}
+                placeholder="1234567890"
+                className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl p-5 space-y-4" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-sm font-bold text-white">Datos bancarios</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Banco</label>
+              <select value={form.bank_name} onChange={e => set('bank_name', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(11,16,15,0.95)' }}>
+                {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Tipo de cuenta</label>
+              <select value={form.account_type} onChange={e => set('account_type', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(11,16,15,0.95)' }}>
+                <option value="ahorros">Ahorros</option>
+                <option value="corriente">Corriente</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Número de cuenta *</label>
+              <input type="text" value={form.account_number} onChange={e => set('account_number', e.target.value)}
+                placeholder="0000000000"
+                className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)' }} />
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" disabled={saving || !form.account_holder || !form.account_number || !form.document_number}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+          style={{ background: '#FF8A1F', color: '#fff' }}>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+          {saving ? 'Guardando…' : exists ? 'Actualizar cuenta' : 'Registrar cuenta'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────
 export default function PromoterDashboard() {
   const { currentUser } = useAuth();
   const { profile } = useProfile();
+  const [activeTab, setActiveTab] = useState('events');
   const [showCreate, setShowCreate] = useState(false);
 
   const { data: myEvents, loading, refetch } = useSupabaseQuery(
@@ -209,9 +558,8 @@ export default function PromoterDashboard() {
   if (profile && !canAccess) {
     return (
       <div className="p-5 flex flex-col items-center justify-center py-16 gap-3 text-center">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-1"
-          style={{ background: 'rgba(0,207,255,0.08)' }}>
-          <Users className="w-6 h-6" style={{ color: '#00CFFF' }} />
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-1" style={{ background: 'rgba(32,199,232,0.08)' }}>
+          <Users className="w-6 h-6" style={{ color: '#20C7E8' }} />
         </div>
         <p className="text-sm font-bold text-white/60">Acceso restringido</p>
         <p className="text-xs text-white/30 max-w-xs">Este panel es exclusivo para Promotores y Clubs. Edita tu perfil y cambia tu rol para solicitar acceso.</p>
@@ -223,30 +571,32 @@ export default function PromoterDashboard() {
   const totalRevenue = (myEvents || []).reduce((s, e) => s + ((e.tickets_sold || 0) * (e.price || 0)), 0);
 
   return (
-    <div className="p-5 space-y-6">
+    <div className="p-5 space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-white">Promoter Dashboard</h1>
-          <p className="text-sm text-white/40 mt-1">Gestiona tus eventos y entradas.</p>
+          <p className="text-sm text-white/40 mt-1">Gestiona eventos, wallet y cuenta bancaria.</p>
         </div>
-        <button type="button" onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl"
-          style={{ background: '#00CFFF', color: '#080B14' }}>
-          <Plus className="w-4 h-4" />
-          Nuevo Evento
-        </button>
+        {activeTab === 'events' && (
+          <button type="button" onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl"
+            style={{ background: '#20C7E8', color: '#080B14' }}>
+            <Plus className="w-4 h-4" />
+            Nuevo Evento
+          </button>
+        )}
       </div>
 
-      {/* Stats */}
-      {myEvents && myEvents.length > 0 && (
+      {/* Stats (visible on events tab) */}
+      {activeTab === 'events' && myEvents && myEvents.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Eventos',  value: myEvents.length, icon: Calendar,   color: '#00CFFF' },
+            { label: 'Eventos',  value: myEvents.length, icon: Calendar,   color: '#20C7E8' },
             { label: 'Tickets',  value: totalSold,        icon: Ticket,     color: '#A78BFA' },
             { label: 'Ingresos', value: `$${totalRevenue.toLocaleString('es-CO')}`, icon: TrendingUp, color: '#34D399' },
           ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="rounded-xl p-4"
-              style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div key={label} className="rounded-xl p-4" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <Icon className="w-4 h-4 mb-2" style={{ color }} />
               <p className="text-lg font-black text-white">{value}</p>
               <p className="text-[11px] text-white/40 mt-0.5">{label}</p>
@@ -255,18 +605,59 @@ export default function PromoterDashboard() {
         </div>
       )}
 
-      {/* Events list */}
-      {loading && <LoadingSkeleton rows={3} />}
-      {!loading && (!myEvents || myEvents.length === 0) && (
-        <EmptyState label="Aún no has creado eventos" icon={Calendar} />
-      )}
-      {!loading && myEvents && myEvents.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {myEvents.map(event => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      )}
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all"
+            style={{
+              background: activeTab === id ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: activeTab === id ? '#fff' : 'rgba(255,255,255,0.4)',
+            }}
+          >
+            <Icon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18 }}
+        >
+          {activeTab === 'events' && (
+            <>
+              {loading && <LoadingSkeleton rows={3} />}
+              {!loading && (!myEvents || myEvents.length === 0) && (
+                <EmptyState label="Aún no has creado eventos" icon={Calendar} />
+              )}
+              {!loading && myEvents && myEvents.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myEvents.map(event => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'wallet' && (
+            <WalletTab userId={currentUser.id} />
+          )}
+
+          {activeTab === 'account' && (
+            <BankAccountTab userId={currentUser.id} />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       <AnimatePresence>
         {showCreate && (

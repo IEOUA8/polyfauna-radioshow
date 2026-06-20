@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  AlertTriangle, Banknote, BarChart2, CalendarDays, CheckCircle,
+  AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, Disc3, FileText, Headphones, Home, Loader2, Menu,
   Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
   Ticket, TrendingUp, Users, X, XCircle, ListMusic,
@@ -11,6 +11,7 @@ import {
 import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 import EventManager from '@/components/admin/EventManager';
 import PodcastManager from '@/components/admin/PodcastManager';
 import BlogManager from '@/components/admin/BlogManager';
@@ -31,6 +32,7 @@ const NAV_GROUPS = [
       { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: '#FFB020' },
       { id: 'qr',        label: 'Lector QR',    icon: QrCode,      color: '#22c55e' },
       { id: 'wallet',    label: 'Wallet',        icon: Banknote,    color: '#5DE0A3' },
+      { id: 'payouts',   label: 'Retiros',       icon: ArrowUpRight, color: '#D946EF' },
     ],
   },
   {
@@ -279,17 +281,17 @@ function DashboardSection() {
       const [usersRes, eventsRes, ticketsRes] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('events').select('id', { count: 'exact', head: true }),
-        supabase.from('tickets').select('id, created_at, events(title, price), profiles(display_name, email)').order('created_at', { ascending: false }).limit(8),
+        supabase.from('user_tickets').select('id, created_at, events(title, price), profiles(display_name, email)').order('created_at', { ascending: false }).limit(8),
       ]);
 
       // calculate total sold & revenue from tickets
-      const allTickets = await supabase.from('tickets').select('events(price)');
+      const allTickets = await supabase.from('user_tickets').select('events(price)');
       const revenue = (allTickets.data || []).reduce((sum, t) => sum + (t.events?.price || 0), 0);
 
       setStats({
         users: usersRes.count || 0,
         events: eventsRes.count || 0,
-        tickets: ticketsRes.data?.length ? (await supabase.from('tickets').select('id', { count: 'exact', head: true })).count || 0 : 0,
+        tickets: ticketsRes.data?.length ? (await supabase.from('user_tickets').select('id', { count: 'exact', head: true })).count || 0 : 0,
         revenue,
       });
       setRecentTickets(ticketsRes.data || []);
@@ -613,6 +615,169 @@ function WalletSection() {
   );
 }
 
+/* ─────────────────────── PAYOUTS SECTION ─────────────────────── */
+function PayoutsSection() {
+  const [payouts, setPayouts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(null);
+  const [refInput, setRefInput] = useState({});
+  const { toast } = useToast();
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('payouts')
+      .select('*, profiles:user_id(display_name, email), promoter_accounts:user_id(bank_name, account_type, account_number, account_holder)')
+      .order('requested_at', { ascending: false });
+    setPayouts(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleApprove = async (payout) => {
+    const ref = refInput[payout.id]?.trim();
+    if (!ref) {
+      alert('Ingresa la referencia bancaria de la transferencia');
+      return;
+    }
+    setProcessing(payout.id);
+    const { error } = await supabase.rpc('approve_payout', {
+      p_payout_id: payout.id,
+      p_transfer_reference: ref,
+    });
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      setPayouts(prev => prev.map(p => p.id === payout.id
+        ? { ...p, status: 'completed', transfer_reference: ref, processed_at: new Date().toISOString() }
+        : p
+      ));
+    }
+    setProcessing(null);
+  };
+
+  const handleReject = async (payout) => {
+    if (!confirm(`¿Rechazar retiro de $${payout.amount.toLocaleString('es-CO')} COP?`)) return;
+    setProcessing(payout.id);
+    const { error } = await supabase.from('payouts')
+      .update({ status: 'rejected', processed_at: new Date().toISOString() })
+      .eq('id', payout.id);
+    if (!error) {
+      setPayouts(prev => prev.map(p => p.id === payout.id ? { ...p, status: 'rejected' } : p));
+    }
+    setProcessing(null);
+  };
+
+  const pending = payouts.filter(p => p.status === 'pending');
+  const done    = payouts.filter(p => p.status !== 'pending');
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-black text-white">Retiros</h2>
+          <p className="text-sm text-white/40 mt-0.5">Solicitudes de retiro de promotores</p>
+        </div>
+        <button type="button" onClick={load}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)' }}>
+          <RefreshCw className="w-3.5 h-3.5" />
+          Actualizar
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)}
+        </div>
+      ) : (
+        <>
+          {pending.length === 0 && done.length === 0 && (
+            <p className="text-sm text-white/30 text-center py-8">Sin solicitudes de retiro.</p>
+          )}
+
+          {pending.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Pendientes ({pending.length})</p>
+              {pending.map(p => (
+                <div key={p.id} className="rounded-xl p-4 space-y-3"
+                  style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(217,70,239,0.2)' }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-white">{p.profiles?.display_name || p.profiles?.email || 'Usuario'}</p>
+                      <p className="text-xs text-white/40">{p.profiles?.email}</p>
+                    </div>
+                    <p className="text-lg font-black shrink-0" style={{ color: '#D946EF' }}>${p.amount.toLocaleString('es-CO')} COP</p>
+                  </div>
+                  {p.account_snapshot && (
+                    <div className="text-[11px] text-white/40 space-y-0.5">
+                      <p>{p.account_snapshot.account_holder} · {p.account_snapshot.document_type}: {p.account_snapshot.document_number}</p>
+                      <p>{p.account_snapshot.bank_name} · {p.account_snapshot.account_type} · {p.account_snapshot.account_number}</p>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-white/30">
+                    Solicitado: {new Date(p.requested_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Referencia bancaria de la transferencia"
+                      value={refInput[p.id] || ''}
+                      onChange={e => setRefInput(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      className="flex-1 px-3 py-2 rounded-lg text-xs text-white bg-transparent border outline-none"
+                      style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)' }}
+                    />
+                    <button type="button" onClick={() => handleReject(p)} disabled={processing === p.id}
+                      className="px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50"
+                      style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                      Rechazar
+                    </button>
+                    <button type="button" onClick={() => handleApprove(p)} disabled={processing === p.id}
+                      className="px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                      style={{ background: '#5DE0A3', color: '#080B14' }}>
+                      {processing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                      Marcar pagado
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {done.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Historial</p>
+              <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                {done.map((p, i) => (
+                  <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3"
+                    style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{p.profiles?.display_name || p.profiles?.email}</p>
+                      <p className="text-[11px] text-white/30">
+                        ${p.amount.toLocaleString('es-CO')} COP
+                        {p.transfer_reference && ` · Ref: ${p.transfer_reference}`}
+                        {p.processed_at && ` · ${new Date(p.processed_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}`}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                      style={{
+                        background: p.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                        color:      p.status === 'completed' ? '#22c55e'             : '#ef4444',
+                      }}>
+                      {p.status === 'completed' ? 'Pagado' : 'Rechazado'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────────── QR SECTION WRAPPER ─────────────────────── */
 function QRSection() {
   const [scanKey, setScanKey] = useState(0);
@@ -799,6 +964,7 @@ const AdminDashboard = () => {
       case 'tickets':     return <TicketsSection />;
       case 'qr':          return <QRSection />;
       case 'wallet':      return <WalletSection />;
+      case 'payouts':     return <PayoutsSection />;
       case 'podcasts':    return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Podcasts</h2><p className="text-sm text-white/40 mt-0.5">Gestionar episodios</p></div><PodcastManager /></div>;
       case 'blog':        return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Blog</h2><p className="text-sm text-white/40 mt-0.5">Artículos y publicaciones</p></div><BlogManager /></div>;
       case 'interviews':  return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Interviews</h2><p className="text-sm text-white/40 mt-0.5">Entrevistas</p></div><InterviewManager /></div>;
