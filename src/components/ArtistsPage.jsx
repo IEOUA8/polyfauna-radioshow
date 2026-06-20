@@ -63,24 +63,26 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
         </button>
       </div>
 
-      {/* Cover banner */}
-      <div className="relative overflow-hidden" style={{ height: 170 }}>
-        <img
-          src={img}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 w-full h-full object-cover scale-110"
-          style={{ filter: 'blur(6px) brightness(0.40) saturate(0.7)' }}
-        />
-        {/* gradient fade to page bg at bottom */}
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(5,9,10,0.10) 0%, rgba(5,9,10,0.55) 70%, #05090A 100%)',
-        }} />
+      {/* Cover banner — outer wrapper sin overflow:hidden para no clipear el row */}
+      <div className="relative" style={{ height: 170 }}>
+        {/* Inner clip: solo contiene la imagen blureada */}
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src={img}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover scale-110"
+            style={{ filter: 'blur(6px) brightness(0.38) saturate(0.7)' }}
+          />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom, rgba(5,9,10,0.08) 0%, rgba(5,9,10,0.50) 65%, #05090A 100%)',
+          }} />
+        </div>
         {/* Favorite button */}
         <button
           type="button"
           onClick={() => toggleFav('artist', artist.id)}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all"
+          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all z-10"
           style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
         >
           <Heart
@@ -90,14 +92,16 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
         </button>
       </div>
 
-      {/* Avatar (left) + Info (right) — row overlapping cover bottom */}
-      <div className="px-5 flex items-start gap-4" style={{ marginTop: -46 }}>
-        {/* Avatar circle — pulls up into cover */}
+      {/* Avatar (left) + Info (right) — items-end: ambos alineados abajo */}
+      <div className="px-5 flex items-end gap-4" style={{ marginTop: -64 }}>
+        {/* Avatar circle grande */}
         <div
-          className="w-[90px] h-[90px] rounded-full overflow-hidden shrink-0"
+          className="rounded-full overflow-hidden shrink-0"
           style={{
+            width: 120,
+            height: 120,
             border: '3px solid #05090A',
-            boxShadow: '0 0 0 1px rgba(255,255,255,0.13), 0 8px 28px rgba(0,0,0,0.70)',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.13), 0 10px 32px rgba(0,0,0,0.75)',
             position: 'relative',
             zIndex: 10,
           }}
@@ -105,8 +109,8 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
           <img src={img} alt={artist.name} className="w-full h-full object-cover" />
         </div>
 
-        {/* Info column — paddingTop pushes text below the cover boundary */}
-        <div className="flex-1 min-w-0" style={{ paddingTop: 50 }}>
+        {/* Info column */}
+        <div className="flex-1 min-w-0 pb-1">
           {artist.type && (
             <span
               className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1"
@@ -121,7 +125,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
           )}
           {/* Social icons inline */}
           {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
-            <div className="flex gap-1.5 mt-2 flex-wrap">
+            <div className="flex gap-1.5 mt-2.5 flex-wrap">
               {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
                 links[key] ? (
                   <SocialButton
