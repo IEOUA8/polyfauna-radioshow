@@ -91,21 +91,22 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
       </div>
 
       {/* Avatar (left) + Info (right) — row overlapping cover bottom */}
-      <div className="px-5 flex items-end gap-4" style={{ marginTop: -46 }}>
-        {/* Avatar circle */}
+      <div className="px-5 flex items-start gap-4" style={{ marginTop: -46 }}>
+        {/* Avatar circle — pulls up into cover */}
         <div
-          className="w-[90px] h-[90px] rounded-full overflow-hidden shrink-0 relative"
+          className="w-[90px] h-[90px] rounded-full overflow-hidden shrink-0"
           style={{
             border: '3px solid #05090A',
             boxShadow: '0 0 0 1px rgba(255,255,255,0.13), 0 8px 28px rgba(0,0,0,0.70)',
+            position: 'relative',
             zIndex: 10,
           }}
         >
           <img src={img} alt={artist.name} className="w-full h-full object-cover" />
         </div>
 
-        {/* Info column aligned to avatar bottom */}
-        <div className="flex-1 min-w-0 pb-1">
+        {/* Info column — paddingTop pushes text below the cover boundary */}
+        <div className="flex-1 min-w-0" style={{ paddingTop: 50 }}>
           {artist.type && (
             <span
               className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1"
@@ -114,7 +115,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
               {artist.type}
             </span>
           )}
-          <h1 className="text-xl font-black text-white leading-tight truncate">{artist.name}</h1>
+          <h1 className="text-xl font-black text-white leading-tight">{artist.name}</h1>
           {artist.city && (
             <p className="text-xs text-white/40 mt-0.5">{artist.city}</p>
           )}
