@@ -30,11 +30,14 @@ function BuyModal({ event, onClose }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
   const [wompiRef, setWompiRef] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [assignedEmails, setAssignedEmails] = useState({ 2: '', 3: '', 4: '' });
 
   const isFree = !event.price || event.price === 0;
   const availableLeft = (event.tickets_total || 0) - (event.tickets_sold || 0);
   const isSoldOut = availableLeft <= 0;
   const isBusy = status === 'buying' || status === 'processing';
+  const totalPrice = (event.price || 0) * quantity;
 
   const handleConfirm = async () => {
     if (!currentUser) {
@@ -62,8 +65,9 @@ function BuyModal({ event, onClose }) {
       // Evento de pago: flujo Wompi
       setStatus('processing');
       try {
+        const emails = Array.from({ length: quantity - 1 }, (_, i) => assignedEmails[i + 2] || null);
         const { data, error } = await supabase.functions.invoke('create-payment', {
-          body: { event_id: event.id, ticket_type: 'GA' },
+          body: { event_id: event.id, ticket_type: 'GA', quantity, assigned_emails: emails },
         });
         if (error) throw new Error(error.message || 'Error al crear el pago');
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
@@ -214,6 +218,79 @@ function BuyModal({ event, onClose }) {
                 </p>
               )}
 
+              {/* ── Selector de cantidad ── */}
+              {!isSoldOut && currentUser && !isFree && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    <Users className="w-3 h-3" /> Cantidad <span style={{ color: 'rgba(255,255,255,0.20)' }}>· máx. 4</span>
+                  </p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4].map(n => {
+                      const unavailable = n > Math.min(4, availableLeft);
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => !unavailable && setQuantity(n)}
+                          disabled={unavailable || isBusy}
+                          className="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
+                          style={quantity === n
+                            ? { background: 'linear-gradient(135deg, #FF8A1F 0%, #F59E0B 100%)', color: '#06090A' }
+                            : unavailable
+                              ? { background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.15)', cursor: 'not-allowed' }
+                              : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.50)' }}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Asignación de tickets por correo ── */}
+              {quantity > 1 && currentUser && !isFree && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    Asignar tickets
+                  </p>
+                  {/* Ticket 1 — comprador */}
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span className="text-[10px] font-black text-white/25 shrink-0 w-12">Ticket 1</span>
+                    <span className="text-xs text-white/35 truncate flex-1">{currentUser.email}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.30)' }}>TÚ</span>
+                  </div>
+                  {/* Tickets extra */}
+                  {Array.from({ length: quantity - 1 }, (_, i) => i + 2).map(idx => (
+                    <div key={idx} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <span className="text-[10px] font-black text-white/25 shrink-0 w-12">Ticket {idx}</span>
+                      <input
+                        type="email"
+                        placeholder="correo@email.com  (opcional)"
+                        value={assignedEmails[idx]}
+                        onChange={e => setAssignedEmails(prev => ({ ...prev, [idx]: e.target.value }))}
+                        className="flex-1 bg-transparent text-xs outline-none"
+                        style={{ color: 'rgba(255,255,255,0.70)' }}
+                      />
+                    </div>
+                  ))}
+                  <p className="text-[10px] leading-relaxed px-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                    Si el correo ya tiene cuenta en PolyFauna el ticket aparece directo en su Vault. De lo contrario, queda en el tuyo para que lo compartas.
+                  </p>
+                </div>
+              )}
+
+              {/* ── Total cuando hay más de 1 ticket ── */}
+              {quantity > 1 && !isFree && (
+                <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+                  style={{ background: 'rgba(255,138,31,0.06)', border: '1px solid rgba(255,138,31,0.14)' }}>
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{quantity} tickets × {formatPrice(event.price)}</span>
+                  <span className="text-base font-black" style={{ color: 'rgba(255,255,255,0.90)' }}>{formatPrice(totalPrice)}</span>
+                </div>
+              )}
+
               {status === 'error' && (
                 <div className="px-4 py-3 rounded-xl text-xs font-semibold text-center text-red-300" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
                   {errorMsg}
@@ -240,7 +317,7 @@ function BuyModal({ event, onClose }) {
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> {status === 'processing' ? 'Preparando pago…' : 'Procesando…'}</>
                     : isFree
                       ? <><Ticket className="w-4 h-4" /> Confirmar (Gratis)</>
-                      : <><ExternalLink className="w-4 h-4" /> Pagar con Wompi</>}
+                      : <><ExternalLink className="w-4 h-4" /> Pagar {quantity > 1 ? formatPrice(totalPrice) : 'con Wompi'}</>}
                 </button>
               )}
 

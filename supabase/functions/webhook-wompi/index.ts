@@ -52,13 +52,11 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Firma inválida' }), { status: 400 });
   }
 
-  // Solo procesar eventos de transacción
-  if (event !== 'transaction.updated') {
+  if (event !== 'transaction.updated')
     return new Response(JSON.stringify({ received: true }), { status: 200 });
-  }
 
   const tx = (data as Record<string, unknown>).transaction as Record<string, unknown>;
-  const reference  = String(tx?.reference ?? '');
+  const reference   = String(tx?.reference ?? '');
   const wompiStatus = String(tx?.status ?? '');
 
   const supabase = createClient(
@@ -66,7 +64,7 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // ── Buscar nuestra transacción ────────────────────────────────
+  // ── Buscar transacción ────────────────────────────────────────
   const { data: transaction, error: findErr } = await supabase
     .from('transactions')
     .select('*, events(date, title, owner_id)')
@@ -78,14 +76,11 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Transacción no encontrada' }), { status: 404 });
   }
 
-  // Evitar reprocesar transacciones ya finalizadas
-  if (transaction.status !== 'pending') {
+  if (transaction.status !== 'pending')
     return new Response(JSON.stringify({ received: true, note: 'ya procesado' }), { status: 200 });
-  }
 
   const ourStatus = STATUS_MAP[wompiStatus] ?? 'error';
 
-  // Calcular release_at: 48 h después de la fecha del evento
   let releaseAt: string | null = null;
   if (ourStatus === 'approved' && transaction.events?.date) {
     const eventDate = new Date(transaction.events.date);
@@ -93,45 +88,71 @@ Deno.serve(async (req) => {
     releaseAt = eventDate.toISOString();
   }
 
-  // ── Actualizar la transacción ─────────────────────────────────
   await supabase.from('transactions').update({
-    status:              ourStatus,
+    status:               ourStatus,
     wompi_transaction_id: String(tx?.id ?? ''),
-    payment_method:      String((tx?.payment_method as Record<string, unknown>)?.type ?? 'unknown'),
-    wompi_payload:       tx,
-    paid_at:             ourStatus === 'approved' ? new Date().toISOString() : null,
-    release_at:          releaseAt,
+    payment_method:       String((tx?.payment_method as Record<string, unknown>)?.type ?? 'unknown'),
+    wompi_payload:        tx,
+    paid_at:              ourStatus === 'approved' ? new Date().toISOString() : null,
+    release_at:           releaseAt,
   }).eq('id', transaction.id);
 
-  // ── Si fue aprobado: emitir ticket + actualizar wallet ─────────
+  // ── Si aprobado: emitir tickets ───────────────────────────────
   if (ourStatus === 'approved') {
-    // Emitir ticket
-    const { data: ticketResult, error: ticketErr } = await supabase
-      .rpc('issue_ticket_for_user', {
-        p_event_id:    transaction.event_id,
-        p_user_id:     transaction.buyer_id,
-        p_ticket_type: 'GA',
-      });
+    const quantity: number       = transaction.quantity ?? 1;
+    const assignedEmails: (string | null)[] = transaction.assigned_emails ?? [];
+    const firstTicketId: string[] = [];
 
-    if (ticketErr) {
-      console.error('Webhook: error al emitir ticket:', ticketErr.message);
-    } else if (ticketResult?.success && ticketResult?.ticket_id) {
+    for (let i = 0; i < quantity; i++) {
+      const ticketIndex    = i + 1;
+      // Ticket 1 = comprador; tickets 2-4 = email asignado (si hay)
+      const assignedEmail  = i === 0 ? null : (assignedEmails[i - 1] ?? null);
+
+      // Determinar a qué usuario pertenece este ticket
+      let targetUserId = transaction.buyer_id;
+      if (assignedEmail) {
+        const { data: foundId } = await supabase.rpc('get_user_id_by_email', {
+          p_email: assignedEmail,
+        });
+        if (foundId) targetUserId = foundId;
+      }
+
+      const { data: ticketResult, error: ticketErr } = await supabase
+        .rpc('issue_ticket_v2', {
+          p_event_id:       transaction.event_id,
+          p_user_id:        targetUserId,
+          p_ticket_type:    'GA',
+          p_ticket_index:   ticketIndex,
+          p_assigned_email: assignedEmail,
+        });
+
+      if (ticketErr) {
+        console.error(`Webhook: error emitiendo ticket ${ticketIndex}:`, ticketErr.message);
+      } else if (ticketResult?.success && ticketResult?.ticket_id) {
+        console.log(`Webhook: ticket ${ticketIndex}/${quantity} emitido → ${ticketResult.ticket_id}`);
+        if (ticketIndex === 1) firstTicketId.push(ticketResult.ticket_id);
+      } else {
+        console.warn(`Webhook: ticket ${ticketIndex} no emitido:`, ticketResult?.error ?? 'sin detalle');
+      }
+    }
+
+    // Vincular primer ticket a la transacción (para compatibilidad)
+    if (firstTicketId.length > 0) {
       await supabase.from('transactions')
-        .update({ ticket_id: ticketResult.ticket_id })
+        .update({ ticket_id: firstTicketId[0] })
         .eq('id', transaction.id);
     }
 
-    // Actualizar wallet del promotor (saldo pending)
-    const promoterId = transaction.promoter_id;
-    if (promoterId) {
+    // Actualizar wallet del promotor
+    if (transaction.promoter_id) {
       await supabase.rpc('add_to_pending_wallet', {
-        p_user_id: promoterId,
+        p_user_id: transaction.promoter_id,
         p_amount:  transaction.promoter_amount,
         p_total:   transaction.promoter_amount,
       });
     }
 
-    console.log(`Webhook OK: transacción ${transaction.id} aprobada, ticket emitido`);
+    console.log(`Webhook OK: transacción ${transaction.id} aprobada — ${quantity} ticket(s) emitidos`);
   } else {
     console.log(`Webhook: transacción ${transaction.id} → ${ourStatus}`);
   }
