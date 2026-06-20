@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Disc3, ExternalLink, Globe, Heart, Instagram, Music, Twitter } from 'lucide-react';
+import { ArrowLeft, Disc3, Globe, Heart, Instagram, Music, Twitter } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -13,7 +13,7 @@ const SOCIAL_DETAIL = [
   { key: 'twitter',   icon: Twitter,   label: 'Twitter / X', color: '#94A3B8', build: (h) => `https://x.com/${h}` },
   { key: 'bandcamp',  icon: Music,     label: 'Bandcamp',  color: '#1DA0C3', build: (h) => h.includes('.') ? `https://${h}` : `https://${h}.bandcamp.com` },
   { key: 'soundcloud',icon: Music,     label: 'SoundCloud',color: '#FF5500', build: (h) => `https://soundcloud.com/${h}` },
-  { key: 'website',   icon: Globe,     label: 'Website',   color: 'rgba(255,255,255,0.9)', build: (h) => h.startsWith('http') ? h : `https://${h}` },
+  { key: 'website',   icon: Globe,     label: 'Website',   color: '#C8C8C8', build: (h) => h.startsWith('http') ? h : `https://${h}` },
 ];
 
 function SocialButton({ href, icon: Icon, label, color }) {
@@ -84,7 +84,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
 
         <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 300 }}>
           {artist.type && (
-            <span className="inline-flex text-[10px] font-bold uppercase tracking-widest mb-2 px-2.5 py-0.5 rounded-full w-fit" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(32,199,232,0.25)' }}>
+            <span className="inline-flex text-[10px] font-bold uppercase tracking-widest mb-2 px-2.5 py-0.5 rounded-full w-fit" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}>
               {artist.type}
             </span>
           )}
@@ -95,25 +95,18 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
         </div>
       </div>
 
-      {/* Social links */}
+      {/* Social links — icon only */}
       {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
         <div className="flex flex-wrap gap-2">
           {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
             links[key] ? (
-              <a
+              <SocialButton
                 key={key}
                 href={build(links[key])}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                style={{ background: `${color}12`, color, border: `1px solid ${color}25` }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = `${color}22`)}
-                onMouseLeave={(e) => (e.currentTarget.style.background = `${color}12`)}
-              >
-                {React.createElement(icon, { className: 'w-3.5 h-3.5' })}
-                {label}
-                <ExternalLink className="w-3 h-3 opacity-50" />
-              </a>
+                icon={icon}
+                label={label}
+                color={color}
+              />
             ) : null
           )}
         </div>
@@ -136,7 +129,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
               <span
                 key={g}
                 className="text-xs font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(124,92,255,0.1)', color: '#7C5CFF', border: '1px solid rgba(124,92,255,0.2)' }}
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
               >
                 {g.trim()}
               </span>
@@ -159,7 +152,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
       className="rounded-xl overflow-hidden flex flex-col group cursor-pointer"
       style={{ background: 'rgba(11, 16, 15, 0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
       onClick={onClick}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(124,92,255,0.25)')}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)')}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
     >
       <div className="relative aspect-square overflow-hidden">
@@ -172,7 +165,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
         {artist.type && (
           <span
             className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded"
-            style={{ background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(32,199,232,0.25)' }}
+            style={{ background: 'rgba(0,0,0,0.65)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}
           >
             {artist.type}
           </span>
@@ -217,7 +210,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
         <div className="flex items-center gap-1.5 mt-auto pt-2">
           <SocialButton href={links.instagram} icon={Instagram} label="Instagram" color="#E1306C" />
           <SocialButton href={links.twitter} icon={Twitter} label="Twitter" color="#94A3B8" />
-          <SocialButton href={links.website} icon={Globe} label="Website" color="rgba(255,255,255,0.9)" />
+          <SocialButton href={links.website} icon={Globe} label="Website" color="#C8C8C8" />
           {(!links.instagram && !links.twitter && !links.website) && (
             <span className="text-[10px] text-white/20">Sin redes</span>
           )}
