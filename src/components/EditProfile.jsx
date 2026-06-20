@@ -27,7 +27,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
     city:         profile?.city || '',
     website:      profile?.website || '',
     role:         profile?.role || 'citizen',
-    social_links: profile?.social_links || { instagram: '', twitter: '', soundcloud: '' },
+    social_links: profile?.social_links || { instagram: '', bandcamp: '', soundcloud: '', twitter: '' },
   });
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
@@ -78,7 +78,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden overflow-y-auto max-h-[90vh]"
-        style={{ background: '#0F1322', border: '1px solid rgba(255,255,255,0.1)' }}>
+        style={{ background: 'rgba(11,16,15,0.96)', border: '1px solid rgba(255,255,255,0.1)' }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
@@ -93,7 +93,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
           {/* Avatar */}
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0"
-              style={{ border: '2px solid rgba(0,207,255,0.3)' }}>
+              style={{ border: '2px solid rgba(32,199,232,0.3)' }}>
               <img src={avatarPreview || FALLBACK} alt="avatar" className="w-full h-full object-cover" />
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
@@ -104,7 +104,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
             <div>
               <button type="button" onClick={() => fileRef.current?.click()}
                 className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors"
-                style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.2)' }}>
+                style={{ background: 'rgba(32,199,232,0.1)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.2)' }}>
                 <Camera className="w-3.5 h-3.5" />
                 {uploading ? 'Subiendo…' : 'Cambiar foto'}
               </button>
@@ -121,10 +121,10 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 <button key={r.value} type="button" onClick={() => set('role', r.value)}
                   className="p-3 rounded-xl text-left transition-all"
                   style={{
-                    background: form.role === r.value ? 'rgba(0,207,255,0.1)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${form.role === r.value ? 'rgba(0,207,255,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                    background: form.role === r.value ? 'rgba(32,199,232,0.1)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${form.role === r.value ? 'rgba(32,199,232,0.4)' : 'rgba(255,255,255,0.07)'}`,
                   }}>
-                  <p className="text-xs font-bold" style={{ color: form.role === r.value ? '#00CFFF' : 'rgba(255,255,255,0.7)' }}>
+                  <p className="text-xs font-bold" style={{ color: form.role === r.value ? '#20C7E8' : 'rgba(255,255,255,0.7)' }}>
                     {r.label}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">{r.desc}</p>
@@ -148,7 +148,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 placeholder={placeholder}
                 className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
-                onFocus={e => (e.target.style.borderColor = 'rgba(0,207,255,0.4)')}
+                onFocus={e => (e.target.style.borderColor = 'rgba(32,199,232,0.4)')}
                 onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
               />
             </div>
@@ -164,7 +164,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
               rows={3}
               className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
-              onFocus={e => (e.target.style.borderColor = 'rgba(0,207,255,0.4)')}
+              onFocus={e => (e.target.style.borderColor = 'rgba(32,199,232,0.4)')}
               onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
             />
           </div>
@@ -175,8 +175,9 @@ export default function EditProfile({ profile, onSave, onClose }) {
             <div className="space-y-2">
               {[
                 { key: 'instagram',  prefix: 'instagram.com/',  placeholder: 'tu_usuario' },
-                { key: 'twitter',    prefix: 'twitter.com/',    placeholder: 'tu_usuario' },
+                { key: 'bandcamp',   prefix: 'bandcamp.com/',   placeholder: 'tu-artista  (ej: artista.bandcamp.com)' },
                 { key: 'soundcloud', prefix: 'soundcloud.com/', placeholder: 'tu_usuario' },
+                { key: 'twitter',    prefix: 'x.com/',          placeholder: 'tu_usuario' },
               ].map(({ key, prefix, placeholder }) => (
                 <div key={key} className="flex items-center rounded-lg overflow-hidden"
                   style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.05)' }}>
@@ -195,7 +196,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
           {/* Save button */}
           <button type="button" onClick={handleSave} disabled={saving}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#00CFFF', color: '#080B14' }}>
+            style={{ background: '#20C7E8', color: '#080B14' }}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>

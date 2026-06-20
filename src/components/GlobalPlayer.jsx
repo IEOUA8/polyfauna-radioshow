@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Heart, ListMusic, Pause, Play, Radio, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFavorites } from '@/hooks/useFavorites';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const STREAM_URL = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
@@ -14,17 +16,21 @@ function formatTime(secs) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack }) {
+export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack, setCurrentSection }) {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const { isFav, toggle: toggleFav } = useFavorites();
   const audioRef = useRef(null);
+  const repeatRef = useRef(false);
   const [volume, setVolume] = useState(0.75);
   const [muted, setMuted] = useState(false);
   const [streamError, setStreamError] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState(false);
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
 
-  // Set audio src whenever the track changes (runs on mount too — currentTrack starts null)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -36,13 +42,14 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     setAudioDuration(0);
   }, [currentTrack?.id]);
 
+  useEffect(() => { repeatRef.current = repeat; }, [repeat]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (isPlaying) {
       setStreamError(false);
       audio.play().catch((err) => {
-        // AbortError fires when src changes while play() is pending — not a real failure
         if (err.name === 'AbortError') return;
         setStreamError(true);
         setIsPlaying(false);
@@ -62,7 +69,15 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     if (!audio) return;
     const onTimeUpdate    = () => setCurrentTime(audio.currentTime);
     const onDurationChange = () => setAudioDuration(audio.duration || 0);
-    const onEnded         = () => { setCurrentTrack?.(null); setIsPlaying(false); setCurrentTime(0); setAudioDuration(0); };
+    const onEnded = () => {
+      if (repeatRef.current && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+        setCurrentTime(0);
+        return;
+      }
+      setCurrentTrack?.(null); setIsPlaying(false); setCurrentTime(0); setAudioDuration(0);
+    };
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('durationchange', onDurationChange);
     audio.addEventListener('ended', onEnded);
@@ -73,7 +88,6 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     };
   }, []);
 
-  // Keyboard shortcuts: Space = play/pause, M = mute
   useEffect(() => {
     const handler = (e) => {
       const tag = document.activeElement?.tagName;
@@ -93,7 +107,23 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   };
 
   const backToRadio = () => { setCurrentTrack?.(null); setIsPlaying(false); setCurrentTime(0); setAudioDuration(0); };
-  const noop = () => toast({ title: 'Próximamente', description: 'Disponible en la versión completa.' });
+
+  const handleSkipBack = () => {
+    if (!isOnDemand || !audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    setCurrentTime(0);
+  };
+
+  const liveTrackKey = `live-${song?.title || 'stream'}`;
+  const isLiked = currentUser ? isFav('song', liveTrackKey) : false;
+
+  const handleLike = async () => {
+    if (!currentUser) {
+      toast({ title: 'Inicia sesión', description: 'Necesitas cuenta para guardar favoritos.' });
+      return;
+    }
+    await toggleFav('song', liveTrackKey);
+  };
 
   const isOnDemand   = Boolean(currentTrack);
   const trackArt     = isOnDemand ? currentTrack.art : (song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop');
@@ -114,12 +144,12 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
         className="fixed bottom-4 left-4 right-4 lg:left-[256px] xl:right-[304px] z-50 h-[82px] flex items-center px-4 md:px-6"
         style={{
-          background: 'rgba(8, 10, 24, 0.75)',
+          background: 'rgba(8, 12, 11, 0.75)',
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
           WebkitBackdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
           borderRadius: '24px',
-          border: '1px solid rgba(0,207,255,0.18)',
-          boxShadow: '0 8px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(123,92,240,0.1), 0 0 32px rgba(0,207,255,0.08), inset 0 1px 0 rgba(255,255,255,0.07)',
+          border: '1px solid rgba(32,199,232,0.18)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(123,92,240,0.1), 0 0 32px rgba(32,199,232,0.08), inset 0 1px 0 rgba(255,255,255,0.07)',
         }}
       >
         {/* ── Track Info ── */}
@@ -129,7 +159,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               className="w-12 h-12 rounded-xl overflow-hidden"
               style={{
                 border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: isPlaying ? '0 0 16px rgba(0,207,255,0.2)' : 'none',
+                boxShadow: isPlaying ? '0 0 16px rgba(32,199,232,0.2)' : 'none',
               }}
             >
               <img src={trackArt} alt="Now playing" className="w-full h-full object-cover" />
@@ -140,11 +170,11 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               className="absolute -top-1.5 -left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
               style={{
                 background: isPlaying
-                  ? 'linear-gradient(90deg, #00CFFF, #00AADD)'
+                  ? 'linear-gradient(90deg, #FF8A1F, #E07010)'
                   : 'rgba(255,255,255,0.15)',
                 color: '#080B14',
                 letterSpacing: '0.05em',
-                boxShadow: isPlaying ? '0 0 8px rgba(0,207,255,0.5)' : 'none',
+                boxShadow: isPlaying ? '0 0 8px rgba(255,138,31,0.5)' : 'none',
               }}
             >
               {isPlaying ? 'ON AIR' : 'PAUSED'}
@@ -175,8 +205,14 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               Radio
             </button>
           ) : (
-            <button type="button" onClick={noop} className="hidden sm:flex text-white/25 hover:text-white/50 transition-colors p-1">
-              <Heart className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={handleLike}
+              className="hidden sm:flex transition-colors p-1"
+              style={{ color: isLiked ? '#FF5C7A' : 'rgba(255,255,255,0.25)' }}
+              title={isLiked ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+            >
+              <Heart className="w-4 h-4" style={isLiked ? { fill: '#FF5C7A' } : {}} />
             </button>
           )}
         </div>
@@ -184,10 +220,22 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         {/* ── Controls ── */}
         <div className="flex flex-col items-center gap-1 flex-1">
           <div className="flex items-center gap-3 md:gap-4">
-            <button type="button" onClick={noop} className="hidden md:flex text-white/20 hover:text-white/50 transition-colors">
+            <button
+              type="button"
+              onClick={() => setShuffle(s => !s)}
+              className="hidden md:flex transition-colors"
+              title={shuffle ? 'Aleatorio activo' : 'Aleatorio'}
+              style={{ color: shuffle ? '#20C7E8' : 'rgba(255,255,255,0.20)' }}
+            >
               <Shuffle className="w-4 h-4" />
             </button>
-            <button type="button" onClick={noop} className="hidden sm:flex text-white/35 hover:text-white/70 transition-colors">
+            <button
+              type="button"
+              onClick={handleSkipBack}
+              className="hidden sm:flex transition-colors"
+              title="Reiniciar pista"
+              style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
+            >
               <SkipBack className="w-5 h-5" />
             </button>
 
@@ -196,7 +244,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               {isPlaying && (
                 <motion.span
                   className="absolute rounded-full pointer-events-none"
-                  style={{ inset: -6, border: '1.5px solid rgba(0,207,255,0.3)' }}
+                  style={{ inset: -6, border: '1.5px solid rgba(32,199,232,0.3)' }}
                   animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
                 />
@@ -206,10 +254,10 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
-                  background: 'linear-gradient(135deg, #00CFFF, #00AADD)',
+                  background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
                   boxShadow: isPlaying
-                    ? '0 0 24px rgba(0,207,255,0.5), 0 4px 12px rgba(0,0,0,0.4)'
-                    : '0 0 14px rgba(0,207,255,0.25), 0 4px 10px rgba(0,0,0,0.3)',
+                    ? '0 0 24px rgba(32,199,232,0.5), 0 4px 12px rgba(0,0,0,0.4)'
+                    : '0 0 14px rgba(32,199,232,0.25), 0 4px 10px rgba(0,0,0,0.3)',
                 }}
               >
                 {isPlaying
@@ -219,15 +267,27 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               </button>
             </div>
 
-            <button type="button" onClick={isOnDemand ? backToRadio : noop} className="hidden sm:flex text-white/35 hover:text-white/70 transition-colors">
+            <button
+              type="button"
+              onClick={isOnDemand ? backToRadio : undefined}
+              className="hidden sm:flex transition-colors"
+              title={isOnDemand ? 'Volver al radio' : undefined}
+              style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
+            >
               <SkipForward className="w-5 h-5" />
             </button>
-            <button type="button" onClick={noop} className="hidden md:flex text-white/20 hover:text-white/50 transition-colors">
+            <button
+              type="button"
+              onClick={() => setRepeat(r => !r)}
+              className="hidden md:flex transition-colors"
+              title={repeat ? 'Repetir activo' : 'Repetir'}
+              style={{ color: repeat ? '#20C7E8' : 'rgba(255,255,255,0.20)' }}
+            >
               <Repeat className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Progress bar — hidden on mobile */}
+          {/* Progress bar */}
           <div className="hidden sm:flex w-full max-w-sm items-center gap-2 text-[11px] text-white/30 font-medium">
             {isOnDemand ? (
               <>
@@ -241,8 +301,8 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                     className="h-full rounded-full"
                     style={{
                       width: `${progressPct}%`,
-                      background: 'linear-gradient(to right, #00CFFF, #7B5CF0)',
-                      boxShadow: '0 0 6px rgba(0,207,255,0.4)',
+                      background: 'linear-gradient(to right, #20C7E8, #7C5CFF)',
+                      boxShadow: '0 0 6px rgba(32,199,232,0.4)',
                       transition: 'width 0.25s linear',
                     }}
                   />
@@ -256,7 +316,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                   {isPlaying && (
                     <motion.div
                       className="h-full rounded-full"
-                      style={{ background: 'linear-gradient(to right, #00CFFF, #7B5CF0, #EC4899)' }}
+                      style={{ background: 'linear-gradient(to right, #20C7E8, #7C5CFF, #EC4899)' }}
                       animate={{ width: ['0%', '100%'] }}
                       transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
                     />
@@ -282,10 +342,15 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               value={muted ? 0 : volume}
               onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
               className="w-full h-1 cursor-pointer appearance-none rounded-full"
-              style={{ accentColor: '#00CFFF' }}
+              style={{ accentColor: '#20C7E8' }}
             />
           </div>
-          <button type="button" onClick={noop} className="ml-2 text-white/25 hover:text-white/55 transition-colors">
+          <button
+            type="button"
+            onClick={() => setCurrentSection?.('podcasts')}
+            className="ml-2 text-white/25 hover:text-white/55 transition-colors"
+            title="Ver podcasts"
+          >
             <ListMusic className="w-4 h-4" />
           </button>
         </div>

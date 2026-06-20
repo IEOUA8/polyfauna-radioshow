@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit3, Heart, ListMusic, Shield, Upload, User } from 'lucide-react';
+import { AudioWaveform, Edit3, Heart, Instagram, Link, ListMusic, MapPin, Shield, ShoppingBag, Twitter, Upload, User } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { supabase } from '@/lib/customSupabaseClient';
 import { LoginRequired } from '@/components/SectionStates';
 import EditProfile from '@/components/EditProfile';
 import MyFavorites from '@/components/MyFavorites';
@@ -11,28 +14,71 @@ import UploadPodcastModal from '@/components/UploadPodcastModal';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
-const ROLE_LABEL = {
-  citizen:  { label: 'Wave Citizen',  color: '#00CFFF' },
-  artist:   { label: 'Artista',       color: '#A78BFA' },
-  promoter: { label: 'Promotor',      color: '#F59E0B' },
-  club:     { label: 'Club / Venue',  color: '#34D399' },
-  admin:    { label: 'Admin',         color: '#F87171' },
+const ROLE_META = {
+  citizen:  { label: 'Wave Citizen', color: '#20C7E8', glow: 'rgba(32,199,232,0.30)'  },
+  artist:   { label: 'Artista',      color: '#A78BFA', glow: 'rgba(167,139,250,0.30)' },
+  promoter: { label: 'Promotor',     color: '#FF8A1F', glow: 'rgba(255,138,31,0.30)'  },
+  club:     { label: 'Club / Venue', color: '#34D399', glow: 'rgba(52,211,153,0.30)'  },
+  admin:    { label: 'Admin',        color: '#F87171', glow: 'rgba(248,113,113,0.30)' },
 };
 
 const CREATOR_ROLES = ['artist', 'club', 'promoter', 'admin'];
 
+const SOCIAL_PLATFORMS = [
+  {
+    key: 'instagram',
+    label: 'Instagram',
+    icon: Instagram,
+    color: '#E1306C',
+    gradient: 'linear-gradient(135deg, #833AB4, #E1306C, #F77737)',
+    buildUrl: (h) => `https://instagram.com/${h}`,
+  },
+  {
+    key: 'bandcamp',
+    label: 'Bandcamp',
+    icon: ShoppingBag,
+    color: '#1DA0C3',
+    gradient: 'linear-gradient(135deg, #1DA0C3, #0B6E8A)',
+    buildUrl: (h) => h.includes('.') ? `https://${h}` : `https://${h}.bandcamp.com`,
+  },
+  {
+    key: 'soundcloud',
+    label: 'SoundCloud',
+    icon: AudioWaveform,
+    color: '#FF5500',
+    gradient: 'linear-gradient(135deg, #FF5500, #FF8800)',
+    buildUrl: (h) => `https://soundcloud.com/${h}`,
+  },
+  {
+    key: 'twitter',
+    label: 'Twitter / X',
+    icon: Twitter,
+    color: '#94A3B8',
+    gradient: 'linear-gradient(135deg, #475569, #94A3B8)',
+    buildUrl: (h) => `https://x.com/${h}`,
+  },
+];
+
 const TABS = [
-  { id: 'favoritos', label: 'Favoritos',  icon: Heart,     roles: null           },
-  { id: 'playlists', label: 'Playlists',  icon: ListMusic, roles: null           },
-  { id: 'subir',     label: 'Subir',      icon: Upload,    roles: CREATOR_ROLES  },
+  { id: 'favoritos', label: 'Favoritos', icon: Heart,     color: '#FF5C7A', roles: null          },
+  { id: 'playlists', label: 'Playlists', icon: ListMusic, color: '#20C7E8', roles: null          },
+  { id: 'subir',     label: 'Subir',     icon: Upload,    color: '#A78BFA', roles: CREATOR_ROLES },
 ];
 
 export default function MyPanel({ setCurrentSection }) {
   const { currentUser } = useAuth();
   const { profile, loading, refetch } = useProfile();
+  const { favorites } = useFavorites();
   const [activeTab, setActiveTab] = useState('favoritos');
   const [showEdit, setShowEdit] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+
+  const { data: playlists } = useSupabaseQuery(
+    () => currentUser
+      ? supabase.from('playlists').select('id').eq('user_id', currentUser.id)
+      : Promise.resolve({ data: [], error: null }),
+    [currentUser?.id]
+  );
 
   if (!currentUser) {
     return (
@@ -42,137 +88,335 @@ export default function MyPanel({ setCurrentSection }) {
     );
   }
 
-  const role = ROLE_LABEL[profile?.role] || ROLE_LABEL.citizen;
+  const role      = ROLE_META[profile?.role] || ROLE_META.citizen;
   const isPromoter = profile?.role === 'promoter' || profile?.role === 'club';
   const isCreator  = CREATOR_ROLES.includes(profile?.role);
   const visibleTabs = TABS.filter(t => !t.roles || t.roles.includes(profile?.role));
+  const favCount  = favorites?.length ?? 0;
+  const plCount   = playlists?.length ?? 0;
+  const memberSince = currentUser?.created_at
+    ? new Date(currentUser.created_at).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+    : null;
 
   return (
-    <div className="p-5 space-y-6 max-w-4xl">
-      {/* Profile header */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-2xl overflow-hidden p-6"
-        style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="space-y-0">
 
-        {/* Background gradient decoration */}
-        <div className="absolute inset-0 opacity-20"
-          style={{ background: `radial-gradient(circle at 80% 50%, ${role.color}40, transparent 60%)` }} />
+      {/* ── Hero / Cover ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden"
+        style={{ minHeight: 220 }}
+      >
+        {/* Gradient background */}
+        <div className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(ellipse at 70% 0%, ${role.color}28 0%, transparent 55%),
+              radial-gradient(ellipse at 20% 100%, ${role.color}14 0%, transparent 45%),
+              linear-gradient(180deg, rgba(8,12,11,0.0) 0%, rgba(5,9,10,0.85) 100%)
+            `,
+          }}
+        />
 
-        <div className="relative flex items-start gap-5">
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            {loading ? (
-              <div className="w-20 h-20 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
-            ) : (
-              <img
-                src={profile?.avatar_url || FALLBACK}
-                alt={profile?.display_name}
-                className="w-20 h-20 rounded-full object-cover"
-                style={{ border: `2px solid ${role.color}40` }}
-              />
-            )}
-            <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2"
-              style={{ background: '#22c55e', borderColor: '#0F1322' }} />
-          </div>
+        {/* Botanical SVG waves */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1000 220" fill="none" aria-hidden="true">
+          <path d="M -60 140 C 100 80 300 180 520 115 S 780 45 1060 130 L 1060 180 C 800 95 540 210 320 145 S 80 80 -60 165 Z" fill={`${role.color}0D`} />
+          <path d="M -60 75 C 140 28 360 130 600 68 S 860 10 1060 75 L 1060 115 C 840 42 600 148 360 88 S 100 38 -60 100 Z" fill={`${role.color}09`} />
+          <path d="M -60 175 C 120 130 340 220 580 162 S 840 100 1060 178 L 1060 220 L -60 220 Z" fill={`${role.color}07`} />
+          <path d="M 220 0 C 400 60 560 -20 740 45 S 940 140 1060 65 L 1060 0 L 220 0 Z" fill={`${role.color}06`} />
+        </svg>
 
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            {loading ? (
-              <div className="space-y-2">
-                <div className="h-5 w-40 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
-                <div className="h-3 w-24 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-black text-white leading-tight">
-                    {profile?.display_name || currentUser.email?.split('@')[0]}
-                  </h1>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded"
-                    style={{ background: `${role.color}18`, color: role.color, border: `1px solid ${role.color}30` }}>
-                    {role.label}
-                  </span>
+        {/* Blurred avatar backdrop */}
+        {(profile?.avatar_url) && (
+          <div className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${profile.avatar_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center top',
+              opacity: 0.05,
+              filter: 'blur(48px)',
+              transform: 'scale(1.4)',
+            }}
+          />
+        )}
+
+        {/* Content */}
+        <div className="relative px-6 pt-8 pb-7">
+          <div className="flex flex-col sm:flex-row items-start gap-5">
+
+            {/* ── Avatar ── */}
+            <div className="relative shrink-0" style={{ width: 96, height: 96 }}>
+              {loading ? (
+                <div className="w-24 h-24 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              ) : (
+                <>
+                  {/* Pulsing outer ring */}
+                  <motion.div
+                    className="absolute rounded-full pointer-events-none"
+                    style={{ inset: -5, border: `2px solid ${role.color}55` }}
+                    animate={{ scale: [1, 1.10, 1], opacity: [0.6, 0.15, 0.6] }}
+                    transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  {/* Static ring */}
+                  <div
+                    className="absolute rounded-full pointer-events-none"
+                    style={{ inset: -2, background: `linear-gradient(135deg, ${role.color}80, ${role.color}22, transparent, ${role.color}44)` }}
+                  />
+                  {/* Avatar */}
+                  <img
+                    src={profile?.avatar_url || FALLBACK}
+                    alt={profile?.display_name}
+                    className="absolute inset-[2px] rounded-full object-cover z-10"
+                    style={{ boxShadow: `0 0 24px ${role.glow}` }}
+                  />
+                  {/* Online dot */}
+                  <span className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border-2 z-20"
+                    style={{ background: '#22c55e', borderColor: '#080E09', boxShadow: '0 0 6px rgba(34,197,94,0.7)' }} />
+                </>
+              )}
+            </div>
+
+            {/* ── Identity ── */}
+            <div className="flex-1 min-w-0 pt-1">
+              {loading ? (
+                <div className="space-y-2.5">
+                  <div className="h-7 w-44 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                  <div className="h-4 w-28 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
+                  <div className="h-3 w-64 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />
                 </div>
-                {profile?.username && (
-                  <p className="text-sm text-white/40 mt-0.5">@{profile.username}</p>
-                )}
-                {profile?.bio && (
-                  <p className="text-xs text-white/50 mt-2 max-w-md leading-relaxed">{profile.bio}</p>
-                )}
-                <div className="flex flex-wrap gap-3 mt-3 text-[11px] text-white/30">
-                  {profile?.city && <span>{profile.city}</span>}
-                  {profile?.website && (
-                    <a href={profile.website} target="_blank" rel="noopener noreferrer"
-                      className="hover:text-white/60 transition-colors">{profile.website.replace(/^https?:\/\//, '')}</a>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-2xl font-black text-white leading-tight">
+                      {profile?.display_name || currentUser.email?.split('@')[0]}
+                    </h1>
+                    <span
+                      className="text-[10px] font-black px-2.5 py-1 rounded-full tracking-wider uppercase"
+                      style={{
+                        background: `${role.color}18`,
+                        color: role.color,
+                        border: `1px solid ${role.color}35`,
+                        boxShadow: `0 0 10px ${role.color}20`,
+                      }}
+                    >
+                      {role.label}
+                    </span>
+                  </div>
+
+                  {profile?.username && (
+                    <p className="text-sm font-mono mt-1" style={{ color: 'rgba(255,255,255,0.32)' }}>
+                      @{profile.username}
+                    </p>
                   )}
-                </div>
-              </>
-            )}
+
+                  {profile?.bio && (
+                    <p className="text-sm mt-2.5 max-w-lg leading-relaxed" style={{ color: 'rgba(255,255,255,0.52)' }}>
+                      {profile.bio}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3 mt-2.5">
+                    {profile?.city && (
+                      <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                        <MapPin className="w-3 h-3" />{profile.city}
+                      </span>
+                    )}
+                    {profile?.website && (
+                      <a href={profile.website} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs transition-colors hover:text-white/60"
+                        style={{ color: 'rgba(255,255,255,0.28)' }}>
+                        <Link className="w-3 h-3" />
+                        {profile.website.replace(/^https?:\/\//, '')}
+                      </a>
+                    )}
+                    {memberSince && (
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                        Miembro desde {memberSince}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ── Buttons ── */}
+            <div className="flex items-center gap-2 shrink-0 sm:self-start">
+              <button
+                type="button"
+                onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-150"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.65)',
+                  border: '1px solid rgba(255,255,255,0.11)',
+                  backdropFilter: 'blur(12px)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; e.currentTarget.style.color = 'white'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Editar perfil
+              </button>
+              {isPromoter && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentSection('promoter')}
+                  className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-150 hover:brightness-110"
+                  style={{
+                    background: `${role.color}18`,
+                    color: role.color,
+                    border: `1px solid ${role.color}30`,
+                  }}
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  Dashboard
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2 shrink-0">
-            <button type="button" onClick={() => setShowEdit(true)}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-colors"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <Edit3 className="w-3.5 h-3.5" />
-              Editar
-            </button>
-            {isPromoter && (
-              <button type="button" onClick={() => setCurrentSection('promoter')}
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-colors"
-                style={{ background: `${role.color}15`, color: role.color, border: `1px solid ${role.color}30` }}>
-                <Shield className="w-3.5 h-3.5" />
-                Dashboard
-              </button>
-            )}
+          {/* ── Stats tiles ── */}
+          <div className="flex items-center gap-2.5 mt-5 flex-wrap">
+            {[
+              { label: 'Favoritos', value: favCount, color: '#FF5C7A', icon: Heart },
+              { label: 'Playlists', value: plCount,  color: '#20C7E8', icon: ListMusic },
+            ].map(({ label, value, color, icon: Icon }) => (
+              <motion.div
+                key={label}
+                whileHover={{ scale: 1.04 }}
+                className="flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-semibold cursor-default"
+                style={{
+                  background: `${color}0C`,
+                  border: `1px solid ${color}1E`,
+                }}
+              >
+                <Icon className="w-3.5 h-3.5" style={{ color, fill: color }} />
+                <span className="font-black text-sm" style={{ color }}>{value}</span>
+                <span style={{ color: 'rgba(255,255,255,0.40)' }}>{label}</span>
+              </motion.div>
+            ))}
           </div>
+          {/* ── Social links ── */}
+          {(() => {
+            const links = SOCIAL_PLATFORMS.filter(p => profile?.social_links?.[p.key]);
+            if (!links.length) return null;
+            return (
+              <div className="flex items-center gap-2 mt-3">
+                {links.map(({ key, label, icon: Icon, color, gradient, buildUrl }) => {
+                  const handle = profile.social_links[key];
+                  const isBandcamp = key === 'bandcamp';
+                  return (
+                    <motion.a
+                      key={key}
+                      href={buildUrl(handle)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={label}
+                      whileHover={{ scale: 1.12, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150"
+                      style={{
+                        background: isBandcamp ? gradient : `${color}14`,
+                        border: isBandcamp ? 'none' : `1px solid ${color}30`,
+                        boxShadow: isBandcamp ? `0 4px 14px ${color}35` : `0 2px 8px ${color}15`,
+                        color: isBandcamp ? '#fff' : color,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                    </motion.a>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
+
+        {/* Bottom gradient fade into content */}
+        <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent, rgba(5,9,10,0.6))' }} />
       </motion.div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-        {visibleTabs.map(({ id, label, icon: Icon, roles }) => {
-          const isUpload = id === 'subir';
-          const accentColor = isUpload ? '#A78BFA' : '#00CFFF';
-          return (
-            <button key={id} type="button" onClick={() => setActiveTab(id)}
-              className="flex items-center gap-1.5 text-sm font-semibold pb-3 px-1 relative transition-colors"
-              style={{ color: activeTab === id ? accentColor : 'rgba(255,255,255,0.35)' }}>
-              <Icon className="w-4 h-4" />
-              {label}
-              {activeTab === id && (
-                <motion.div layoutId="panel-tab-indicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
-                  style={{ background: accentColor }} />
-              )}
-            </button>
-          );
-        })}
+      {/* ── Divider line ── */}
+      <div className="mx-6" style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+
+      {/* ── Tabs ── */}
+      <div className="px-6 pt-5">
+        <div
+          className="inline-flex gap-1 p-1 rounded-xl"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+          }}
+        >
+          {visibleTabs.map(({ id, label, icon: Icon, color }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className="relative flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: active ? `${color}18` : 'transparent',
+                  color: active ? color : 'rgba(255,255,255,0.32)',
+                  border: active ? `1px solid ${color}30` : '1px solid transparent',
+                  boxShadow: active ? `0 0 12px ${color}15` : 'none',
+                }}
+              >
+                <Icon className="w-3.5 h-3.5" style={active ? { fill: color, color } : {}} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Tab content */}
-      <AnimatePresence mode="wait">
-        <motion.div key={activeTab}
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-          {activeTab === 'favoritos' && <MyFavorites />}
-          {activeTab === 'playlists' && <MyPlaylists />}
-          {activeTab === 'subir' && isCreator && (
-            <div className="py-4 space-y-4">
-              <p className="text-sm text-white/50">Sube tus mixes, sesiones y podcasts directamente a la plataforma.</p>
-              <button type="button" onClick={() => setShowUpload(true)}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all hover:scale-105"
-                style={{ background: 'linear-gradient(135deg,#A78BFA,#7B5CF0)', color: '#fff', boxShadow: '0 0 24px rgba(167,139,250,0.3)' }}>
-                <Upload className="w-4 h-4" />
-                Subir Podcast / Mix
-              </button>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
+      {/* ── Tab content ── */}
+      <div className="px-6 pt-5 pb-32">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
+            {activeTab === 'favoritos' && <MyFavorites />}
+            {activeTab === 'playlists' && <MyPlaylists />}
+            {activeTab === 'subir' && isCreator && (
+              <div className="py-4">
+                <div className="rounded-2xl p-6"
+                  style={{
+                    background: 'rgba(167,139,250,0.05)',
+                    border: '1px solid rgba(167,139,250,0.12)',
+                  }}>
+                  <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.50)' }}>
+                    Sube tus mixes, sesiones y podcasts directamente a la plataforma PolyFauna.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpload(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg,#A78BFA,#7C5CFF)',
+                      color: '#fff',
+                      boxShadow: '0 0 24px rgba(167,139,250,0.3), 0 4px 12px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Subir Podcast / Mix
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-      {/* Edit profile modal */}
+      {/* ── Modals ── */}
       <AnimatePresence>
         {showEdit && (
           <EditProfile
@@ -182,8 +426,6 @@ export default function MyPanel({ setCurrentSection }) {
           />
         )}
       </AnimatePresence>
-
-      {/* Upload modal */}
       <AnimatePresence>
         {showUpload && (
           <UploadPodcastModal

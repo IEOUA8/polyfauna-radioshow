@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Clock, Disc3, Music, Play } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -86,10 +86,9 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
           Volver a álbumes
         </button>
 
-        {/* Album header */}
         <div
           className="flex gap-5 items-start p-5 rounded-2xl"
-          style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}
+          style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
         >
           <img
             src={selectedAlbum.cover_url || FALLBACK_COVER}
@@ -109,7 +108,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
             {selectedAlbum.genre && (
               <span
                 className="inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded"
-                style={{ background: 'rgba(0,207,255,0.1)', color: '#00CFFF' }}
+                style={{ background: 'rgba(32,199,232,0.1)', color: '#20C7E8' }}
               >
                 {selectedAlbum.genre}
               </span>
@@ -120,7 +119,6 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
           </div>
         </div>
 
-        {/* Tracks */}
         <div>
           <h2 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3">Tracks</h2>
 
@@ -148,12 +146,11 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                     transition={{ delay: i * 0.04 }}
                     className={`group flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${track.audio_url ? 'cursor-pointer hover:bg-white/5' : 'opacity-50'}`}
                     style={{
-                      background: isActive ? 'rgba(0,207,255,0.08)' : 'transparent',
-                      border: `1px solid ${isActive ? 'rgba(0,207,255,0.15)' : 'rgba(255,255,255,0.04)'}`,
+                      background: isActive ? 'rgba(32,199,232,0.08)' : 'transparent',
+                      border: `1px solid ${isActive ? 'rgba(32,199,232,0.15)' : 'rgba(255,255,255,0.04)'}`,
                     }}
                     onClick={() => handlePlayTrack(track, selectedAlbum)}
                   >
-                    {/* Track number / animated bars / play icon */}
                     <div className="w-6 shrink-0 flex items-center justify-center">
                       {isActive ? (
                         <div className="flex items-end gap-px h-4">
@@ -161,7 +158,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                             <motion.div
                               key={j}
                               className="w-0.5 rounded-t-sm"
-                              style={{ background: '#00CFFF' }}
+                              style={{ background: '#20C7E8' }}
                               animate={{ height: [`${h * 2}px`, `${h * 3.5}px`] }}
                               transition={{ duration: 0.4 + j * 0.1, repeat: Infinity, repeatType: 'reverse' }}
                             />
@@ -180,7 +177,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isActive ? 'text-[#00CFFF]' : 'text-white'}`}>
+                      <p className={`text-sm font-semibold truncate ${isActive ? 'text-[#20C7E8]' : 'text-white'}`}>
                         {track.title}
                       </p>
                       {track.artists?.name && (
@@ -220,19 +217,32 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
       {genres.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {genres.map((g) => (
-            <button
+            <motion.button
               key={g}
               type="button"
               onClick={() => setActiveGenre(g)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
+              whileHover={activeGenre !== g ? { scale: 1.08, y: -2 } : {}}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full"
               style={{
-                background: activeGenre === g ? '#00CFFF' : 'rgba(255,255,255,0.05)',
+                background: activeGenre === g ? '#20C7E8' : 'rgba(255,255,255,0.05)',
                 color: activeGenre === g ? '#080B14' : 'rgba(255,255,255,0.5)',
                 border: activeGenre === g ? 'none' : '1px solid rgba(255,255,255,0.08)',
               }}
+              onMouseEnter={activeGenre !== g ? (e) => {
+                e.currentTarget.style.background = 'rgba(32,199,232,0.12)';
+                e.currentTarget.style.color = '#20C7E8';
+                e.currentTarget.style.borderColor = 'rgba(32,199,232,0.3)';
+              } : undefined}
+              onMouseLeave={activeGenre !== g ? (e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+              } : undefined}
             >
               {g}
-            </button>
+            </motion.button>
           ))}
         </div>
       )}
@@ -263,7 +273,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <div
                     className="w-11 h-11 rounded-full flex items-center justify-center shadow-2xl"
-                    style={{ background: '#00CFFF', boxShadow: '0 0 24px rgba(0,207,255,0.5)' }}
+                    style={{ background: '#20C7E8', boxShadow: '0 0 24px rgba(32,199,232,0.5)' }}
                   >
                     <Play className="w-5 h-5 fill-current ml-0.5" style={{ color: '#080B14' }} />
                   </div>

@@ -1,11 +1,24 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { FileText } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, CalendarDays, FileText, User } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=600&auto=format&fit=crop';
+
+const CATEGORY_COLORS = {
+  'Crónica':      '#B8CFA6',
+  'Entrevista':   '#D946EF',
+  'Reseña':       '#7C5CFF',
+  'Noticias':     '#20C7E8',
+  'Opinión':      '#FF8A1F',
+  'Tutorial':     '#5DE0A3',
+};
+
+function getCategoryColor(cat) {
+  return CATEGORY_COLORS[cat] || '#20C7E8';
+}
 
 function formatDate(str) {
   if (!str) return '';
@@ -17,7 +30,76 @@ function excerpt(text, max = 120) {
   return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
 }
 
-function ArticleCard({ article, index, featured }) {
+/* ── Article detail page ── */
+function ArticleDetail({ article, onBack }) {
+  const color = getCategoryColor(article.category);
+
+  return (
+    <motion.div
+      key="article-detail"
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -40 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="p-5 space-y-6"
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Blog
+      </button>
+
+      {/* Hero image */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 260 }}>
+        <img
+          src={article.featured_image_url || FALLBACK}
+          alt={article.title}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
+        <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 260 }}>
+          {article.category && (
+            <span
+              className="inline-flex text-[10px] font-bold uppercase tracking-[0.2em] mb-3 px-2.5 py-0.5 rounded-full w-fit"
+              style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}
+            >
+              {article.category}
+            </span>
+          )}
+          <h1 className="text-2xl font-black text-white leading-tight">{article.title}</h1>
+          <div className="flex items-center gap-4 mt-3 text-xs text-white/45">
+            {article.author && (
+              <span className="flex items-center gap-1.5">
+                <User className="w-3 h-3" />
+                {article.author}
+              </span>
+            )}
+            {article.created_at && (
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="w-3 h-3" />
+                {formatDate(article.created_at)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Article body */}
+      {article.content && (
+        <div className="p-6 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-sm text-white/80 leading-loose whitespace-pre-wrap">{article.content}</p>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function ArticleCard({ article, index, featured, onClick }) {
+  const color = getCategoryColor(article.category);
+
   if (featured) {
     return (
       <motion.div
@@ -26,6 +108,7 @@ function ArticleCard({ article, index, featured }) {
         transition={{ delay: 0 }}
         className="col-span-full rounded-2xl overflow-hidden relative group cursor-pointer"
         style={{ minHeight: 280, border: '1px solid rgba(255,255,255,0.07)' }}
+        onClick={onClick}
       >
         <img
           src={article.featured_image_url || FALLBACK}
@@ -35,7 +118,7 @@ function ArticleCard({ article, index, featured }) {
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-transparent" />
         <div className="relative z-10 p-8 flex flex-col justify-end h-full" style={{ minHeight: 280 }}>
           {article.category && (
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: '#00CFFF' }}>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color }}>
               {article.category}
             </span>
           )}
@@ -56,8 +139,9 @@ function ArticleCard({ article, index, featured }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07 }}
       className="rounded-xl overflow-hidden flex flex-col group cursor-pointer"
-      style={{ background: 'rgba(15, 19, 34, 0.9)', border: '1px solid rgba(255,255,255,0.07)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(0,207,255,0.2)')}
+      style={{ background: 'rgba(11, 16, 15, 0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
+      onClick={onClick}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${color}30`)}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
     >
       <div className="relative aspect-video overflow-hidden">
@@ -70,7 +154,7 @@ function ArticleCard({ article, index, featured }) {
         {article.category && (
           <span
             className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded"
-            style={{ background: 'rgba(0,207,255,0.15)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.2)' }}
+            style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}
           >
             {article.category}
           </span>
@@ -90,6 +174,7 @@ function ArticleCard({ article, index, featured }) {
 
 export default function BlogSection() {
   const [activeCategory, setActiveCategory] = useState('Todos');
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
   const { data: articles, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('blog_articles').select('*').order('created_at', { ascending: false }),
@@ -108,45 +193,83 @@ export default function BlogSection() {
   }, [articles, activeCategory]);
 
   return (
-    <div className="p-5 space-y-5">
-      <div>
-        <h1 className="text-xl font-black text-white">Blog</h1>
-        <p className="text-sm text-white/40 mt-1">Artículos, crónicas y notas del universo PolyFauna.</p>
-      </div>
+    <AnimatePresence mode="wait">
+      {selectedArticle ? (
+        <ArticleDetail
+          key="detail"
+          article={selectedArticle}
+          onBack={() => setSelectedArticle(null)}
+        />
+      ) : (
+        <motion.div
+          key="grid"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="p-5 space-y-5"
+        >
+          <div>
+            <h1 className="text-xl font-black text-white">Blog</h1>
+            <p className="text-sm text-white/40 mt-1">Artículos, crónicas y notas del universo PolyFauna.</p>
+          </div>
 
-      {/* Category filter */}
-      {!loading && !error && categories.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveCategory(cat)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
-              style={{
-                background: activeCategory === cat ? '#00CFFF' : 'rgba(255,255,255,0.05)',
-                color: activeCategory === cat ? '#080B14' : 'rgba(255,255,255,0.5)',
-                border: activeCategory === cat ? 'none' : '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
+          {!loading && !error && categories.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => {
+                const color = cat === 'Todos' ? '#20C7E8' : getCategoryColor(cat);
+                const isActive = activeCategory === cat;
+                return (
+                  <motion.button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    whileHover={!isActive ? { scale: 1.08, y: -2 } : {}}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                    style={{
+                      background: isActive ? color : 'rgba(255,255,255,0.05)',
+                      color: isActive ? '#080B14' : 'rgba(255,255,255,0.5)',
+                      border: isActive ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    }}
+                    onMouseEnter={!isActive ? (e) => {
+                      e.currentTarget.style.background = `${color}18`;
+                      e.currentTarget.style.color = color;
+                      e.currentTarget.style.borderColor = `${color}40`;
+                    } : undefined}
+                    onMouseLeave={!isActive ? (e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    } : undefined}
+                  >
+                    {cat}
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
 
-      {loading && <CardSkeleton count={4} />}
-      {error && <ErrorState message={error} onRetry={refetch} />}
-      {!loading && !error && filtered.length === 0 && (
-        <EmptyState label="No hay artículos aún" icon={FileText} />
+          {loading && <CardSkeleton count={4} />}
+          {error && <ErrorState message={error} onRetry={refetch} />}
+          {!loading && !error && filtered.length === 0 && (
+            <EmptyState label="No hay artículos aún" icon={FileText} />
+          )}
+          {!loading && !error && filtered.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filtered.map((article, i) => (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  index={i}
+                  featured={i === 0 && activeCategory === 'Todos'}
+                  onClick={() => setSelectedArticle(article)}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
       )}
-      {!loading && !error && filtered.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((article, i) => (
-            <ArticleCard key={article.id} article={article} index={i} featured={i === 0 && activeCategory === 'Todos'} />
-          ))}
-        </div>
-      )}
-    </div>
+    </AnimatePresence>
   );
 }

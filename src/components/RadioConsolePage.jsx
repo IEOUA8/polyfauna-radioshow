@@ -1,18 +1,92 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Pause, Play, Radio, User, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bookmark, Loader2, MessageCircle, Pause, Play, Radio, Share2, Tv2, User, Users } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFavorites } from '@/hooks/useFavorites';
 import HoloSpectrum from '@/components/HoloSpectrum';
+import FormModal, { FField, FTextarea, FSubmit } from '@/components/ui/FormModal';
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
   const { currentUser } = useAuth();
+  const { isFav, toggle: toggleFav } = useFavorites();
+
+  const [showAskHost, setShowAskHost] = useState(false);
+  const [hostQuestion, setHostQuestion] = useState('');
+  const [sendingQuestion, setSendingQuestion] = useState(false);
+
+  const sessionFavId = `live-${song?.title || 'polyfauna-radio'}-${new Date().toISOString().slice(0, 10)}`;
+  const isSessionSaved = Boolean(currentUser && isFav('session', sessionFavId));
+
+  const handleShare = async () => {
+    const shareData = {
+      title: song?.title || 'PolyFauna Radio',
+      text: `Escuchando ${song?.title || 'PolyFauna Radio'} en PolyFauna`,
+      url: window.location.href,
+    };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch {}
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({ title: 'Link copiado', description: 'URL copiada al portapapeles.' });
+    }
+  };
+
+  const handleSaveSession = async () => {
+    if (!currentUser) {
+      toast({ title: 'Inicia sesión', description: 'Necesitas una cuenta para guardar sesiones.' });
+      return;
+    }
+    const wasSaved = isFav('session', sessionFavId);
+    await toggleFav('session', sessionFavId);
+    toast({
+      title: wasSaved ? 'Eliminada de favoritos' : '¡Sesión guardada!',
+      description: wasSaved ? '' : `"${song?.title || 'PolyFauna Radio'}" en tu lista.`,
+    });
+  };
+
+  const handleAskHost = () => {
+    if (!currentUser) {
+      toast({ title: 'Inicia sesión', description: 'Necesitas una cuenta para preguntar al host.' });
+      return;
+    }
+    setShowAskHost(true);
+  };
+
+  const handleSendQuestion = async (e) => {
+    e.preventDefault();
+    if (!hostQuestion.trim()) return;
+    setSendingQuestion(true);
+    const { error } = await supabase.from('show_questions').insert({
+      user_id: currentUser.id,
+      user_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Usuario',
+      show_name: song?.title || 'Live Session',
+      question: hostQuestion.trim(),
+    });
+    setSendingQuestion(false);
+    if (error) {
+      toast({ title: 'Error al enviar', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '¡Pregunta enviada!', description: 'El host podrá verla en su dashboard.' });
+      setHostQuestion('');
+      setShowAskHost(false);
+    }
+  };
+
+  const handleOpenRoom = () => {
+    const roomUrl = song?.room_url || null;
+    if (roomUrl) {
+      window.open(roomUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      toast({ title: 'Sin sala activa', description: 'No hay sala en vivo disponible en este momento.' });
+    }
+  };
 
   const { data: shows, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('radio_shows').select('*').order('schedule', { ascending: true }).limit(8),
@@ -22,14 +96,23 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   return (
     <div className="p-5 space-y-6">
 
-      {/* ── Now Playing card ── */}
+      {/* ── Now Playing card — forest-dark glass ── */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: 'easeOut' }}
-        className="glass-card holo-border rounded-2xl overflow-hidden p-6 relative"
+        className="holo-border rounded-2xl overflow-hidden p-6 relative"
+        style={{
+          background: 'rgba(13, 20, 19, 0.54)',
+          backdropFilter: 'blur(40px) saturate(190%) brightness(1.06)',
+          WebkitBackdropFilter: 'blur(40px) saturate(190%) brightness(1.06)',
+          border: '1px solid rgba(184,207,166,0.09)',
+          boxShadow:
+            '0 16px 56px rgba(0,0,0,0.65), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.06), ' +
+            'inset 0 -1px 0 rgba(0,0,0,0.20)',
+        }}
       >
-
         {/* Background glow behind album art */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -43,6 +126,26 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
           }}
         />
 
+        {/* Fractal wave texture */}
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          preserveAspectRatio="xMidYMid slice"
+          viewBox="0 0 900 320"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path d="M -60 180 C 80 100 260 260 460 160 S 700 60 960 180 L 960 240 C 720 130 480 300 280 200 S 60 120 -60 240 Z"
+            fill="rgba(189,207,170,0.055)" />
+          <path d="M -60 100 C 120 40 320 180 540 90 S 780 10 960 110 L 960 155 C 770 55 570 195 350 110 S 110 50 -60 145 Z"
+            fill="rgba(142,158,131,0.042)" />
+          <path d="M -60 240 C 100 170 300 320 520 220 S 760 130 960 250 L 960 320 L -60 320 Z"
+            fill="rgba(106,140,92,0.032)" />
+          <path d="M -60 55 C 150 10 370 130 580 50 S 800 -20 960 65 L 960 100 C 760 -5 540 120 330 55 S 100 20 -60 90 Z"
+            fill="rgba(189,207,170,0.030)" />
+          <path d="M 200 0 C 360 80 500 -30 680 60 S 860 160 960 80 L 960 0 L 200 0 Z"
+            fill="rgba(142,158,131,0.025)" />
+        </svg>
+
         <div className="relative flex flex-col md:flex-row gap-6 items-start">
           {/* Album art */}
           <div className="relative shrink-0">
@@ -51,10 +154,10 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               transition={isPlaying ? { duration: 12, repeat: Infinity, ease: 'linear' } : { duration: 0.5 }}
               className="w-28 h-28 rounded-full overflow-hidden"
               style={{
-                border: '3px solid rgba(0,207,255,0.25)',
+                border: '3px solid rgba(32,199,232,0.25)',
                 boxShadow: isPlaying
-                  ? '0 0 32px rgba(0,207,255,0.3), 0 0 64px rgba(123,92,240,0.15), 0 8px 32px rgba(0,0,0,0.5)'
-                  : '0 0 16px rgba(0,207,255,0.1), 0 8px 24px rgba(0,0,0,0.4)',
+                  ? '0 0 32px rgba(32,199,232,0.3), 0 0 64px rgba(123,92,240,0.15), 0 8px 32px rgba(0,0,0,0.5)'
+                  : '0 0 16px rgba(32,199,232,0.1), 0 8px 24px rgba(0,0,0,0.4)',
               }}
             >
               <img
@@ -66,35 +169,32 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             {/* Center dot */}
             <div
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full z-10"
-              style={{ background: 'linear-gradient(135deg, #00CFFF, #7B5CF0)', boxShadow: '0 0 8px rgba(0,207,255,0.8)' }}
+              style={{ background: 'linear-gradient(135deg, #20C7E8, #7C5CFF)', boxShadow: '0 0 8px rgba(32,199,232,0.8)' }}
             />
           </div>
 
           <div className="flex-1 min-w-0">
-            {/* Live badge with pulse + shimmer */}
+            {/* Live badge */}
             <div className="flex items-center gap-2 mb-2">
               <span
                 className="relative inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full overflow-hidden"
                 style={{
                   background: isOnline ? 'rgba(255,112,67,0.12)' : 'rgba(255,255,255,0.07)',
                   border: `1px solid ${isOnline ? 'rgba(255,112,67,0.40)' : 'rgba(255,255,255,0.1)'}`,
-                  color: isOnline ? '#FF7043' : 'rgba(255,255,255,0.4)',
+                  color: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.4)',
                 }}
               >
-                {/* Pulse dot */}
                 {isOnline && (
                   <span className="relative flex h-1.5 w-1.5 shrink-0">
                     <motion.span
                       className="absolute inline-flex h-full w-full rounded-full"
-                      style={{ background: '#FF7043' }}
+                      style={{ background: '#FF8A1F' }}
                       animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
                       transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
                     />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF7043' }} />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF8A1F' }} />
                   </span>
                 )}
-
-                {/* Shimmer overlay */}
                 {isOnline && (
                   <motion.span
                     className="absolute inset-0 rounded-full pointer-events-none"
@@ -105,7 +205,6 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                     transition={{ duration: 3, repeat: Infinity, ease: 'linear', repeatDelay: 1.5 }}
                   />
                 )}
-
                 {isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Live Channel' : 'Offline'}
               </span>
             </div>
@@ -117,7 +216,6 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               {song?.artist || (isOnline ? 'Transmisión en vivo · 24/7' : 'Estación offline')}
             </p>
 
-            {/* Holographic spectrum */}
             <div className="mt-5">
               <HoloSpectrum isPlaying={isPlaying} height={68} />
             </div>
@@ -130,19 +228,18 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               <span>{listeners > 0 ? `${listeners} oyente${listeners !== 1 ? 's' : ''}` : 'En vivo'}</span>
             </div>
 
-            {/* Play button with pulse ring */}
             <div className="relative flex items-center justify-center">
               {isPlaying && (
                 <>
                   <motion.span
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -8, border: '1.5px solid rgba(0,207,255,0.35)' }}
+                    style={{ inset: -8, border: '1.5px solid rgba(32,199,232,0.35)' }}
                     animate={{ scale: [1, 1.4], opacity: [0.5, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
                   />
                   <motion.span
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -4, border: '1px solid rgba(0,207,255,0.2)' }}
+                    style={{ inset: -4, border: '1px solid rgba(32,199,232,0.2)' }}
                     animate={{ scale: [1, 1.25], opacity: [0.4, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut', delay: 0.4 }}
                   />
@@ -153,10 +250,10 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
-                  background: 'linear-gradient(135deg, #00CFFF, #00AADD)',
+                  background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
                   boxShadow: isPlaying
-                    ? '0 0 32px rgba(0,207,255,0.55), 0 4px 16px rgba(0,0,0,0.4)'
-                    : '0 0 20px rgba(0,207,255,0.3), 0 4px 12px rgba(0,0,0,0.3)',
+                    ? '0 0 32px rgba(32,199,232,0.55), 0 4px 16px rgba(0,0,0,0.4)'
+                    : '0 0 20px rgba(32,199,232,0.3), 0 4px 12px rgba(0,0,0,0.3)',
                 }}
               >
                 {isPlaying
@@ -168,31 +265,51 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-2 mt-5 relative">
-          {['Abrir sala en vivo', 'Preguntar al host', 'Compartir', 'Guardar sesión'].map((action) => (
-            <button
-              key={action}
+        {/* Action buttons — floating glass pills */}
+        <div className="flex flex-wrap gap-2.5 mt-6 relative">
+          {[
+            { id: 'room',  label: 'Abrir sala en vivo', icon: Tv2,           accent: 'rgba(32,199,232,{a})',  glow: 'rgba(32,199,232,0.18)',  onClick: handleOpenRoom,    active: false },
+            { id: 'ask',   label: 'Preguntar al host',  icon: MessageCircle, accent: 'rgba(167,139,250,{a})', glow: 'rgba(167,139,250,0.18)', onClick: handleAskHost,     active: false },
+            { id: 'share', label: 'Compartir',          icon: Share2,        accent: 'rgba(52,211,153,{a})',  glow: 'rgba(52,211,153,0.18)',  onClick: handleShare,       active: false },
+            { id: 'save',  label: 'Guardar sesión',     icon: Bookmark,      accent: 'rgba(251,191,36,{a})',  glow: 'rgba(251,191,36,0.18)', onClick: handleSaveSession, active: isSessionSaved },
+          ].map(({ id, label, icon: Icon, accent, glow, onClick, active }) => (
+            <motion.button
+              key={id}
               type="button"
-              onClick={() => toast({ title: action, description: 'Próximamente disponible.' })}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white/50 transition-all duration-200 hover:text-white"
+              onClick={onClick}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: active ? accent.replace('{a}', '0.15') : 'rgba(255,255,255,0.04)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `1px solid ${active ? accent.replace('{a}', '0.40') : 'rgba(255,255,255,0.08)'}`,
+                color: active ? accent.replace('{a}', '1)') : 'rgba(255,255,255,0.45)',
+                boxShadow: active
+                  ? `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`
+                  : '0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset',
               }}
+              whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
+              whileTap={{ y: 0, scale: 0.97, transition: { duration: 0.1 } }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(0,207,255,0.08)';
-                e.currentTarget.style.borderColor = 'rgba(0,207,255,0.25)';
-                e.currentTarget.style.color = '#00CFFF';
+                const c = e.currentTarget;
+                c.style.background = accent.replace('{a}', '0.10');
+                c.style.borderColor = accent.replace('{a}', '0.35');
+                c.style.color = accent.replace('{a}', '1)');
+                c.style.boxShadow = `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+                const c = e.currentTarget;
+                c.style.background = active ? accent.replace('{a}', '0.15') : 'rgba(255,255,255,0.04)';
+                c.style.borderColor = active ? accent.replace('{a}', '0.40') : 'rgba(255,255,255,0.08)';
+                c.style.color = active ? accent.replace('{a}', '1)') : 'rgba(255,255,255,0.45)';
+                c.style.boxShadow = active
+                  ? `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`
+                  : '0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset';
               }}
             >
-              {action}
-            </button>
+              <Icon className="w-3.5 h-3.5 shrink-0" style={active ? { fill: 'currentColor' } : {}} />
+              {id === 'save' && isSessionSaved ? 'Guardado ✓' : label}
+            </motion.button>
           ))}
         </div>
 
@@ -203,11 +320,11 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="mt-5 flex items-center gap-4 px-4 py-3 rounded-xl"
-            style={{ background: 'rgba(0,207,255,0.06)', border: '1px solid rgba(0,207,255,0.14)' }}
+            style={{ background: 'rgba(32,199,232,0.06)', border: '1px solid rgba(32,199,232,0.14)' }}
           >
             <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center"
-              style={{ background: 'rgba(0,207,255,0.12)' }}>
-              <User className="w-4 h-4" style={{ color: '#00CFFF' }} />
+              style={{ background: 'rgba(32,199,232,0.12)' }}>
+              <User className="w-4 h-4" style={{ color: '#20C7E8' }} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-white leading-tight">Únete a la comunidad</p>
@@ -216,7 +333,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             <a
               href="/signup"
               className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-              style={{ background: '#00CFFF', color: '#080B14' }}
+              style={{ background: '#20C7E8', color: '#080B14' }}
             >
               Crear cuenta
             </a>
@@ -248,10 +365,10 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 transition={{ delay: i * 0.06 }}
                 className="glass-card flex items-center gap-4 p-3 rounded-xl transition-all duration-200 cursor-pointer group"
                 style={{ borderRadius: '12px' }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(0,207,255,0.15)')}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(32,199,232,0.15)')}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)')}
               >
-                <span className="text-sm font-mono font-bold shrink-0 w-14 truncate" style={{ color: '#00CFFF' }}>
+                <span className="text-sm font-mono font-bold shrink-0 w-14 truncate" style={{ color: '#20C7E8' }}>
                   {show.schedule || '—'}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -261,7 +378,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 {show.genre && (
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
-                    style={{ background: 'rgba(0,207,255,0.08)', color: '#00CFFF', border: '1px solid rgba(0,207,255,0.15)' }}
+                    style={{ background: 'rgba(32,199,232,0.08)', color: '#20C7E8', border: '1px solid rgba(32,199,232,0.15)' }}
                   >
                     {show.genre}
                   </span>
@@ -271,6 +388,31 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
           </div>
         )}
       </motion.div>
+
+      {/* ── Preguntar al host modal ── */}
+      <AnimatePresence>
+        {showAskHost && (
+          <FormModal
+            title="Preguntar al host"
+            subtitle={`Transmisión: ${song?.title || 'En vivo'}`}
+            onClose={() => { setShowAskHost(false); setHostQuestion(''); }}
+          >
+            <form onSubmit={handleSendQuestion} className="grid grid-cols-1 gap-4">
+              <FField label="Tu pregunta" required>
+                <FTextarea
+                  value={hostQuestion}
+                  onChange={(e) => setHostQuestion(e.target.value)}
+                  placeholder="Escribe tu pregunta para el host…"
+                  rows={4}
+                />
+              </FField>
+              <FSubmit loading={sendingQuestion} disabled={!hostQuestion.trim()}>
+                Enviar pregunta
+              </FSubmit>
+            </form>
+          </FormModal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

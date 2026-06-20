@@ -68,7 +68,7 @@ function PolyfaunaOS() {
       case 'blog':          return <BlogSection />;
       case 'interviews':    return <InterviewsSection />;
       case 'tickets':       return <TicketVault />;
-      case 'settings':      return <ControlCenter />;
+      case 'settings':      return <ControlCenter setCurrentSection={setCurrentSection} />;
       case 'mi-panel':      return <MyPanel setCurrentSection={setCurrentSection} />;
       case 'promoter':      return <PromoterDashboard />;
       default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
@@ -117,6 +117,7 @@ function PolyfaunaOS() {
         setIsPlaying={setIsPlaying}
         currentTrack={currentTrack}
         setCurrentTrack={setCurrentTrack}
+        setCurrentSection={setCurrentSection}
       />
       <Toaster />
     </div>

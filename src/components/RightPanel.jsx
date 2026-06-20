@@ -1,21 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, CalendarDays, CheckCircle, ChevronDown, ChevronRight, Clock, FileText, Headphones, LogOut, MapPin, Play, QrCode, Radio, Settings, User, X } from 'lucide-react';
+import { Bell, CalendarDays, CheckCircle, ChevronDown, ChevronRight, Clock, FileText, Headphones, LogOut, MapPin, Play, QrCode, Radio, Settings, Shield, User, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const ROLE_LABEL = { citizen: 'Wave Citizen', artist: 'Artista', promoter: 'Promotor', club: 'Club', admin: 'Admin' };
 
 const DEMO_NOTIFS = [
-  { id: 1, icon: Radio,     color: '#FF7043', title: 'Polyfauna Radio en vivo',       body: 'Underground Frequencies con Nox Vega.',      time: 'Hace 5 min' },
-  { id: 2, icon: Headphones, color: '#00CFFF', title: 'Nuevo podcast disponible',       body: 'Frecuencias Oscuras #12 — HVBER.',            time: 'Hace 1h'    },
+  { id: 1, icon: Radio,     color: '#FF8A1F', title: 'Polyfauna Radio en vivo',       body: 'Underground Frequencies con Nox Vega.',      time: 'Hace 5 min' },
+  { id: 2, icon: Headphones, color: '#20C7E8', title: 'Nuevo podcast disponible',       body: 'Frecuencias Oscuras #12 — HVBER.',            time: 'Hace 1h'    },
   { id: 3, icon: Bell,       color: '#FBBF24', title: 'Evento próximo: Subterranea',    body: 'Este lunes — Teatro Metropol.',               time: 'Hace 3h'    },
   { id: 4, icon: FileText,   color: '#A78BFA', title: 'Nuevo artículo en el blog',      body: 'El sonido del techno industrial colombiano.', time: 'Ayer'       },
 ];
@@ -46,13 +43,13 @@ function NotificationsModal({ open, onClose }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ duration: 0.18 }}
-            style={{ background: 'rgba(10,13,24,0.97)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}
+            style={{ background: 'rgba(8,12,11,0.97)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-white">Notificaciones</h3>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,112,67,0.2)', color: '#FF7043' }}>
+                  style={{ background: 'rgba(255,112,67,0.2)', color: '#FF8A1F' }}>
                   {DEMO_NOTIFS.length}
                 </span>
               </div>
@@ -84,7 +81,7 @@ function NotificationsModal({ open, onClose }) {
             </div>
             <div className="px-4 py-3 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
               <button type="button" className="text-xs font-semibold transition-colors hover:opacity-80"
-                style={{ color: '#FF7043' }} onClick={onClose}>
+                style={{ color: '#FF8A1F' }} onClick={onClose}>
                 Marcar todo como leído
               </button>
             </div>
@@ -106,7 +103,7 @@ function SectionHeader({ title, onViewAll }) {
       {onViewAll && (
         <button type="button" onClick={onViewAll}
           className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors hover:opacity-80"
-          style={{ color: '#00CFFF' }}>
+          style={{ color: '#20C7E8' }}>
           Ver todo <ChevronRight className="w-3 h-3" />
         </button>
       )}
@@ -127,7 +124,7 @@ function TicketCard({ ticket }) {
   const event = ticket.events;
   return (
     <div className="rounded-xl overflow-hidden"
-      style={{ background: 'rgba(15,19,34,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      style={{ background: 'rgba(8,14,9,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="relative h-10 overflow-hidden">
         <img src={event?.image_url || FALLBACK_EVENT} alt={event?.title}
           className="w-full h-full object-cover opacity-50" />
@@ -219,9 +216,9 @@ function PodcastRow({ pod, isPlaying, onPlay }) {
       <button type="button" onClick={onPlay}
         className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all"
         style={{
-          background: isPlaying ? '#00CFFF' : 'rgba(0,207,255,0.1)',
-          color: isPlaying ? '#080B14' : '#00CFFF',
-          boxShadow: isPlaying ? '0 0 12px rgba(0,207,255,0.4)' : 'none',
+          background: isPlaying ? '#20C7E8' : 'rgba(32,199,232,0.1)',
+          color: isPlaying ? '#080B14' : '#20C7E8',
+          boxShadow: isPlaying ? '0 0 12px rgba(32,199,232,0.4)' : 'none',
         }}>
         <Play className="w-3 h-3 ml-0.5" />
       </button>
@@ -257,6 +254,16 @@ export default function RightPanel({ setCurrentSection }) {
   const navigate = useNavigate();
   const [playing, setPlaying] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const displayName = profile?.display_name || currentUser?.email?.split('@')[0] || 'Wave Citizen';
   const displayRole = profile ? (ROLE_LABEL[profile.role] || 'Wave Citizen') : (currentUser ? 'Wave Citizen' : 'Invitado');
@@ -291,70 +298,133 @@ export default function RightPanel({ setCurrentSection }) {
       <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
 
     <aside className="w-72 shrink-0 h-full flex flex-col border-l overflow-y-auto"
-      style={{ background: 'rgba(8,11,22,0.97)', borderColor: 'rgba(255,255,255,0.07)' }}>
+      style={{ background: 'rgba(8,12,11,0.97)', borderColor: 'rgba(255,255,255,0.07)' }}>
 
       {/* 0 — User Identity */}
       <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         {currentUser ? (
           <div className="flex items-center gap-3">
-            {/* Avatar + name → dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center gap-2.5 flex-1 min-w-0 rounded-xl py-1 px-1 hover:bg-white/5 transition-colors text-left">
-                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#FF7043 0%,#7B5CF0 100%)', border: '2px solid rgba(255,255,255,0.1)' }}>
-                    {profile?.avatar_url
-                      ? <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
-                      : <User className="w-4 h-4 text-white m-auto mt-1.5" />
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
-                    <p className="text-[11px] leading-tight truncate" style={{ color: '#FF7043' }}>{displayRole}</p>
-                  </div>
+            {/* ── User menu trigger + glass panel ── */}
+            <div className="relative flex-1 min-w-0" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(o => !o)}
+                className="flex items-center gap-2.5 w-full rounded-xl py-1 px-1 transition-colors text-left"
+                style={{ background: menuOpen ? 'rgba(255,255,255,0.06)' : 'transparent' }}
+                onMouseEnter={e => { if (!menuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                onMouseLeave={e => { if (!menuOpen) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div
+                  className="w-9 h-9 rounded-full overflow-hidden shrink-0"
+                  style={{ background: 'linear-gradient(135deg,#FF8A1F 0%,#7C5CFF 100%)', border: '2px solid rgba(255,255,255,0.1)' }}
+                >
+                  {profile?.avatar_url
+                    ? <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                    : <User className="w-4 h-4 text-white m-auto mt-1.5" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
+                  <p className="text-[11px] leading-tight truncate" style={{ color: '#FF8A1F' }}>{displayRole}</p>
+                </div>
+                <motion.div animate={{ rotate: menuOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                   <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[180px] border"
-                style={{ background: 'rgba(15,19,34,0.98)', borderColor: 'rgba(255,255,255,0.1)' }}>
-                <DropdownMenuItem onClick={() => setCurrentSection?.('mi-panel')}
-                  className="cursor-pointer text-white/80 hover:text-white hover:bg-white/8 focus:bg-white/8">
-                  <User className="w-4 h-4 mr-2 text-white/50" />Mi Panel
-                </DropdownMenuItem>
-                {(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin') && (
-                  <DropdownMenuItem onClick={() => setCurrentSection?.('promoter')}
-                    className="cursor-pointer text-white/80 hover:text-white hover:bg-white/8 focus:bg-white/8">
-                    <Settings className="w-4 h-4 mr-2 text-white/50" />Promoter Hub
-                  </DropdownMenuItem>
+                </motion.div>
+              </button>
+
+              {/* Glass panel */}
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: -6 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                    className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50"
+                    style={{
+                      background: 'rgba(10,15,14,0.92)',
+                      backdropFilter: 'blur(48px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(48px) saturate(180%)',
+                      border: '1px solid rgba(184,207,166,0.12)',
+                      boxShadow: '0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.07)',
+                    }}
+                  >
+                    {/* Brillo superior */}
+                    <div className="absolute top-0 left-6 right-6 h-px"
+                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />
+
+                    {/* Opciones de navegación */}
+                    <div className="py-1.5">
+                      {[
+                        { label: 'Mi Panel',     icon: User,     color: '#20C7E8', onClick: () => { setCurrentSection?.('mi-panel'); setMenuOpen(false); } },
+                        ...(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin'
+                          ? [{ label: 'Promoter Hub', icon: Settings, color: '#FF8A1F', onClick: () => { setCurrentSection?.('promoter'); setMenuOpen(false); } }]
+                          : []),
+                        ...(userRole === 'admin'
+                          ? [{ label: 'Admin Panel', icon: Shield, color: '#7C5CFF', onClick: () => { navigate('/admin'); setMenuOpen(false); } }]
+                          : []),
+                      ].map(({ label, icon: Icon, color, onClick }) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={onClick}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all duration-150 group"
+                          style={{ color: 'rgba(255,255,255,0.65)' }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = `${color}12`;
+                            e.currentTarget.style.color = color;
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = 'rgba(255,255,255,0.65)';
+                          }}
+                        >
+                          <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                            style={{ background: `${color}15`, border: `1px solid ${color}25` }}>
+                            <Icon className="w-3.5 h-3.5" style={{ color }} />
+                          </span>
+                          {label}
+                          <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-30 group-hover:opacity-70 transition-opacity" />
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Divider + logout */}
+                    <div className="px-3 pb-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <button
+                        type="button"
+                        onClick={() => { handleLogout(); setMenuOpen(false); }}
+                        className="mt-1.5 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+                        style={{ color: 'rgba(239,68,68,0.7)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#ef4444'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(239,68,68,0.7)'; }}
+                      >
+                        <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                          <LogOut className="w-3.5 h-3.5 text-red-400" />
+                        </span>
+                        Cerrar sesión
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
-                {userRole === 'admin' && (
-                  <DropdownMenuItem onClick={() => navigate('/admin')}
-                    className="cursor-pointer text-white/80 hover:text-white hover:bg-white/8 focus:bg-white/8">
-                    <Settings className="w-4 h-4 mr-2 text-white/50" />Admin Panel
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleLogout}
-                  className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-white/8 focus:bg-white/8">
-                  <LogOut className="w-4 h-4 mr-2" />Cerrar sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </AnimatePresence>
+            </div>
 
             {/* Bell */}
             <button type="button" onClick={() => setNotifOpen(v => !v)}
               className="relative p-2 rounded-lg shrink-0 transition-colors"
-              style={{ color: notifOpen ? '#FF7043' : 'rgba(255,255,255,0.45)', background: notifOpen ? 'rgba(255,112,67,0.08)' : 'transparent' }}
+              style={{ color: notifOpen ? '#FF8A1F' : 'rgba(255,255,255,0.45)', background: notifOpen ? 'rgba(255,112,67,0.08)' : 'transparent' }}
               onMouseEnter={e => { if (!notifOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
               onMouseLeave={e => { if (!notifOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.background = notifOpen ? 'rgba(255,112,67,0.08)' : 'transparent'; }}>
               <Bell className="w-4.5 h-4.5 w-[18px] h-[18px]" />
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
-                style={{ background: '#FF7043' }}>
+                style={{ background: '#FF8A1F' }}>
                 {DEMO_NOTIFS.length}
               </span>
             </button>
           </div>
         ) : (
-          /* Logged-out state */
           <div className="flex items-center gap-3 py-1">
             <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -363,9 +433,9 @@ export default function RightPanel({ setCurrentSection }) {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-white/50">Sin sesión activa</p>
               <div className="flex gap-2 mt-0.5">
-                <a href="/login" className="text-[10px] font-bold hover:underline" style={{ color: '#00CFFF' }}>Ingresar</a>
+                <a href="/login" className="text-[10px] font-bold hover:underline" style={{ color: '#20C7E8' }}>Ingresar</a>
                 <span className="text-[10px] text-white/20">·</span>
-                <a href="/signup" className="text-[10px] font-bold hover:underline" style={{ color: '#FF7043' }}>Crear cuenta</a>
+                <a href="/signup" className="text-[10px] font-bold hover:underline" style={{ color: '#FF8A1F' }}>Crear cuenta</a>
               </div>
             </div>
           </div>

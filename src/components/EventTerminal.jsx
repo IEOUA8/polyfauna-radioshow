@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Building, Calendar, CheckCircle, ChevronRight, Loader2, MapPin, Star, Ticket, Users, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, Loader2, MapPin, Star, Ticket, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -16,12 +16,17 @@ function formatPrice(price) {
   return `$${Number(price).toLocaleString('es-CO')}`;
 }
 
+function formatDateLong(str) {
+  if (!str) return '';
+  return new Date(str).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 /* ── Modal de compra ── */
 function BuyModal({ event, onClose }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [status, setStatus] = useState('idle'); // idle | buying | success | error
+  const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
 
@@ -52,7 +57,7 @@ function BuyModal({ event, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,20,0.88)', backdropFilter: 'blur(10px)' }}
+      style={{ background: 'rgba(4,7,7,0.88)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
       <motion.div
@@ -61,13 +66,12 @@ function BuyModal({ event, onClose }) {
         exit={{ opacity: 0, scale: 0.93, y: 16 }}
         transition={{ type: 'spring', stiffness: 320, damping: 28 }}
         className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-        style={{ background: '#0F1322', border: '1px solid rgba(255,255,255,0.09)' }}
+        style={{ background: 'rgba(8,14,9,0.96)', border: '1px solid rgba(255,255,255,0.09)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Event image */}
         <div className="relative h-40 overflow-hidden">
           <img src={event.image_url || FALLBACK_IMG} alt={event.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F1322] via-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
           <button
             type="button" onClick={onClose}
             className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center"
@@ -79,7 +83,6 @@ function BuyModal({ event, onClose }) {
 
         <div className="px-6 pb-6 pt-4 space-y-4">
           {status === 'success' ? (
-            /* ── Success state ── */
             <div className="flex flex-col items-center gap-3 py-2 text-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.12)' }}>
                 <CheckCircle className="w-7 h-7" style={{ color: '#22c55e' }} />
@@ -102,7 +105,6 @@ function BuyModal({ event, onClose }) {
               </button>
             </div>
           ) : (
-            /* ── Confirm / error state ── */
             <>
               <div>
                 <p className="text-base font-black text-white leading-tight">{event.title}</p>
@@ -122,7 +124,6 @@ function BuyModal({ event, onClose }) {
                 </div>
               </div>
 
-              {/* Price + availability */}
               <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div>
                   <p className="text-[11px] text-white/35 uppercase tracking-wider">Tipo</p>
@@ -130,7 +131,7 @@ function BuyModal({ event, onClose }) {
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] text-white/35 uppercase tracking-wider">Precio</p>
-                  <p className="text-lg font-black mt-0.5" style={{ color: '#00CFFF' }}>{formatPrice(event.price)}</p>
+                  <p className="text-lg font-black mt-0.5" style={{ color: '#FF8A1F' }}>{formatPrice(event.price)}</p>
                 </div>
               </div>
 
@@ -149,7 +150,7 @@ function BuyModal({ event, onClose }) {
               {!currentUser ? (
                 <button type="button" onClick={handleConfirm}
                   className="w-full py-3 rounded-xl text-sm font-black"
-                  style={{ background: '#00CFFF', color: '#080B14' }}>
+                  style={{ background: '#FF8A1F', color: '#fff' }}>
                   Iniciar sesión para comprar
                 </button>
               ) : isSoldOut ? (
@@ -161,7 +162,7 @@ function BuyModal({ event, onClose }) {
               ) : (
                 <button type="button" onClick={handleConfirm} disabled={status === 'buying'}
                   className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60"
-                  style={{ background: '#00CFFF', color: '#080B14' }}>
+                  style={{ background: '#FF8A1F', color: '#fff' }}>
                   {status === 'buying'
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando…</>
                     : <><Ticket className="w-4 h-4" /> Confirmar compra</>}
@@ -179,10 +180,148 @@ function BuyModal({ event, onClose }) {
   );
 }
 
+/* ── Event detail page ── */
+function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
+  const lineup = event.lineup
+    ? (Array.isArray(event.lineup) ? event.lineup : String(event.lineup).split(','))
+    : [];
+
+  return (
+    <motion.div
+      key="event-detail"
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -40 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="p-5 space-y-6"
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Eventos
+      </button>
+
+      {/* Hero */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 280 }}>
+        <img
+          src={event.image_url || FALLBACK_IMG}
+          alt={event.title}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+
+        {/* Favorite button */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); toggleFav('event', event.id); }}
+          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+          style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.1)' }}
+        >
+          <Star
+            className="w-4 h-4"
+            style={{
+              fill: isFav('event', event.id) ? '#F59E0B' : 'none',
+              color: isFav('event', event.id) ? '#F59E0B' : 'rgba(255,255,255,0.7)',
+            }}
+          />
+        </button>
+
+        <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 280 }}>
+          {event.category && (
+            <span className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#FF8A1F' }}>
+              {event.category}
+            </span>
+          )}
+          <h1 className="text-3xl font-black text-white leading-tight">{event.title}</h1>
+        </div>
+      </div>
+
+      {/* Info tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {event.date && (
+          <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <Calendar className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">Fecha</p>
+            <p className="text-xs font-bold text-white mt-0.5">
+              {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+        )}
+        {event.venue && (
+          <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <Building className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">Venue</p>
+            <p className="text-xs font-bold text-white mt-0.5 truncate">{event.venue}</p>
+          </div>
+        )}
+        {event.city && (
+          <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <MapPin className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">Ciudad</p>
+            <p className="text-xs font-bold text-white mt-0.5">{event.city}</p>
+          </div>
+        )}
+        <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <Ticket className="w-4 h-4 mx-auto mb-1.5" style={{ color: '#FF8A1F' }} />
+          <p className="text-[10px] text-white/40 uppercase tracking-wider">Precio</p>
+          <p className="text-sm font-black mt-0.5" style={{ color: '#FF8A1F' }}>{formatPrice(event.price)}</p>
+        </div>
+      </div>
+
+      {/* Description */}
+      {event.description && (
+        <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-3">Sobre el evento</h2>
+          <p className="text-sm text-white/70 leading-relaxed">{event.description}</p>
+        </div>
+      )}
+
+      {/* Lineup */}
+      {lineup.length > 0 && (
+        <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-3 flex items-center gap-2">
+            <Users className="w-3.5 h-3.5" />
+            Lineup
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {lineup.map((artist, i) => (
+              <span
+                key={i}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                style={{ background: 'rgba(255,138,31,0.1)', color: '#FF8A1F', border: '1px solid rgba(255,138,31,0.2)' }}
+              >
+                {artist.trim()}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Buy CTA */}
+      <motion.button
+        type="button"
+        onClick={onBuy}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3"
+        style={{ background: 'linear-gradient(135deg, #FF8A1F, #E07010)', color: '#fff', boxShadow: '0 8px 32px rgba(255,138,31,0.35)' }}
+      >
+        <Ticket className="w-5 h-5" />
+        Comprar Ticket
+      </motion.button>
+    </motion.div>
+  );
+}
+
 export default function EventTerminal() {
   const { toast } = useToast();
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [buyingEvent, setBuyingEvent] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
@@ -194,8 +333,6 @@ export default function EventTerminal() {
     e.stopPropagation();
     toggleFav('event', id);
   };
-
-  const handleBuyTicket = (event) => setBuyingEvent(event);
 
   if (loading) {
     return (
@@ -227,195 +364,210 @@ export default function EventTerminal() {
 
   return (
     <>
-    <AnimatePresence>
-      {buyingEvent && <BuyModal event={buyingEvent} onClose={() => setBuyingEvent(null)} />}
-    </AnimatePresence>
-    <div className="p-5 space-y-6">
-      {/* Featured Event Banner */}
-      <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 300 }}>
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={featured.id}
-            src={featured.image_url || FALLBACK_IMG}
-            alt={featured.title}
-            initial={{ opacity: 0, scale: 1.04 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 w-full h-full object-cover"
+      <AnimatePresence>
+        {buyingEvent && <BuyModal event={buyingEvent} onClose={() => setBuyingEvent(null)} />}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {selectedEvent ? (
+          <EventDetail
+            key="detail"
+            event={selectedEvent}
+            onBack={() => setSelectedEvent(null)}
+            onBuy={() => setBuyingEvent(selectedEvent)}
+            isFav={isFav}
+            toggleFav={toggleFav}
           />
-        </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-        <div className="relative z-10 p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
-          <div>
-            <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: '#00CFFF' }}>
-              Featured Event
-            </span>
-            <AnimatePresence mode="wait">
-              <motion.h1
-                key={featured.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-                className="mt-2 text-3xl md:text-4xl font-black text-white leading-tight max-w-lg"
-              >
-                {featured.title}
-              </motion.h1>
-            </AnimatePresence>
-            {featured.description && (
-              <p className="mt-2 text-sm text-white/60 max-w-sm line-clamp-2">{featured.description}</p>
-            )}
-          </div>
-
-          <div className="mt-6">
-            <div className="flex flex-wrap items-center gap-3 mb-5 text-sm text-white/70">
-              {featured.date && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-white/40" />
-                  {new Date(featured.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
-              )}
-              {featured.venue && (
-                <span className="flex items-center gap-1.5">
-                  <Building className="w-3.5 h-3.5 text-white/40" />
-                  {featured.venue}
-                </span>
-              )}
-              {featured.city && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-white/40" />
-                  {featured.city}
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleBuyTicket(featured)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-[#080B14] transition-opacity hover:opacity-90"
-                style={{ background: '#00CFFF' }}
-              >
-                Comprar Entrada
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              {featured.lineup && featured.lineup.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => toast({ title: `Lineup: ${Array.isArray(featured.lineup) ? featured.lineup.join(', ') : featured.lineup}` })}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white border transition-colors hover:bg-white/10"
-                  style={{ borderColor: 'rgba(255,255,255,0.3)' }}
-                >
-                  <Users className="w-4 h-4" />
-                  Ver Lineup
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 mt-5">
-              {events.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setFeaturedIndex(i)}
-                  className="rounded-full transition-all"
-                  style={{
-                    width: i === safeIndex ? 20 : 7,
-                    height: 7,
-                    background: i === safeIndex ? '#00CFFF' : 'rgba(255,255,255,0.3)',
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming Events Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-white">Próximos Eventos</h2>
-          <button
-            type="button"
-            className="flex items-center gap-1 text-xs font-semibold transition-colors hover:text-white"
-            style={{ color: '#00CFFF' }}
+        ) : (
+          <motion.div
+            key="list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="p-5 space-y-6"
           >
-            Ver Todos
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {events.map((event, i) => (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07 }}
-              className="rounded-xl overflow-hidden border flex flex-col"
-              style={{ background: 'rgba(15, 19, 34, 0.9)', borderColor: 'rgba(255,255,255,0.07)' }}
+            {/* Featured Event Banner */}
+            <div
+              className="relative rounded-2xl overflow-hidden cursor-pointer"
+              style={{ minHeight: 300 }}
+              onClick={() => setSelectedEvent(featured)}
             >
-              <div className="relative aspect-video overflow-hidden">
-                <img
-                  src={event.image_url || FALLBACK_IMG}
-                  alt={event.title}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={featured.id}
+                  src={featured.image_url || FALLBACK_IMG}
+                  alt={featured.title}
+                  initial={{ opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <button
-                  type="button"
-                  onClick={(e) => toggleFavorite(e, event.id)}
-                  className="absolute top-2 right-2 p-1.5 rounded-full transition-colors"
-                  style={{ background: 'rgba(0,0,0,0.5)' }}
-                >
-                  <Star
-                    className="w-4 h-4 transition-colors"
-                    style={{
-                      fill: isFav('event', event.id) ? '#F59E0B' : 'none',
-                      color: isFav('event', event.id) ? '#F59E0B' : 'rgba(255,255,255,0.6)',
-                    }}
-                  />
-                </button>
-              </div>
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-              <div className="p-3 flex flex-col gap-2 flex-1">
-                <p className="text-sm font-bold text-white leading-tight">{event.title}</p>
-                <div className="space-y-1 text-xs text-white/50">
-                  {event.date && (
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3 shrink-0" />
-                      {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </div>
-                  )}
-                  {(event.venue || event.city) && (
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 shrink-0" />
-                      {[event.venue, event.city].filter(Boolean).join(', ')}
-                    </div>
+              <div className="relative z-10 p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: '#FF8A1F' }}>
+                    Featured Event
+                  </span>
+                  <AnimatePresence mode="wait">
+                    <motion.h1
+                      key={featured.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                      className="mt-2 text-3xl md:text-4xl font-black text-white leading-tight max-w-lg"
+                    >
+                      {featured.title}
+                    </motion.h1>
+                  </AnimatePresence>
+                  {featured.description && (
+                    <p className="mt-2 text-sm text-white/60 max-w-sm line-clamp-2">{featured.description}</p>
                   )}
                 </div>
-                <div className="flex items-center justify-between mt-auto pt-2">
-                  <span className="text-sm font-bold" style={{ color: '#00CFFF' }}>
-                    {formatPrice(event.price)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleBuyTicket(event)}
-                    className="text-xs font-bold px-3 py-1.5 rounded-lg text-[#080B14] transition-opacity hover:opacity-90"
-                    style={{ background: '#00CFFF' }}
-                  >
-                    Comprar
-                  </button>
+
+                <div className="mt-6">
+                  <div className="flex flex-wrap items-center gap-3 mb-5 text-sm text-white/70">
+                    {featured.date && (
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-white/40" />
+                        {new Date(featured.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    )}
+                    {featured.venue && (
+                      <span className="flex items-center gap-1.5">
+                        <Building className="w-3.5 h-3.5 text-white/40" />
+                        {featured.venue}
+                      </span>
+                    )}
+                    {featured.city && (
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-white/40" />
+                        {featured.city}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setBuyingEvent(featured); }}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
+                      style={{ background: '#FF8A1F', color: '#fff' }}
+                    >
+                      <Ticket className="w-4 h-4" />
+                      Comprar Ticket
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedEvent(featured); }}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white border transition-colors hover:bg-white/10"
+                      style={{ borderColor: 'rgba(255,255,255,0.3)' }}
+                    >
+                      Ver detalles
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-5">
+                    {events.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setFeaturedIndex(i); }}
+                        className="rounded-full transition-all"
+                        style={{
+                          width: i === safeIndex ? 20 : 7,
+                          height: 7,
+                          background: i === safeIndex ? '#FF8A1F' : 'rgba(255,255,255,0.3)',
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </div>
+            </div>
+
+            {/* Upcoming Events Grid */}
+            <div>
+              <h2 className="text-base font-bold text-white mb-4">Próximos Eventos</h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                {events.map((event, i) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07 }}
+                    className="rounded-xl overflow-hidden border flex flex-col cursor-pointer group"
+                    style={{ background: 'rgba(11, 16, 15, 0.90)', borderColor: 'rgba(255,255,255,0.07)' }}
+                    onClick={() => setSelectedEvent(event)}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,138,31,0.25)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
+                  >
+                    <div className="relative aspect-video overflow-hidden">
+                      <img
+                        src={event.image_url || FALLBACK_IMG}
+                        alt={event.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                      <button
+                        type="button"
+                        onClick={(e) => toggleFavorite(e, event.id)}
+                        className="absolute top-2 right-2 p-1.5 rounded-full transition-colors"
+                        style={{ background: 'rgba(0,0,0,0.5)' }}
+                      >
+                        <Star
+                          className="w-4 h-4 transition-colors"
+                          style={{
+                            fill: isFav('event', event.id) ? '#F59E0B' : 'none',
+                            color: isFav('event', event.id) ? '#F59E0B' : 'rgba(255,255,255,0.6)',
+                          }}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="p-3 flex flex-col gap-2 flex-1">
+                      <p className="text-sm font-bold text-white leading-tight">{event.title}</p>
+                      <div className="space-y-1 text-xs text-white/50">
+                        {event.date && (
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        )}
+                        {(event.venue || event.city) && (
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            {[event.venue, event.city].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mt-auto pt-2">
+                        <span className="text-sm font-bold" style={{ color: '#FF8A1F' }}>
+                          {formatPrice(event.price)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setBuyingEvent(event); }}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
+                          style={{ background: '#FF8A1F', color: '#fff' }}
+                        >
+                          Comprar
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
