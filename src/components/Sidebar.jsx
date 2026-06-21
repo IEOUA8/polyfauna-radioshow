@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight, CalendarDays, Disc3, FileText, Gauge,
   Headphones, Lock, MessageSquare, Music, Radio,
-  SlidersHorizontal, Ticket, User,
+  SlidersHorizontal, Ticket, User as UserIcon,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import HoloSpectrum from '@/components/HoloSpectrum';
@@ -21,6 +21,7 @@ const ALL_NAV = [
   { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: false },
   { id: 'inbox',         label: 'Signal Inbox',       icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Ticket Vault',       icon: Ticket,            public: false },
+  { id: 'mi-panel',      label: 'Mi Panel',           icon: UserIcon,          public: false },
   { id: 'settings',      label: 'Control Center',     icon: SlidersHorizontal, public: false },
 ];
 
@@ -124,20 +125,6 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
           </>
         )}
 
-        {/* Admin Panel */}
-        {isLoggedIn && role === 'admin' && (
-          <button type="button" onClick={() => navigate('mi-panel', false)}
-            className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
-              currentSection === 'mi-panel' ? 'text-white bg-white/8' : 'text-white/40 hover:text-white/75 hover:bg-white/4'
-            }`}
-          >
-            {currentSection === 'mi-panel' && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full bg-white/80" />
-            )}
-            <SlidersHorizontal className={`w-4 h-4 shrink-0 ${currentSection === 'mi-panel' ? 'text-white' : 'text-white/35 group-hover:text-white/60'}`} />
-            Panel Admin
-          </button>
-        )}
       </nav>
 
       {/* Guest CTA */}

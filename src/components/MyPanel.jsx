@@ -182,24 +182,22 @@ export default function MyPanel({ setCurrentSection }) {
         className="relative overflow-hidden"
         style={{ minHeight: 220 }}
       >
-        {/* Gradient background */}
-        <div className="absolute inset-0"
+        {/* Dark base */}
+        <div className="absolute inset-0" style={{ background: 'rgba(5,9,10,1)' }} />
+
+        {/* Subtle color accent — top-right only, very low opacity */}
+        <div className="absolute inset-0 pointer-events-none"
           style={{
             background: `
-              radial-gradient(ellipse at 70% 0%, ${role.color}28 0%, transparent 55%),
-              radial-gradient(ellipse at 20% 100%, ${role.color}14 0%, transparent 45%),
-              linear-gradient(180deg, rgba(8,12,11,0.0) 0%, rgba(5,9,10,0.85) 100%)
+              radial-gradient(ellipse at 80% -10%, ${role.color}14 0%, transparent 50%),
+              radial-gradient(ellipse at 0% 110%, ${role.color}08 0%, transparent 45%)
             `,
           }}
         />
 
-        {/* Botanical SVG waves */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1000 220" fill="none" aria-hidden="true">
-          <path d="M -60 140 C 100 80 300 180 520 115 S 780 45 1060 130 L 1060 180 C 800 95 540 210 320 145 S 80 80 -60 165 Z" fill={`${role.color}0D`} />
-          <path d="M -60 75 C 140 28 360 130 600 68 S 860 10 1060 75 L 1060 115 C 840 42 600 148 360 88 S 100 38 -60 100 Z" fill={`${role.color}09`} />
-          <path d="M -60 175 C 120 130 340 220 580 162 S 840 100 1060 178 L 1060 220 L -60 220 Z" fill={`${role.color}07`} />
-          <path d="M 220 0 C 400 60 560 -20 740 45 S 940 140 1060 65 L 1060 0 L 220 0 Z" fill={`${role.color}06`} />
-        </svg>
+        {/* Thin accent line at top */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none"
+          style={{ background: `linear-gradient(90deg, transparent, ${role.color}40, transparent)` }} />
 
         {/* Blurred avatar backdrop */}
         {(profile?.avatar_url) && (

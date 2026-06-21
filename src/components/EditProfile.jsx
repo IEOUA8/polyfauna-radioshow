@@ -76,7 +76,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden overflow-y-auto max-h-[90vh]"
         style={{ background: 'rgba(11,16,15,0.96)', border: '1px solid rgba(255,255,255,0.1)' }}>
 

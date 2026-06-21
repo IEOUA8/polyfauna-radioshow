@@ -320,15 +320,6 @@ export default function ControlCenter({ setCurrentSection }) {
           </div>
         </div>
 
-        {/* Admin */}
-        {isAdmin && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Administración</p>
-            <SettingsTile icon={Shield} label="Solicitudes y Comunidad" description="Aprobar roles y notificar a la comunidad"
-              onClick={() => setCurrentSection?.('mi-panel')} delay={0.3} />
-          </div>
-        )}
-
         {/* Logout */}
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Sesión</p>
