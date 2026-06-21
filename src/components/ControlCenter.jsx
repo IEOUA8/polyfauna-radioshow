@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, BellOff, Check, ChevronRight, Edit3, Heart, Loader2, LogOut, Mail, Shield, Ticket, Zap } from 'lucide-react';
+import { Bell, BellOff, Check, ChevronRight, Edit3, Loader2, LogOut, Mail, Shield, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -243,10 +243,6 @@ export default function ControlCenter({ setCurrentSection }) {
           <div className="space-y-2">
             <SettingsTile icon={Edit3} label="Editar Perfil" description="Nombre, bio, avatar y redes sociales"
               onClick={() => setEditOpen(true)} delay={0.05} />
-            <SettingsTile icon={Heart} label="Mi Panel" description="Favoritos, playlists y contenido"
-              onClick={() => setCurrentSection?.('mi-panel')} delay={0.1} />
-            <SettingsTile icon={Ticket} label="Ticket Vault" description="Tus entradas y eventos"
-              onClick={() => setCurrentSection?.('tickets')} delay={0.15} />
           </div>
         </div>
 
@@ -254,8 +250,6 @@ export default function ControlCenter({ setCurrentSection }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Preferencias</p>
           <div className="space-y-2">
-            <SettingsTile icon={Bell} label="Signal Inbox" description="Mensajes y alertas de actividad"
-              onClick={() => setCurrentSection?.('inbox')} delay={0.2} />
 
             {/* Push notifications toggle */}
             {pushSupported && pushPerm !== 'denied' && (

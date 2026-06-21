@@ -32,7 +32,7 @@ function GuestGate({ section }) {
     music: 'Música', events: 'Event Terminal', artists: 'Artists & Labels',
     inbox: 'Signal Inbox', blog: 'Blog & Entrevistas',
     tickets: 'Ticket Vault', settings: 'Control Center',
-    'mi-panel': 'Mi Panel', promoter: 'Gestor de Eventos',
+    'mi-panel': 'Panel de Usuario', promoter: 'Gestor de Eventos',
   };
   return (
     <motion.div

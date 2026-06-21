@@ -2,8 +2,8 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarDays, Disc3, FileText, Gauge, Headphones,
-  Lock, LogIn, MessageSquare, Music, Radio, Shield,
-  SlidersHorizontal, Ticket, UserPlus, X,
+  Lock, LogIn, MessageSquare, Music, Radio,
+  SlidersHorizontal, Ticket, User as UserIcon, UserPlus, X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { id: 'inbox',         label: 'Mensajes',         icon: MessageSquare,     public: false, color: '#F59E0B' },
   { id: 'tickets',       label: 'Tickets',          icon: Ticket,            public: false, color: '#FF6B6B' },
   { id: 'settings',      label: 'Ajustes',          icon: SlidersHorizontal, public: false, color: 'rgba(255,255,255,0.7)' },
-  { id: 'mi-panel',      label: 'Mi Panel',         icon: Shield,            public: false, color: '#A78BFA', requiresLogin: true },
+  { id: 'mi-panel',      label: 'Mi Panel',         icon: UserIcon,          public: false, color: '#A78BFA', requiresLogin: true },
 ];
 
 const ROLE_LABELS = {
