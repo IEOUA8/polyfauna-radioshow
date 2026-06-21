@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Check, ChevronRight, Edit3, Heart, LogOut, Mail, Shield, Ticket, Zap } from 'lucide-react';
+import { Bell, BellOff, Check, ChevronRight, Edit3, Heart, Loader2, LogOut, Mail, Shield, Ticket, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,6 +8,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const ROLE_META = {
   citizen:  { label: 'Wave Citizen'       },
@@ -132,6 +133,7 @@ export default function ControlCenter({ setCurrentSection }) {
   const { toast } = useToast();
   const [editOpen, setEditOpen]         = useState(false);
   const [qualityOpen, setQualityOpen]   = useState(false);
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
 
   if (!currentUser) {
     return <div className="p-5"><LoginRequired message="Inicia sesión para acceder al Control Center." /></div>;
@@ -252,8 +254,57 @@ export default function ControlCenter({ setCurrentSection }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Preferencias</p>
           <div className="space-y-2">
-            <SettingsTile icon={Bell} label="Notificaciones" description="Mensajes y alertas de actividad"
+            <SettingsTile icon={Bell} label="Signal Inbox" description="Mensajes y alertas de actividad"
               onClick={() => setCurrentSection?.('inbox')} delay={0.2} />
+
+            {/* Push notifications toggle */}
+            {pushSupported && pushPerm !== 'denied' && (
+              <motion.button
+                type="button"
+                onClick={pushLoading ? undefined : togglePush}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.22, type: 'spring', stiffness: 300, damping: 28 }}
+                className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-colors"
+                style={{
+                  background: 'rgba(11,16,15,0.90)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  cursor: pushLoading ? 'wait' : 'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(11,16,15,0.90)'; }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: pushSubscribed ? 'rgba(32,199,232,0.12)' : 'rgba(255,255,255,0.06)' }}>
+                  {pushLoading
+                    ? <Loader2 className="w-4 h-4 text-white/40 animate-spin" />
+                    : pushSubscribed
+                      ? <Bell  className="w-4 h-4" style={{ color: '#20C7E8' }} />
+                      : <BellOff className="w-4 h-4 text-white/40" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">Notificaciones Push</p>
+                  <p className="text-xs mt-0.5 text-white/35">
+                    {pushLoading ? 'Procesando…' : pushSubscribed ? 'Activas — toca para desactivar' : 'Desactivadas — toca para activar'}
+                  </p>
+                </div>
+                {/* Toggle pill */}
+                <div className="shrink-0 w-10 h-5.5 rounded-full transition-all relative"
+                  style={{
+                    background: pushSubscribed ? 'rgba(32,199,232,0.65)' : 'rgba(255,255,255,0.10)',
+                    width: 40, height: 22,
+                  }}>
+                  <div className="absolute top-[3px] rounded-full transition-all"
+                    style={{
+                      width: 16, height: 16, background: 'white',
+                      left: pushSubscribed ? 21 : 3,
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                    }} />
+                </div>
+              </motion.button>
+            )}
+
             <div>
               <SettingsTile
                 icon={Zap}

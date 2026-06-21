@@ -1,0 +1,217 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Disc3, ExternalLink, Globe, Instagram, Music, Share2, Twitter } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
+
+const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop';
+
+const SOCIAL_LINKS = [
+  { key: 'instagram',  icon: Instagram, label: 'Instagram',  color: '#E1306C', build: h => `https://instagram.com/${h}` },
+  { key: 'twitter',    icon: Twitter,   label: 'Twitter/X',  color: '#94A3B8', build: h => `https://x.com/${h}` },
+  { key: 'soundcloud', icon: Music,     label: 'SoundCloud', color: '#FF5500', build: h => `https://soundcloud.com/${h}` },
+  { key: 'bandcamp',   icon: Music,     label: 'Bandcamp',   color: '#1DA0C3', build: h => h.includes('.') ? `https://${h}` : `https://${h}.bandcamp.com` },
+  { key: 'website',    icon: Globe,     label: 'Web',        color: '#C8C8C8', build: h => h.startsWith('http') ? h : `https://${h}` },
+];
+
+function SocialBtn({ href, icon: Icon, label, color }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      title={label}
+      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+      style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}
+      onMouseEnter={e => { e.currentTarget.style.background = `${color}30`; }}
+      onMouseLeave={e => { e.currentTarget.style.background = `${color}18`; }}
+    >
+      <Icon className="w-4 h-4" />
+      {label}
+    </a>
+  );
+}
+
+export default function ArtistPublicPage() {
+  const { slug } = useParams();
+  const [artist,  setArtist]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [copied,   setCopied]   = useState(false);
+
+  useEffect(() => {
+    if (!slug) return;
+    supabase
+      .from('artists')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error || !data) setNotFound(true);
+        else setArtist(data);
+        setLoading(false);
+      });
+  }, [slug]);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: artist?.name, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen poly-bg flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound || !artist) {
+    return (
+      <div className="min-h-screen poly-bg flex flex-col items-center justify-center p-8 text-center">
+        <Disc3 className="w-12 h-12 text-white/15 mb-4" />
+        <h1 className="text-xl font-black text-white mb-2">Artista no encontrado</h1>
+        <p className="text-sm text-white/40 mb-6">Este perfil no existe o fue removido.</p>
+        <Link to="/" className="px-5 py-2.5 rounded-xl text-sm font-bold"
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
+          Ir a POLYFAUNA
+        </Link>
+      </div>
+    );
+  }
+
+  const img    = artist.image_url || FALLBACK;
+  const links  = typeof artist.social_links === 'object' && artist.social_links ? artist.social_links : {};
+  const genres = artist.genres
+    ? (Array.isArray(artist.genres) ? artist.genres : String(artist.genres).split(',').map(g => g.trim()))
+    : [];
+
+  return (
+    <>
+      <Helmet>
+        <title>{artist.name} — POLYFAUNA</title>
+        <meta name="description" content={artist.bio || `${artist.name} en POLYFAUNA Radio & Events`} />
+        <meta property="og:title"       content={`${artist.name} — POLYFAUNA`} />
+        <meta property="og:description" content={artist.bio || `${artist.name} en POLYFAUNA`} />
+        <meta property="og:image"       content={img} />
+        <meta property="og:type"        content="profile" />
+        <meta name="twitter:card"       content="summary_large_image" />
+      </Helmet>
+
+      <div className="min-h-screen poly-bg text-white font-sans">
+        {/* Top nav */}
+        <nav className="sticky top-0 z-30 flex items-center justify-between px-5 py-4"
+          style={{ background: 'rgba(5,9,10,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <Link to="/"
+            className="flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            POLYFAUNA
+          </Link>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleShare}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.09)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              {copied ? '¡Copiado!' : 'Compartir'}
+            </button>
+          </div>
+        </nav>
+
+        {/* Hero */}
+        <div className="relative" style={{ height: 320 }}>
+          <img src={img} alt={artist.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter: 'brightness(0.35) saturate(0.7)' }} />
+          <div className="absolute inset-0"
+            style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(5,9,10,0.95) 100%)' }} />
+        </div>
+
+        {/* Content */}
+        <div className="max-w-2xl mx-auto px-5">
+          {/* Avatar + name */}
+          <div className="flex items-end gap-5 -mt-20 relative z-10 mb-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="w-28 h-28 rounded-2xl overflow-hidden shrink-0"
+              style={{ border: '3px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.07)' }}
+            >
+              <img src={img} alt={artist.name} className="w-full h-full object-cover" />
+            </motion.div>
+            <div className="pb-2 min-w-0">
+              {artist.type && (
+                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mb-2 uppercase tracking-wider"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)' }}>
+                  {artist.type}
+                </span>
+              )}
+              <h1 className="text-3xl font-black text-white leading-none truncate">{artist.name}</h1>
+            </div>
+          </div>
+
+          {/* Genres */}
+          {genres.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {genres.map((g) => (
+                <span key={g} className="text-xs font-bold px-3 py-1 rounded-full"
+                  style={{ background: 'rgba(32,199,232,0.10)', color: 'rgba(32,199,232,0.85)', border: '1px solid rgba(32,199,232,0.18)' }}>
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Bio */}
+          {artist.bio && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="mb-8 p-5 rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <p className="text-sm text-white/60 leading-relaxed whitespace-pre-wrap">{artist.bio}</p>
+            </motion.div>
+          )}
+
+          {/* Social links */}
+          {Object.keys(links).length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="mb-10">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Redes & Links</p>
+              <div className="flex flex-wrap gap-2">
+                {SOCIAL_LINKS.map(({ key, icon, label, color, build }) =>
+                  links[key] ? (
+                    <SocialBtn key={key} href={build(links[key])} icon={icon} label={label} color={color} />
+                  ) : null
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* CTA to platform */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="mb-12 p-5 rounded-2xl text-center"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <p className="text-xs text-white/35 mb-4 font-medium">
+              Escucha sus mixes, sigue sus eventos y conecta en la comunidad.
+            </p>
+            <Link to="/"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all"
+              style={{ background: 'rgba(255,255,255,0.92)', color: '#080B14' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#ffffff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; }}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Abrir en POLYFAUNA
+            </Link>
+          </motion.div>
+        </div>
+      </div>
+    </>
+  );
+}

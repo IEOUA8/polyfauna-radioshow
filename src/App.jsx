@@ -9,6 +9,7 @@ import SignupPage from '@/pages/SignupPage';
 import UserDashboard from '@/pages/UserDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
 import ValidatePage from '@/pages/ValidatePage';
+import ArtistPublicPage from '@/pages/ArtistPublicPage';
 
 function App() {
   return (
@@ -16,9 +17,10 @@ function App() {
       <AuthProvider>
       <TooltipProvider delayDuration={400}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login"    element={<LoginPage />} />
+          <Route path="/signup"   element={<SignupPage />} />
           <Route path="/validate" element={<ValidatePage />} />
+          <Route path="/artist/:slug" element={<ArtistPublicPage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <UserDashboard />
