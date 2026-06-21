@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   const fetchUserProfile = useCallback(async (authUser) => {
     try {
@@ -52,6 +53,12 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+        setIsLoading(false);
+        return;
+      }
+      setRecoveryMode(false);
       if (session?.user) {
         await fetchUserProfile(session.user);
       } else {
@@ -102,6 +109,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, [toast]);
 
+  const updatePassword = useCallback(async (newPassword) => {
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (!error) {
+      toast({ title: 'Contraseña actualizada', description: 'Inicia sesión con tu nueva contraseña.' });
+      setRecoveryMode(false);
+      await supabase.auth.signOut();
+    } else {
+      toast({ variant: 'destructive', title: 'Error al actualizar', description: error.message });
+    }
+    setIsLoading(false);
+    return { error };
+  }, [toast]);
+
   const logout = useCallback(async () => {
     setError(null);
     setIsLoading(true);
@@ -122,7 +143,7 @@ export const AuthProvider = ({ children }) => {
   }, [toast]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, logout, recoveryMode, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

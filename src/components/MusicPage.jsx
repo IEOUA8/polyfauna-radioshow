@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Clock, Disc3, Heart, Music, Play } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -49,6 +49,21 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
     if (!albums) return [];
     return activeGenre === 'All' ? albums : albums.filter((a) => a.genre === activeGenre);
   }, [albums, activeGenre]);
+
+  // Deep-link desde búsqueda global
+  useEffect(() => {
+    const handler = async (e) => {
+      const { type, id } = e.detail || {};
+      if (type !== 'albums') return;
+      const inList = (albums || []).find(a => a.id === id);
+      if (inList) { setSelectedAlbum(inList); return; }
+      const { data } = await supabase
+        .from('albums').select('*, artists(name, image_url)').eq('id', id).single();
+      if (data) setSelectedAlbum(data);
+    };
+    window.addEventListener('pf:open-item', handler);
+    return () => window.removeEventListener('pf:open-item', handler);
+  }, [albums]);
 
   const handlePlayTrack = (track, album) => {
     if (!track.audio_url) return;

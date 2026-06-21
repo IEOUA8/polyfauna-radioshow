@@ -416,6 +416,20 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
     return activeGenre === 'All' ? podcasts : podcasts.filter((p) => p.genre === activeGenre);
   }, [podcasts, activeGenre]);
 
+  // Deep-link desde búsqueda global
+  useEffect(() => {
+    const handler = async (e) => {
+      const { type, id } = e.detail || {};
+      if (type !== 'podcasts') return;
+      const inList = (podcasts || []).find(p => p.id === id);
+      if (inList) { setSelectedPod(inList); return; }
+      const { data } = await supabase.from('podcasts').select('*, artists(name)').eq('id', id).single();
+      if (data) setSelectedPod(data);
+    };
+    window.addEventListener('pf:open-item', handler);
+    return () => window.removeEventListener('pf:open-item', handler);
+  }, [podcasts]);
+
   const handlePlay = (pod) => {
     if (!pod.audio_url) {
       toast({ title: pod.title, description: 'Audio no disponible aún.' });

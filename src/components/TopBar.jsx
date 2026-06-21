@@ -98,6 +98,10 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
     setShowResults(false);
     setFocusedIndex(-1);
     inputRef.current?.blur();
+    // Abrir el ítem específico después de que la sección monte
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: item._type, id: item.id } }));
+    }, 120);
   };
 
   const handleRecentSelect = (term) => {

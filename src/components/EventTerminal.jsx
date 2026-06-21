@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, ExternalLink, Loader2, MapPin, Star, Ticket, Users, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, ExternalLink, Loader2, MapPin, Search, Star, Ticket, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -485,12 +485,39 @@ export default function EventTerminal() {
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [buyingEvent, setBuyingEvent] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [search, setSearch] = useState('');
   const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('events').select('*').order('date', { ascending: true }).limit(8),
+    () => supabase.from('events').select('*').order('date', { ascending: true }),
     []
   );
+
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
+    if (!search.trim()) return events;
+    const q = search.toLowerCase();
+    return events.filter(e =>
+      e.title?.toLowerCase().includes(q) ||
+      e.city?.toLowerCase().includes(q) ||
+      e.venue?.toLowerCase().includes(q) ||
+      e.description?.toLowerCase().includes(q)
+    );
+  }, [events, search]);
+
+  // Deep-link desde búsqueda global
+  useEffect(() => {
+    const handler = async (e) => {
+      const { type, id } = e.detail || {};
+      if (type !== 'events') return;
+      const inList = (events || []).find(ev => ev.id === id);
+      if (inList) { setSelectedEvent(inList); return; }
+      const { data } = await supabase.from('events').select('*').eq('id', id).single();
+      if (data) setSelectedEvent(data);
+    };
+    window.addEventListener('pf:open-item', handler);
+    return () => window.removeEventListener('pf:open-item', handler);
+  }, [events]);
 
   const toggleFavorite = (e, id) => {
     e.stopPropagation();
@@ -655,10 +682,41 @@ export default function EventTerminal() {
 
             {/* Upcoming Events Grid */}
             <div>
-              <h2 className="text-base font-bold text-white mb-4">Próximos Eventos</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h2 className="text-base font-bold text-white">
+                  {search.trim() ? `${filteredEvents.length} resultado${filteredEvents.length !== 1 ? 's' : ''}` : 'Próximos Eventos'}
+                </h2>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.30)' }} />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Buscar por nombre, ciudad…"
+                    className="pl-9 pr-8 h-9 text-sm rounded-xl outline-none w-full sm:w-56"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.80)' }}
+                  />
+                  {search && (
+                    <button type="button" onClick={() => setSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                      style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {filteredEvents.length === 0 && search.trim() && (
+                <div className="py-12 text-center">
+                  <Search className="w-8 h-8 mx-auto mb-3" style={{ color: 'rgba(255,255,255,0.15)' }} />
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    Sin resultados para <span className="text-white/55">"{search}"</span>
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {events.map((event, i) => (
+                {filteredEvents.map((event, i) => (
                   <motion.div
                     key={event.id}
                     initial={{ opacity: 0, y: 16 }}

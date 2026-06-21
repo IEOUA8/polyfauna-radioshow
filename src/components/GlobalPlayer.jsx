@@ -7,7 +7,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-const STREAM_URL = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
+const BASE_STREAM = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
+const QUALITY_STREAMS = {
+  auto:   BASE_STREAM,
+  high:   import.meta.env.VITE_RADIO_STREAM_HIGH   || BASE_STREAM,
+  medium: BASE_STREAM,
+  low:    import.meta.env.VITE_RADIO_STREAM_LOW    || BASE_STREAM,
+};
+const QUALITY_KEY = 'pf_stream_quality';
+function getStreamUrl() {
+  return QUALITY_STREAMS[localStorage.getItem(QUALITY_KEY) || 'auto'] || BASE_STREAM;
+}
 
 function formatTime(secs) {
   if (!secs || isNaN(secs)) return '0:00';
@@ -29,18 +39,35 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   const [audioDuration, setAudioDuration] = useState(0);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
+  const [streamUrl, setStreamUrl] = useState(getStreamUrl);
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const newSrc = currentTrack?.audio_url || STREAM_URL;
+    const newSrc = currentTrack?.audio_url || streamUrl;
     if (audio.src !== newSrc) {
       audio.src = newSrc;
     }
     setCurrentTime(0);
     setAudioDuration(0);
-  }, [currentTrack?.id]);
+  }, [currentTrack?.id, streamUrl]);
+
+  // Cambio de calidad de stream desde ControlCenter
+  useEffect(() => {
+    const handler = (e) => {
+      const { quality } = e.detail || {};
+      const url = QUALITY_STREAMS[quality] || BASE_STREAM;
+      setStreamUrl(url);
+      const audio = audioRef.current;
+      if (!currentTrack && isPlaying && audio) {
+        audio.src = url;
+        audio.play().catch(() => {});
+      }
+    };
+    window.addEventListener('pf:quality-change', handler);
+    return () => window.removeEventListener('pf:quality-change', handler);
+  }, [currentTrack, isPlaying]);
 
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
 

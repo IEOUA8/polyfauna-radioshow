@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Disc3, Globe, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -283,6 +283,20 @@ export default function ArtistsPage() {
     () => supabase.from('artists').select('*').order('name'),
     []
   );
+
+  // Deep-link desde búsqueda global
+  useEffect(() => {
+    const handler = async (e) => {
+      const { type, id } = e.detail || {};
+      if (type !== 'artists') return;
+      const inList = (artists || []).find(a => a.id === id);
+      if (inList) { setSelectedArtist(inList); return; }
+      const { data } = await supabase.from('artists').select('*').eq('id', id).single();
+      if (data) setSelectedArtist(data);
+    };
+    window.addEventListener('pf:open-item', handler);
+    return () => window.removeEventListener('pf:open-item', handler);
+  }, [artists]);
 
   const filtered = useMemo(() => {
     if (!artists) return [];

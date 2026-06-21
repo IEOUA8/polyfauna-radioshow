@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bell, ChevronRight, Edit3, Heart, LogOut, Mail, Settings, Shield, Ticket, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bell, Check, ChevronRight, Edit3, Heart, LogOut, Mail, Shield, Ticket, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -59,12 +59,78 @@ function SettingsTile({ icon: Icon, label, description, onClick, badge, delay = 
   );
 }
 
+const QUALITY_KEY = 'pf_stream_quality';
+
+const QUALITY_OPTIONS = [
+  { id: 'auto',   label: 'Auto',           desc: 'Se ajusta según tu conexión' },
+  { id: 'high',   label: 'Alta calidad',   desc: '320 kbps — mejor sonido' },
+  { id: 'medium', label: 'Estándar',       desc: '128 kbps — balance óptimo' },
+  { id: 'low',    label: 'Baja calidad',   desc: '64 kbps — ahorra datos' },
+];
+
+function AudioQualityPanel({ onClose }) {
+  const [selected, setSelected] = useState(
+    () => localStorage.getItem(QUALITY_KEY) || 'auto'
+  );
+
+  const handleSelect = (id) => {
+    setSelected(id);
+    localStorage.setItem(QUALITY_KEY, id);
+    window.dispatchEvent(new CustomEvent('pf:quality-change', { detail: { quality: id } }));
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+      transition={{ duration: 0.18 }}
+      className="mt-2 rounded-xl overflow-hidden"
+      style={{ background: 'rgba(7,12,11,0.98)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+    >
+      <div className="px-4 pt-3 pb-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          Calidad del stream
+        </p>
+      </div>
+      {QUALITY_OPTIONS.map((opt, i) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => handleSelect(opt.id)}
+          className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+          style={{
+            borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+            background: selected === opt.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = selected === opt.id ? 'rgba(255,255,255,0.05)' : 'transparent'; }}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white">{opt.label}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{opt.desc}</p>
+          </div>
+          {selected === opt.id && (
+            <Check className="w-4 h-4 shrink-0" style={{ color: 'rgba(255,255,255,0.75)' }} />
+          )}
+        </button>
+      ))}
+      <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.22)' }}>
+          El cambio aplica al reiniciar el stream de radio.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function ControlCenter({ setCurrentSection }) {
   const { currentUser } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpen]         = useState(false);
+  const [qualityOpen, setQualityOpen]   = useState(false);
 
   if (!currentUser) {
     return <div className="p-5"><LoginRequired message="Inicia sesión para acceder al Control Center." /></div>;
@@ -185,12 +251,20 @@ export default function ControlCenter({ setCurrentSection }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Preferencias</p>
           <div className="space-y-2">
-            <SettingsTile icon={Bell} label="Notificaciones" description="Alertas de eventos y actividad"
-              badge="Pronto" onClick={() => toast({ title: 'Próximamente', description: 'Estamos trabajando en las notificaciones.' })}
-              delay={0.2} />
-            <SettingsTile icon={Zap} label="Calidad de Audio" description="Ajustar bitrate del stream"
-              badge="Pronto" onClick={() => toast({ title: 'Próximamente', description: 'Próxima actualización.' })}
-              delay={0.25} />
+            <SettingsTile icon={Bell} label="Notificaciones" description="Alertas de eventos y nueva actividad"
+              onClick={() => setCurrentSection?.('inbox')} delay={0.2} />
+            <div>
+              <SettingsTile
+                icon={Zap}
+                label="Calidad de Audio"
+                description={`Stream · ${QUALITY_OPTIONS.find(o => o.id === (localStorage.getItem(QUALITY_KEY) || 'auto'))?.label || 'Auto'}`}
+                onClick={() => setQualityOpen(q => !q)}
+                delay={0.25}
+              />
+              <AnimatePresence>
+                {qualityOpen && <AudioQualityPanel onClose={() => setQualityOpen(false)} />}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
