@@ -1,16 +1,19 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Headphones, Music, Radio, User } from 'lucide-react';
+import { Calendar, Headphones, Lock, Music, Radio, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
-  { id: 'radio-console', icon: Radio,      label: 'Radio'    },
-  { id: 'podcasts',      icon: Headphones,  label: 'Podcasts' },
-  { id: 'events',        icon: Calendar,    label: 'Eventos'  },
-  { id: 'music',         icon: Music,       label: 'Música'   },
-  { id: 'mi-panel',      icon: User,        label: 'Perfil'   },
+  { id: 'radio-console', icon: Radio,     label: 'Radio',    public: true  },
+  { id: 'podcasts',      icon: Headphones, label: 'Podcasts', public: true  },
+  { id: 'events',        icon: Calendar,  label: 'Eventos',  public: false },
+  { id: 'music',         icon: Music,     label: 'Música',   public: false },
+  { id: 'mi-panel',      icon: User,      label: 'Perfil',   public: false },
 ];
 
 export default function BottomNav({ currentSection, setCurrentSection }) {
+  const { currentUser } = useAuth();
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
@@ -24,17 +27,20 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
       }}
     >
       <div className="flex items-stretch justify-around h-full px-1">
-        {NAV_ITEMS.map(({ id, icon: Icon, label }) => {
+        {NAV_ITEMS.map(({ id, icon: Icon, label, public: isPublic }) => {
           const isActive = currentSection === id;
+          const locked   = !isPublic && !currentUser;
+
           return (
             <button
               key={id}
               type="button"
-              onClick={() => setCurrentSection(id)}
+              onClick={() => !locked && setCurrentSection(id)}
               className="flex flex-col items-center justify-center gap-0.5 flex-1 relative transition-none"
+              title={locked ? 'Inicia sesión para acceder' : undefined}
             >
               <AnimatePresence>
-                {isActive && (
+                {isActive && !locked && (
                   <motion.div
                     layoutId="bottom-nav-bar"
                     className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full"
@@ -45,17 +51,25 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
               </AnimatePresence>
 
               <motion.div
-                animate={{ scale: isActive ? 1.12 : 1, y: isActive ? -1 : 0 }}
+                animate={{ scale: isActive && !locked ? 1.12 : 1, y: isActive && !locked ? -1 : 0 }}
                 transition={{ type: 'spring', stiffness: 450, damping: 22 }}
+                className="relative"
               >
                 <Icon
                   className="w-[18px] h-[18px]"
-                  style={{ color: isActive ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)' }}
+                  style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)' }}
                 />
+                {locked && (
+                  <Lock
+                    className="absolute -bottom-0.5 -right-1 w-2.5 h-2.5"
+                    style={{ color: 'rgba(255,255,255,0.20)' }}
+                  />
+                )}
               </motion.div>
+
               <span
                 className="text-[9px] font-semibold tracking-wide leading-none"
-                style={{ color: isActive ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)' }}
+                style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)' }}
               >
                 {label}
               </span>

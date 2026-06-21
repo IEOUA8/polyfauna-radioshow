@@ -53,8 +53,8 @@ function RequestCard({ req, onAction }) {
         .eq('id', req.user_id);
     }
 
-    // Send decision email
-    const userEmail = req.profiles?.email || req.form_data?.email;
+    // Send decision email (email comes from form_data since profiles has no email column)
+    const userEmail = req.form_data?.email;
     if (userEmail) {
       supabase.functions.invoke('send-role-decision', {
         body: {
@@ -100,7 +100,7 @@ function RequestCard({ req, onAction }) {
           <p className="text-sm font-bold text-white truncate">
             {req.profiles?.display_name || req.form_data?.name || 'Usuario'}
           </p>
-          <p className="text-xs text-white/40 truncate">{req.profiles?.email || req.form_data?.email}</p>
+          <p className="text-xs text-white/40 truncate">{req.form_data?.email}</p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -182,7 +182,7 @@ export default function RoleRequestsPanel() {
   const { data: requests, loading, refetch } = useSupabaseQuery(
     () => supabase
       .from('role_requests')
-      .select('*, profiles(display_name, email, avatar_url)')
+      .select('*, profiles(display_name, avatar_url)')
       .eq('status', filter)
       .order('created_at', { ascending: false }),
     [filter]

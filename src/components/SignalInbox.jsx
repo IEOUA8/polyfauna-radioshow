@@ -101,6 +101,16 @@ function ComposeModal({ onClose, currentUser, senderProfile, initialTo = null, i
       toast({ title: 'Error al enviar', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Mensaje enviado', description: `Para: ${recipient.display_name || recipient.username}` });
+      // Notify recipient by email — Edge Function resolves email via service role
+      supabase.functions.invoke('send-message-notification', {
+        body: {
+          toUserId: recipient.id,
+          toName:   recipient.display_name || recipient.username || 'Usuario',
+          fromName: senderProfile?.display_name || currentUser.email?.split('@')[0] || 'Usuario',
+          subject:  subject.trim(),
+          preview:  body.trim(),
+        },
+      }).catch(() => {});
       onClose(true);
     }
   };

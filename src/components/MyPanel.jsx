@@ -86,11 +86,12 @@ function BroadcastPanel() {
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
 const ROLE_META = {
-  citizen:  { label: 'Wave Citizen', color: '#20C7E8', glow: 'rgba(32,199,232,0.30)'  },
-  artist:   { label: 'Artista',      color: '#A78BFA', glow: 'rgba(167,139,250,0.30)' },
-  promoter: { label: 'Promotor',     color: '#FF8A1F', glow: 'rgba(255,138,31,0.30)'  },
-  club:     { label: 'Club / Venue', color: '#34D399', glow: 'rgba(52,211,153,0.30)'  },
-  admin:    { label: 'Admin',        color: '#F87171', glow: 'rgba(248,113,113,0.30)' },
+  citizen:  { label: 'Wave Citizen',        color: '#20C7E8', glow: 'rgba(32,199,232,0.30)'  },
+  artist:   { label: 'Artista',             color: '#A78BFA', glow: 'rgba(167,139,250,0.30)' },
+  promoter: { label: 'Promotor',            color: '#FF8A1F', glow: 'rgba(255,138,31,0.30)'  },
+  club:     { label: 'Club / Venue',        color: '#34D399', glow: 'rgba(52,211,153,0.30)'  },
+  sello:    { label: 'Sello Discográfico',  color: '#10B981', glow: 'rgba(16,185,129,0.30)'  },
+  admin:    { label: 'Admin',               color: '#F87171', glow: 'rgba(248,113,113,0.30)' },
 };
 
 const CREATOR_ROLES = ['artist', 'club', 'promoter', 'admin'];

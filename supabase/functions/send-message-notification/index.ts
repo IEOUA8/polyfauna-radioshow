@@ -1,10 +1,23 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { sendEmail, emailWrapper } from '../_shared/resend.ts';
 
 serve(async (req) => {
   try {
-    const { toEmail, toName, fromName, subject, preview } = await req.json();
+    const { toUserId, toName, fromName, subject, preview } = await req.json();
     const appUrl = Deno.env.get('APP_URL') || 'https://polyfauna.com';
+
+    // Resolve recipient email via service role
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data: { user } } = await supabase.auth.admin.getUserById(toUserId);
+    const toEmail = user?.email;
+    if (!toEmail) {
+      return new Response(JSON.stringify({ ok: false, reason: 'no email found' }), { headers: { 'Content-Type': 'application/json' } });
+    }
 
     const html = emailWrapper(`
       <h1 style="margin:0 0 6px;font-size:20px;font-weight:900;color:#ffffff;">
@@ -26,11 +39,7 @@ serve(async (req) => {
       </a>
     `);
 
-    await sendEmail({
-      to: toEmail,
-      subject: `Nuevo mensaje de ${fromName} — POLYFAUNA`,
-      html,
-    });
+    await sendEmail({ to: toEmail, subject: `Nuevo mensaje de ${fromName} — POLYFAUNA`, html });
 
     return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
   } catch (err) {

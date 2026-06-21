@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, Link2, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, Link, Link2, Lock, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useLikes } from '@/hooks/useLikes';
@@ -430,7 +430,13 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
     return () => window.removeEventListener('pf:open-item', handler);
   }, [podcasts]);
 
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
   const handlePlay = (pod) => {
+    if (!currentUser) {
+      setShowLoginPrompt(true);
+      return;
+    }
     if (!pod.audio_url) {
       toast({ title: pod.title, description: 'Audio no disponible aún.' });
       return;
@@ -724,6 +730,57 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
             onClose={() => setShowUpload(false)}
             onSuccess={() => { setShowUpload(false); refetch(); }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Guest play gate modal */}
+      <AnimatePresence>
+        {showLoginPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)' }}
+            onClick={() => setShowLoginPrompt(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl p-6 text-center space-y-4"
+              style={{ background: 'rgba(11,16,15,0.98)', border: '1px solid rgba(255,255,255,0.10)' }}
+            >
+              <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center"
+                style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <Lock className="w-5 h-5 text-white/40" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white mb-1">Inicia sesión para escuchar</h3>
+                <p className="text-sm text-white/40 leading-relaxed">
+                  Crea una cuenta gratis para acceder a todos los podcasts y mixes de POLYFAUNA.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <a href="/login"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-center transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  Iniciar sesión
+                </a>
+                <a href="/signup"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-center transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
+                  Crear cuenta
+                </a>
+              </div>
+              <button type="button" onClick={() => setShowLoginPrompt(false)}
+                className="text-xs text-white/25 hover:text-white/50 transition-colors">
+                Cancelar
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
