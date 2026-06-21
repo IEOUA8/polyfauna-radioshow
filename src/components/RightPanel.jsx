@@ -6,19 +6,31 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const ROLE_LABEL = { citizen: 'Wave Citizen', artist: 'Artista', promoter: 'Promotor', club: 'Club', admin: 'Admin' };
 
-const DEMO_NOTIFS = [
-  { id: 1, icon: Radio,     color: '#FF8A1F', title: 'Polyfauna Radio en vivo',       body: 'Underground Frequencies con Nox Vega.',      time: 'Hace 5 min' },
-  { id: 2, icon: Headphones, color: 'rgba(255,255,255,0.85)', title: 'Nuevo podcast disponible',       body: 'Frecuencias Oscuras #12 — HVBER.',            time: 'Hace 1h'    },
-  { id: 3, icon: Bell,       color: '#FBBF24', title: 'Evento próximo: Subterranea',    body: 'Este lunes — Teatro Metropol.',               time: 'Hace 3h'    },
-  { id: 4, icon: FileText,   color: '#A78BFA', title: 'Nuevo artículo en el blog',      body: 'El sonido del techno industrial colombiano.', time: 'Ayer'       },
-];
+const TYPE_META = {
+  podcast: { icon: Headphones, color: 'rgba(255,255,255,0.80)' },
+  event:   { icon: Bell,       color: '#FBBF24'                },
+  blog:    { icon: FileText,   color: '#A78BFA'                },
+  system:  { icon: Radio,      color: '#FF8A1F'                },
+};
 
-function NotificationsModal({ open, onClose }) {
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 60) return `Hace ${min || 1} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `Hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'Ayer' : `Hace ${d}d`;
+}
+
+function NotificationsModal({ open, onClose, setCurrentSection }) {
   const ref = useRef(null);
+  const { notifications, loading, unreadCount, isRead, markRead, markAllRead } = useNotifications();
 
   useEffect(() => {
     if (!open) return;
@@ -26,6 +38,12 @@ function NotificationsModal({ open, onClose }) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open, onClose]);
+
+  const handleClick = (n) => {
+    markRead(n.id);
+    if (n.section) { setCurrentSection?.(n.section); }
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -48,43 +66,81 @@ function NotificationsModal({ open, onClose }) {
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-white">Notificaciones</h3>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,112,67,0.2)', color: '#FF8A1F' }}>
-                  {DEMO_NOTIFS.length}
-                </span>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,112,67,0.2)', color: '#FF8A1F' }}>
+                    {unreadCount}
+                  </span>
+                )}
               </div>
               <button type="button" onClick={onClose}
                 className="p-1 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
+
             <div className="max-h-80 overflow-y-auto py-1">
-              {DEMO_NOTIFS.map((n, i) => {
-                const Icon = n.icon;
+              {loading && (
+                <div className="py-6 text-center">
+                  <div className="w-5 h-5 rounded-full border-2 border-white/20 border-t-white/60 animate-spin mx-auto" />
+                </div>
+              )}
+              {!loading && notifications.length === 0 && (
+                <div className="py-8 text-center">
+                  <Bell className="w-5 h-5 text-white/20 mx-auto mb-2" />
+                  <p className="text-xs text-white/30">Sin actividad reciente</p>
+                </div>
+              )}
+              {!loading && notifications.map((n, i) => {
+                const meta = TYPE_META[n.type] || TYPE_META.system;
+                const Icon = meta.icon;
+                const read = isRead(n.id);
                 return (
                   <motion.button key={n.id} type="button"
-                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-white/4"
-                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                    onClick={onClose}>
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ background: `${n.color}18`, border: `1px solid ${n.color}30` }}>
-                      <Icon className="w-4 h-4" style={{ color: n.color }} />
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors"
+                    style={{ background: read ? 'transparent' : 'rgba(255,255,255,0.02)' }}
+                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                    onClick={() => handleClick(n)}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = read ? 'transparent' : 'rgba(255,255,255,0.02)'; }}>
+                    <div className="relative shrink-0 mt-0.5">
+                      {n.image ? (
+                        <div className="w-8 h-8 rounded-lg overflow-hidden">
+                          <img src={n.image} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ background: `${meta.color}18`, border: `1px solid ${meta.color}28` }}>
+                          <Icon className="w-4 h-4" style={{ color: meta.color }} />
+                        </div>
+                      )}
+                      {!read && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+                          style={{ background: '#FF8A1F', boxShadow: '0 0 4px rgba(255,138,31,0.6)' }} />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white leading-tight">{n.title}</p>
-                      <p className="text-[11px] text-white/45 leading-snug mt-0.5">{n.body}</p>
+                      <p className="text-xs font-semibold leading-tight" style={{ color: read ? 'rgba(255,255,255,0.50)' : 'rgba(255,255,255,0.90)' }}>
+                        {n.title}
+                      </p>
+                      <p className="text-[11px] leading-snug mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>{n.body}</p>
                     </div>
-                    <span className="text-[10px] text-white/30 shrink-0 mt-0.5">{n.time}</span>
+                    <span className="text-[10px] text-white/25 shrink-0 mt-0.5">{timeAgo(n.time)}</span>
                   </motion.button>
                 );
               })}
             </div>
-            <div className="px-4 py-3 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-              <button type="button" className="text-xs font-semibold transition-colors hover:opacity-80"
-                style={{ color: '#FF8A1F' }} onClick={onClose}>
-                Marcar todo como leído
-              </button>
-            </div>
+
+            {notifications.length > 0 && (
+              <div className="px-4 py-3 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                <button type="button"
+                  className="text-xs font-semibold transition-colors hover:opacity-80"
+                  style={{ color: unreadCount > 0 ? '#FF8A1F' : 'rgba(255,255,255,0.30)' }}
+                  onClick={() => { markAllRead(notifications.map(n => n.id)); onClose(); }}>
+                  {unreadCount > 0 ? 'Marcar todo como leído' : 'Sin novedades pendientes'}
+                </button>
+              </div>
+            )}
           </motion.div>
         </>
       )}
@@ -251,6 +307,7 @@ function ArtistAvatar({ artist, index }) {
 export default function RightPanel({ setCurrentSection }) {
   const { currentUser, userRole, logout } = useAuth();
   const { profile } = useProfile();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [playing, setPlaying] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -295,7 +352,7 @@ export default function RightPanel({ setCurrentSection }) {
 
   return (
     <>
-      <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} setCurrentSection={setCurrentSection} />
 
     <aside className="w-72 shrink-0 h-full flex flex-col border-l overflow-y-auto"
       style={{ background: 'rgba(8,12,11,0.97)', borderColor: 'rgba(255,255,255,0.07)' }}>
@@ -421,10 +478,12 @@ export default function RightPanel({ setCurrentSection }) {
               onMouseEnter={e => { if (!notifOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
               onMouseLeave={e => { if (!notifOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.background = notifOpen ? 'rgba(255,112,67,0.08)' : 'transparent'; }}>
               <Bell className="w-4.5 h-4.5 w-[18px] h-[18px]" />
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
-                style={{ background: '#FF8A1F' }}>
-                {DEMO_NOTIFS.length}
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  style={{ background: '#FF8A1F', boxShadow: '0 0 6px rgba(255,138,31,0.5)' }}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           </div>
         ) : (

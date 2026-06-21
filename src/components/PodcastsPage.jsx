@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, Link2, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useLikes } from '@/hooks/useLikes';
@@ -240,6 +240,30 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
                   {likesCount.toLocaleString('es-CO')}
                 </span>
               )}
+            </motion.button>
+
+            {/* Compartir */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
+              className="flex items-center justify-center w-12 h-12 rounded-2xl transition-all"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+              title="Compartir podcast"
+              onClick={async () => {
+                const url = window.location.href;
+                const shareText = `${pod.title} — ${pod.artists?.name || 'PolyFauna'} | PolyFauna Radio`;
+                if (navigator.share) {
+                  await navigator.share({ title: shareText, url });
+                } else {
+                  await navigator.clipboard.writeText(url);
+                  toast({ title: 'Enlace copiado', description: shareText });
+                }
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            >
+              <Link2 className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.55)' }} />
             </motion.button>
           </div>
 

@@ -2,12 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
+/* ── Shimmer helper ── */
 function Shimmer() {
   return (
     <motion.div
       className="absolute inset-0 pointer-events-none"
       style={{
-        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%)',
         backgroundSize: '200% 100%',
       }}
       animate={{ backgroundPositionX: ['200%', '-200%'] }}
@@ -25,6 +26,7 @@ function SkeletonBlock({ className = '', style = {} }) {
   );
 }
 
+/* ── Row skeleton ── */
 export function LoadingSkeleton({ rows = 4 }) {
   return (
     <div className="space-y-3">
@@ -49,9 +51,10 @@ export function LoadingSkeleton({ rows = 4 }) {
   );
 }
 
+/* ── Card skeleton ── */
 export function CardSkeleton({ count = 4 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       {Array.from({ length: count }).map((_, i) => (
         <motion.div
           key={i}
@@ -78,83 +81,142 @@ export function CardSkeleton({ count = 4 }) {
   );
 }
 
-export function EmptyState({ label = 'No hay contenido aún', icon: Icon }) {
+/* ── Inline spinner ── */
+export function PulseLoader({ size = 'md', label }) {
+  const sz = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-8 h-8' : 'w-6 h-6';
+  return (
+    <div className="flex items-center justify-center gap-3 py-6">
+      <div className={`${sz} rounded-full border-2 border-white/15 border-t-white/60 animate-spin`} />
+      {label && <span className="text-sm text-white/35">{label}</span>}
+    </div>
+  );
+}
+
+/* ── Empty state ── */
+export function EmptyState({ label = 'No hay contenido aún', subtitle, icon: Icon, action, actionLabel }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col items-center justify-center py-16 gap-3 text-center"
+      className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4"
     >
       {Icon && (
         <motion.div
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+          animate={{ y: [0, -5, 0] }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+          className="w-14 h-14 rounded-2xl flex items-center justify-center mb-1"
+          style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+          }}
         >
-          <Icon className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.9)' }} />
+          <Icon className="w-6 h-6" style={{ color: 'rgba(255,255,255,0.50)' }} />
         </motion.div>
       )}
-      <p className="text-sm font-semibold text-white/50">{label}</p>
-      <p className="text-xs text-white/25">El contenido aparecerá aquí cuando esté disponible.</p>
+      <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
+      <p className="text-xs max-w-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.22)' }}>
+        {subtitle || 'El contenido aparecerá aquí cuando esté disponible.'}
+      </p>
+      {action && actionLabel && (
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={action}
+          className="mt-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.07)',
+            color: 'rgba(255,255,255,0.75)',
+            border: '1px solid rgba(255,255,255,0.10)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+        >
+          {actionLabel}
+        </motion.button>
+      )}
     </motion.div>
   );
 }
 
+/* ── Error state ── */
 export function ErrorState({ message, onRetry }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center py-16 gap-3 text-center"
+      className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4"
     >
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-        <AlertCircle className="w-5 h-5 text-red-400" />
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+        <AlertCircle className="w-6 h-6 text-red-400" />
       </div>
-      <p className="text-sm font-semibold text-red-400">Error al cargar</p>
-      <p className="text-xs text-white/30 max-w-xs">{message}</p>
+      <div>
+        <p className="text-sm font-semibold text-red-400">Error al cargar</p>
+        {message && <p className="text-xs mt-1 max-w-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>{message}</p>}
+      </div>
       {onRetry && (
-        <button
+        <motion.button
           type="button"
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.97 }}
           onClick={onRetry}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg mt-1 transition-all"
-          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.1)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(32,199,232,0.18)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.10)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
         >
           <RefreshCw className="w-3 h-3" />
           Reintentar
-        </button>
+        </motion.button>
       )}
     </motion.div>
   );
 }
 
-export function LoginRequired({ message = 'Inicia sesión para ver este contenido' }) {
+/* ── Login required ── */
+export function LoginRequired({ message = 'Inicia sesión para ver este contenido', actionLabel = 'Iniciar sesión', actionHref = '/login' }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center py-12 gap-3 text-center"
+      className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4"
     >
       <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center"
-        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+        className="w-14 h-14 rounded-2xl flex items-center justify-center"
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
       >
-        <svg className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.9)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        <svg className="w-6 h-6" style={{ color: 'rgba(255,255,255,0.50)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       </div>
-      <p className="text-sm font-semibold text-white/60">{message}</p>
-      <a
-        href="/login"
-        className="text-xs font-bold px-4 py-2 rounded-lg transition-opacity hover:opacity-80"
-        style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}
-      >
-        Iniciar sesión
-      </a>
+      <div>
+        <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.58)' }}>{message}</p>
+        <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.24)' }}>Crea tu cuenta gratis para acceder a todo el contenido.</p>
+      </div>
+      <div className="flex gap-3 mt-1">
+        <a
+          href={actionHref}
+          className="text-xs font-bold px-4 py-2 rounded-xl transition-all"
+          style={{ background: 'rgba(255,255,255,0.90)', color: '#080B14' }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+        >
+          {actionLabel}
+        </a>
+        <a
+          href="/signup"
+          className="text-xs font-bold px-4 py-2 rounded-xl transition-all"
+          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.10)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+        >
+          Crear cuenta
+        </a>
+      </div>
     </motion.div>
   );
 }

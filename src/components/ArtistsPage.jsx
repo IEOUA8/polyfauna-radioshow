@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Disc3, Globe, Heart, Instagram, Music, Twitter } from 'lucide-react';
+import { ArrowLeft, Disc3, Globe, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -35,12 +36,24 @@ function SocialButton({ href, icon: Icon, label, color }) {
 }
 
 function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
+  const { toast } = useToast();
   const links = typeof artist.social_links === 'object' && artist.social_links ? artist.social_links : {};
   const genres = artist.genres
     ? (Array.isArray(artist.genres) ? artist.genres : String(artist.genres).split(','))
     : [];
   const favoured = isFav('artist', artist.id);
   const img = artist.image_url || FALLBACK;
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const text = `${artist.name} en POLYFAUNA`;
+    if (navigator.share) {
+      await navigator.share({ title: text, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Enlace copiado', description: text });
+    }
+  };
 
   return (
     <motion.div
@@ -78,18 +91,28 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
             background: 'linear-gradient(to bottom, rgba(5,9,10,0.08) 0%, rgba(5,9,10,0.50) 65%, #05090A 100%)',
           }} />
         </div>
-        {/* Favorite button */}
-        <button
-          type="button"
-          onClick={() => toggleFav('artist', artist.id)}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all z-10"
-          style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
-        >
-          <Heart
-            className="w-4 h-4 transition-colors"
-            style={{ fill: favoured ? '#F87171' : 'none', color: favoured ? '#F87171' : 'rgba(255,255,255,0.65)' }}
-          />
-        </button>
+        {/* Action buttons: share + favorite */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
+          >
+            <Link2 className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.65)' }} />
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleFav('artist', artist.id)}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
+          >
+            <Heart
+              className="w-4 h-4 transition-colors"
+              style={{ fill: favoured ? '#F87171' : 'none', color: favoured ? '#F87171' : 'rgba(255,255,255,0.65)' }}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Avatar (left) + Info (right) — items-end: ambos alineados abajo */}

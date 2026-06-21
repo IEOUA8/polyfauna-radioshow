@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, ExternalLink, Loader2, MapPin, Star, Ticket, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,18 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/contexts/AuthContext';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
+
+// Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
+// Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
+function usePlayerOffset() {
+  const [offset, setOffset] = useState(() => window.innerWidth < 1024 ? 138 : 98);
+  useEffect(() => {
+    const update = () => setOffset(window.innerWidth < 1024 ? 138 : 98);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return offset;
+}
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 
@@ -26,6 +38,7 @@ function BuyModal({ event, onClose }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const playerBottom = usePlayerOffset();
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
@@ -95,10 +108,10 @@ function BuyModal({ event, onClose }) {
   };
 
   return (
-    /* Overlay — se detiene justo en el borde superior del player (bottom-4 + h-[82px] = 98px) */
+    /* Overlay — se detiene en el borde superior del player (responsive) */
     <div
       className="fixed inset-x-0 top-0 z-[60] flex items-end justify-center px-4 pb-3"
-      style={{ bottom: 98, background: 'rgba(4,7,7,0.88)', backdropFilter: 'blur(10px)' }}
+      style={{ bottom: playerBottom, background: 'rgba(4,7,7,0.88)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
       <motion.div
@@ -110,7 +123,7 @@ function BuyModal({ event, onClose }) {
         style={{
           background: 'rgba(8,14,9,0.98)',
           border: '1px solid rgba(255,255,255,0.09)',
-          maxHeight: 'calc(100vh - 98px - 16px)',
+          maxHeight: `calc(100vh - ${playerBottom}px - 16px)`,
           overflow: 'hidden',
         }}
         onClick={e => e.stopPropagation()}
@@ -162,13 +175,6 @@ function BuyModal({ event, onClose }) {
                   <p className="text-xs text-white/40">Haz clic para ir a Wompi a completar el pago</p>
                 </div>
               </div>
-
-              {wompiRef && (
-                <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1">URL generada (debug)</p>
-                  <p className="text-[9px] font-mono text-white/40 break-all leading-relaxed select-all">{wompiRef}</p>
-                </div>
-              )}
 
               <button type="button"
                 onClick={() => { window.location.href = wompiRef; }}

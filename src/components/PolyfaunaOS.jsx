@@ -6,6 +6,8 @@ import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import RightPanel from '@/components/RightPanel';
 import GlobalPlayer from '@/components/GlobalPlayer';
+import BottomNav from '@/components/BottomNav';
+import OnboardingModal from '@/components/OnboardingModal';
 import EventTerminal from '@/components/EventTerminal';
 import RadioConsolePage from '@/components/RadioConsolePage';
 import PodcastsPage from '@/components/PodcastsPage';
@@ -92,7 +94,7 @@ function PolyfaunaOS() {
 
         <div className="flex flex-col flex-1 min-w-0 h-full">
           <TopBar setCurrentSection={setCurrentSection} setMobileMenuOpen={setMobileMenuOpen} />
-          <main ref={mainRef} className="flex-1 overflow-y-auto pb-32">
+          <main ref={mainRef} className="flex-1 overflow-y-auto pb-48 lg:pb-32">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSection}
@@ -119,6 +121,9 @@ function PolyfaunaOS() {
         setCurrentTrack={setCurrentTrack}
         setCurrentSection={setCurrentSection}
       />
+
+      <BottomNav currentSection={currentSection} setCurrentSection={setCurrentSection} />
+      <OnboardingModal />
       <Toaster />
     </div>
   );
