@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
   // ── Buscar transacción ────────────────────────────────────────
   const { data: transaction, error: findErr } = await supabase
     .from('transactions')
-    .select('*, events(date, title, owner_id)')
+    .select('*, events(date, title, city, owner_id)')
     .eq('wompi_reference', reference)
     .single();
 
@@ -150,6 +150,38 @@ Deno.serve(async (req) => {
         p_amount:  transaction.promoter_amount,
         p_total:   transaction.promoter_amount,
       });
+    }
+
+    // Enviar email de confirmación al comprador
+    if (firstTicketId.length > 0 && transaction.buyer_id) {
+      try {
+        const { data: { user: buyerUser } } = await supabase.auth.admin.getUserById(transaction.buyer_id);
+        const { data: buyerProfile } = await supabase
+          .from('profiles').select('display_name').eq('id', transaction.buyer_id).single();
+
+        if (buyerUser?.email) {
+          const { data: issuedTicket } = await supabase
+            .from('user_tickets').select('ticket_code').eq('id', firstTicketId[0]).single();
+
+          const ticketCode = issuedTicket?.ticket_code || firstTicketId[0];
+          const qrPayload  = JSON.stringify({ id: firstTicketId[0], code: ticketCode });
+          const qrDataUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
+
+          await supabase.functions.invoke('send-ticket-confirmation', {
+            body: {
+              userEmail:  buyerUser.email,
+              userName:   buyerProfile?.display_name || buyerUser.email.split('@')[0],
+              eventTitle: transaction.events?.title || 'Evento POLYFAUNA',
+              eventDate:  transaction.events?.date,
+              eventCity:  transaction.events?.city,
+              ticketCode,
+              qrDataUrl,
+            },
+          });
+        }
+      } catch (emailErr) {
+        console.error('Webhook: error enviando email de ticket:', emailErr);
+      }
     }
 
     console.log(`Webhook OK: transacción ${transaction.id} aprobada — ${quantity} ticket(s) emitidos`);

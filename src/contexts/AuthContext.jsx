@@ -71,16 +71,36 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, [fetchUserProfile]);
 
-  const signup = useCallback(async (email, password, name) => {
+  const signup = useCallback(async (email, password, name, role = 'citizen') => {
     setError(null);
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: { data: { name } },
       });
       if (error) throw error;
+
+      // If non-citizen role requested, create a role_request after signup
+      if (role !== 'citizen' && data?.user?.id) {
+        await supabase.from('role_requests').insert({
+          user_id: data.user.id,
+          requested_role: role,
+          status: 'pending',
+          form_data: { name, email },
+        });
+        // Notify user + admin via email
+        supabase.functions.invoke('send-role-request', {
+          body: { requestedRole: role, userName: name, userEmail: email },
+        }).catch(() => {});
+      }
+
+      // Send welcome email
+      supabase.functions.invoke('send-welcome', {
+        body: { userId: data?.user?.id, email, name },
+      }).catch(() => {});
+
       toast({ title: '¡Cuenta creada!', description: 'Bienvenido a POLYFAUNA.' });
       return { data, error: null };
     } catch (err) {

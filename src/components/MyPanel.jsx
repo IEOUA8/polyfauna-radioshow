@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AudioWaveform, Edit3, Heart, Instagram, Link, ListMusic, MapPin, Shield, ShoppingBag, Twitter, Upload, User } from 'lucide-react';
+import { AudioWaveform, Check, Edit3, Heart, Instagram, Link as LinkIcon, ListMusic, Loader2, MapPin, Shield, ShoppingBag, Twitter, Upload, User, Users, X } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -11,6 +11,77 @@ import EditProfile from '@/components/EditProfile';
 import MyFavorites from '@/components/MyFavorites';
 import MyPlaylists from '@/components/MyPlaylists';
 import UploadPodcastModal from '@/components/UploadPodcastModal';
+import RoleRequestsPanel from '@/components/RoleRequestsPanel';
+import { useToast } from '@/components/ui/use-toast';
+
+// ── BroadcastPanel ────────────────────────────────────────────────────────────
+
+function BroadcastPanel() {
+  const { toast } = useToast();
+  const [form, setForm] = useState({ subject: '', title: '', body: '', ctaLabel: '', ctaUrl: '' });
+  const [sending, setSending] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const handleSend = useCallback(async () => {
+    if (!form.subject.trim() || !form.title.trim() || !form.body.trim()) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-community-broadcast', {
+        body: { ...form, adminSecret: import.meta.env.VITE_BROADCAST_SECRET },
+      });
+      if (error) throw new Error(error.message);
+      toast({ title: 'Broadcast enviado', description: 'Emails en camino a toda la comunidad.' });
+      setForm({ subject: '', title: '', body: '', ctaLabel: '', ctaUrl: '' });
+      setOpen(false);
+    } catch (err) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+    setSending(false);
+  }, [form, toast]);
+
+  const field = (key, placeholder, tag = 'input') => {
+    const style = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'white', width: '100%', borderRadius: '10px', padding: '10px 12px', fontSize: '13px', outline: 'none', resize: 'vertical' };
+    return tag === 'textarea'
+      ? <textarea rows={4} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={style} />
+      : <input type="text" value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={style} />;
+  };
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.16)' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-black uppercase tracking-wider" style={{ color: '#F59E0B' }}>📢 Notificar comunidad</span>
+        </div>
+        <span className="text-xs text-white/30">{open ? '▲ cerrar' : '▼ abrir'}</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+            <div className="px-4 pb-4 space-y-3" style={{ borderTop: '1px solid rgba(245,158,11,0.12)' }}>
+              <div className="pt-3 space-y-2.5">
+                {field('subject',  'Asunto del email (ej. "Nuevo podcast disponible")')}
+                {field('title',    'Título principal del email')}
+                {field('body',     'Contenido del mensaje…', 'textarea')}
+                {field('ctaLabel', 'Texto del botón (opcional, ej. "Escuchar ahora")')}
+                {field('ctaUrl',   'URL del botón (opcional)')}
+              </div>
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={sending || !form.subject.trim() || !form.title.trim() || !form.body.trim()}
+                className="w-full py-2.5 rounded-xl text-sm font-black disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ background: '#F59E0B', color: '#080B14' }}
+              >
+                {sending ? <><Loader2 className="w-4 h-4 animate-spin" />Enviando…</> : '📨 Enviar a toda la comunidad'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
@@ -60,9 +131,10 @@ const SOCIAL_PLATFORMS = [
 ];
 
 const TABS = [
-  { id: 'favoritos', label: 'Favoritos', icon: Heart,     color: '#FF5C7A', roles: null          },
-  { id: 'playlists', label: 'Playlists', icon: ListMusic, color: '#20C7E8', roles: null          },
-  { id: 'subir',     label: 'Subir',     icon: Upload,    color: '#A78BFA', roles: CREATOR_ROLES },
+  { id: 'favoritos',    label: 'Favoritos',   icon: Heart,     color: '#FF5C7A', roles: null          },
+  { id: 'playlists',   label: 'Playlists',   icon: ListMusic, color: '#20C7E8', roles: null          },
+  { id: 'subir',       label: 'Subir',       icon: Upload,    color: '#A78BFA', roles: CREATOR_ROLES },
+  { id: 'solicitudes', label: 'Solicitudes', icon: Users,     color: '#F59E0B', roles: ['admin']     },
 ];
 
 export default function MyPanel({ setCurrentSection }) {
@@ -386,6 +458,13 @@ export default function MyPanel({ setCurrentSection }) {
           >
             {activeTab === 'favoritos' && <MyFavorites />}
             {activeTab === 'playlists' && <MyPlaylists />}
+            {activeTab === 'solicitudes' && profile?.role === 'admin' && (
+              <div className="space-y-6">
+                <BroadcastPanel />
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                <RoleRequestsPanel />
+              </div>
+            )}
             {activeTab === 'subir' && isCreator && (
               <div className="py-4">
                 <div className="rounded-2xl p-6"

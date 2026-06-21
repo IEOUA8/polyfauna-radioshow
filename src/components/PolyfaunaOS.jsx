@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
+import { Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
@@ -21,8 +23,49 @@ import TicketVault from '@/components/TicketVault';
 import ControlCenter from '@/components/ControlCenter';
 import MyPanel from '@/components/MyPanel';
 import PromoterDashboard from '@/components/PromoterDashboard';
+import EventManagerPanel from '@/components/EventManagerPanel';
+import { useAuth } from '@/contexts/AuthContext';
+
+const PUBLIC_SECTIONS = ['radio-console', 'podcasts'];
+
+function GuestGate({ section }) {
+  const labels = {
+    music: 'Música', events: 'Event Terminal', community: 'Community Grid',
+    artists: 'Artists & Labels', inbox: 'Signal Inbox', blog: 'Blog',
+    interviews: 'Interviews', tickets: 'Ticket Vault', settings: 'Control Center',
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center justify-center h-full min-h-[60vh] p-8 text-center"
+    >
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}>
+        <Lock className="w-6 h-6 text-white/30" />
+      </div>
+      <h2 className="text-lg font-black text-white mb-2">{labels[section] || 'Sección restringida'}</h2>
+      <p className="text-sm text-white/40 max-w-xs mb-6 leading-relaxed">
+        Crea una cuenta o inicia sesión para acceder a esta sección.
+      </p>
+      <div className="flex gap-3">
+        <Link to="/login"
+          className="px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          Iniciar sesión
+        </Link>
+        <Link to="/signup"
+          className="px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
+          Crear cuenta
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
 
 function PolyfaunaOS() {
+  const { currentUser, userRole } = useAuth();
   const [currentSection, setCurrentSection] = useState('radio-console');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -59,6 +102,12 @@ function PolyfaunaOS() {
   }, []);
 
   const renderSection = () => {
+    const isGuest = !currentUser;
+    const isProtected = !PUBLIC_SECTIONS.includes(currentSection);
+
+    // Guest trying to access protected section → show gate
+    if (isGuest && isProtected) return <GuestGate section={currentSection} />;
+
     switch (currentSection) {
       case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
       case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} />;
@@ -71,8 +120,8 @@ function PolyfaunaOS() {
       case 'interviews':    return <InterviewsSection />;
       case 'tickets':       return <TicketVault />;
       case 'settings':      return <ControlCenter setCurrentSection={setCurrentSection} />;
-      case 'mi-panel':      return <MyPanel setCurrentSection={setCurrentSection} />;
-      case 'promoter':      return <PromoterDashboard />;
+      case 'mi-panel':      return userRole === 'admin' ? <MyPanel setCurrentSection={setCurrentSection} /> : <GuestGate section="mi-panel" />;
+      case 'promoter':      return (userRole === 'promoter' || userRole === 'club' || userRole === 'admin') ? <EventManagerPanel /> : <GuestGate section="promoter" />;
       default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
     }
   };
