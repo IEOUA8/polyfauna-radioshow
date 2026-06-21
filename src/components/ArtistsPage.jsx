@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Disc3, ExternalLink, Globe, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
+import { ArrowLeft, Disc3, Globe, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -171,27 +170,6 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
 
       {/* Bio + Genres */}
       <div className="px-5 pt-5 pb-6 space-y-4">
-        {/* Public profile link */}
-        {artist.slug && (
-          <Link
-            to={`/artist/${artist.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between px-4 py-3 rounded-xl group transition-all"
-            style={{ background: 'rgba(32,199,232,0.07)', border: '1px solid rgba(32,199,232,0.15)' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(32,199,232,0.13)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(32,199,232,0.07)'; }}
-          >
-            <div>
-              <p className="text-xs font-bold" style={{ color: 'rgba(32,199,232,0.85)' }}>Perfil público</p>
-              <p className="text-[11px] mt-0.5" style={{ color: 'rgba(32,199,232,0.45)' }}>
-                polyfauna.com/artist/{artist.slug}
-              </p>
-            </div>
-            <ExternalLink className="w-4 h-4 shrink-0" style={{ color: 'rgba(32,199,232,0.55)' }} />
-          </Link>
-        )}
-
         {artist.bio && (
           <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Biografía</h2>

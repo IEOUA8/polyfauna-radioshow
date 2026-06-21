@@ -1,13 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AudioWaveform, Check, Edit3, Heart, Instagram, Link as LinkIcon, ListMusic, Loader2, MapPin, Shield, ShoppingBag, Twitter, Upload, User, Users, X } from 'lucide-react';
+import { AudioWaveform, Check, Heart, Instagram, Link as LinkIcon, ListMusic, Loader2, MapPin, Shield, ShoppingBag, Twitter, Upload, User, Users, X } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/lib/customSupabaseClient';
 import { LoginRequired } from '@/components/SectionStates';
-import EditProfile from '@/components/EditProfile';
 import MyFavorites from '@/components/MyFavorites';
 import MyPlaylists from '@/components/MyPlaylists';
 import UploadPodcastModal from '@/components/UploadPodcastModal';
@@ -140,10 +139,9 @@ const TABS = [
 
 export default function MyPanel({ setCurrentSection }) {
   const { currentUser } = useAuth();
-  const { profile, loading, refetch } = useProfile();
+  const { profile, loading } = useProfile();
   const { favorites } = useFavorites();
   const [activeTab, setActiveTab] = useState('favoritos');
-  const [showEdit, setShowEdit] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
 
   const { data: playlists } = useSupabaseQuery(
@@ -223,24 +221,17 @@ export default function MyPanel({ setCurrentSection }) {
                 <div className="w-24 h-24 rounded-full animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
               ) : (
                 <>
-                  {/* Pulsing outer ring */}
-                  <motion.div
-                    className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -5, border: `2px solid ${role.color}55` }}
-                    animate={{ scale: [1, 1.10, 1], opacity: [0.6, 0.15, 0.6] }}
-                    transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                  />
-                  {/* Static ring */}
+                  {/* Subtle border ring */}
                   <div
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -2, background: `linear-gradient(135deg, ${role.color}80, ${role.color}22, transparent, ${role.color}44)` }}
+                    style={{ inset: -2, border: '1.5px solid rgba(255,255,255,0.16)' }}
                   />
                   {/* Avatar */}
                   <img
                     src={profile?.avatar_url || FALLBACK}
                     alt={profile?.display_name}
                     className="absolute inset-[2px] rounded-full object-cover z-10"
-                    style={{ boxShadow: `0 0 24px ${role.glow}` }}
+                    style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
                   />
                   {/* Online dot */}
                   <span className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border-2 z-20"
@@ -266,10 +257,9 @@ export default function MyPanel({ setCurrentSection }) {
                     <span
                       className="text-[10px] font-black px-2.5 py-1 rounded-full tracking-wider uppercase"
                       style={{
-                        background: `${role.color}18`,
-                        color: role.color,
-                        border: `1px solid ${role.color}35`,
-                        boxShadow: `0 0 10px ${role.color}20`,
+                        background: `${role.color}14`,
+                        color: `${role.color}CC`,
+                        border: `1px solid ${role.color}28`,
                       }}
                     >
                       {role.label}
@@ -313,59 +303,43 @@ export default function MyPanel({ setCurrentSection }) {
             </div>
 
             {/* ── Buttons ── */}
-            <div className="flex items-center gap-2 shrink-0 sm:self-start">
-              <button
-                type="button"
-                onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-150"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'rgba(255,255,255,0.65)',
-                  border: '1px solid rgba(255,255,255,0.11)',
-                  backdropFilter: 'blur(12px)',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Editar perfil
-              </button>
-              {isPromoter && (
+            {isPromoter && (
+              <div className="flex items-center gap-2 shrink-0 sm:self-start">
                 <button
                   type="button"
                   onClick={() => setCurrentSection('promoter')}
                   className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-150 hover:brightness-110"
                   style={{
-                    background: `${role.color}18`,
-                    color: role.color,
-                    border: `1px solid ${role.color}30`,
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.75)',
+                    border: '1px solid rgba(255,255,255,0.12)',
                   }}
                 >
                   <Shield className="w-3.5 h-3.5" />
                   Dashboard
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* ── Stats tiles ── */}
           <div className="flex items-center gap-2.5 mt-5 flex-wrap">
             {[
-              { label: 'Favoritos', value: favCount, color: '#FF5C7A', icon: Heart },
-              { label: 'Playlists', value: plCount,  color: '#20C7E8', icon: ListMusic },
-            ].map(({ label, value, color, icon: Icon }) => (
+              { label: 'Favoritos', value: favCount, icon: Heart },
+              { label: 'Playlists', value: plCount,  icon: ListMusic },
+            ].map(({ label, value, icon: Icon }) => (
               <motion.div
                 key={label}
                 whileHover={{ scale: 1.04 }}
                 className="flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-semibold cursor-default"
                 style={{
-                  background: `${color}0C`,
-                  border: `1px solid ${color}1E`,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.09)',
                 }}
               >
-                <Icon className="w-3.5 h-3.5" style={{ color, fill: color }} />
-                <span className="font-black text-sm" style={{ color }}>{value}</span>
-                <span style={{ color: 'rgba(255,255,255,0.40)' }}>{label}</span>
+                <Icon className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.45)' }} />
+                <span className="font-black text-sm text-white">{value}</span>
+                <span style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</span>
               </motion.div>
             ))}
           </div>
@@ -495,15 +469,6 @@ export default function MyPanel({ setCurrentSection }) {
       </div>
 
       {/* ── Modals ── */}
-      <AnimatePresence>
-        {showEdit && (
-          <EditProfile
-            profile={profile}
-            onClose={() => setShowEdit(false)}
-            onSave={() => { setShowEdit(false); refetch(); }}
-          />
-        )}
-      </AnimatePresence>
       <AnimatePresence>
         {showUpload && (
           <UploadPodcastModal
