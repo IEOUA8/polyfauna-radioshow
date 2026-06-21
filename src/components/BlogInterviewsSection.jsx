@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CalendarDays, ExternalLink, FileText, Mic, Play, Video } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -212,6 +212,18 @@ export default function BlogInterviewsSection() {
   }, [articles, interviews, activeTab]);
 
   const openItem = (item) => { setSelected(item); setSelectedType(item._type); };
+
+  // Listen for deep-link from TopBar global search
+  useEffect(() => {
+    const handler = (e) => {
+      const { type, id } = e.detail || {};
+      if (type !== 'blog_articles') return;
+      const match = (articles || []).find(a => a.id === id);
+      if (match) openItem({ ...match, _type: 'article' });
+    };
+    window.addEventListener('pf:open-item', handler);
+    return () => window.removeEventListener('pf:open-item', handler);
+  }, [articles]);
   const goBack   = () => { setSelected(null); setSelectedType(null); };
 
   if (loading) return <div className="p-5"><CardSkeleton count={4} /></div>;

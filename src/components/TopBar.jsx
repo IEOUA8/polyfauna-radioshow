@@ -9,7 +9,7 @@ const TYPE_META = {
   podcasts:      { label: 'Podcast',  icon: Headphones,  section: 'podcasts', imgKey: 'cover_url',          nameKey: 'title' },
   artists:       { label: 'Artista',  icon: Disc3,       section: 'artists',  imgKey: 'image_url',          nameKey: 'name'  },
   albums:        { label: 'Álbum',    icon: Music,       section: 'music',    imgKey: 'cover_url',          nameKey: 'title' },
-  blog_articles: { label: 'Blog',     icon: FileText,    section: 'blog',     imgKey: 'featured_image_url', nameKey: 'title' },
+  blog_articles: { label: 'Blog',     icon: FileText,    section: 'blog',     imgKey: 'cover_url',          nameKey: 'title' },
 };
 
 const FALLBACK  = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=80&auto=format&fit=crop';
@@ -59,7 +59,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
         supabase.from('podcasts').select('id, title, cover_url').ilike('title', `%${q}%`).limit(3),
         supabase.from('artists').select('id, name, image_url').ilike('name', `%${q}%`).limit(3),
         supabase.from('albums').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
-        supabase.from('blog_articles').select('id, title, featured_image_url').ilike('title', `%${q}%`).limit(2),
+        supabase.from('blog_articles').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
       ]);
       const merged = [
         ...(evRes.data  || []).map(r => ({ ...r, _type: 'events'        })),
