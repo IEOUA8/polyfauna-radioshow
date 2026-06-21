@@ -179,12 +179,21 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   overflow-x: hidden;
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Tipografía de marca (brand guide) */
+.font-display { font-family: 'Jost', 'Inter', sans-serif; }
+
+/* Wordmark — Jost Light 300, tracking estricto */
+.pf-wordmark {
+  font-family: 'Jost', sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
 }

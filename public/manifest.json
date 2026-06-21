@@ -1,0 +1,55 @@
+{
+  "name": "POLYFAUNA",
+  "short_name": "POLYFAUNA",
+  "description": "Radio · Podcasts · Events — Plataforma de streaming y cultura electrónica",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0A0A0A",
+  "background_color": "#0A0A0A",
+  "lang": "es",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Radio en vivo",
+      "short_name": "Radio",
+      "url": "/?section=radio-console",
+      "description": "Ir directamente al stream en vivo",
+      "icons": [{ "src": "/icons/species-radio-512.png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Podcasts",
+      "short_name": "Podcasts",
+      "url": "/?section=podcasts",
+      "description": "Episodios y mezclas",
+      "icons": [{ "src": "/icons/species-podcast-512.png", "sizes": "512x512" }]
+    }
+  ]
+}
