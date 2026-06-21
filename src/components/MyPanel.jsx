@@ -94,7 +94,7 @@ const ROLE_META = {
   admin:    { label: 'Admin',               color: '#F87171', glow: 'rgba(248,113,113,0.30)' },
 };
 
-const CREATOR_ROLES = ['artist', 'club', 'promoter', 'admin'];
+const CREATOR_ROLES = ['artist', 'club', 'promoter', 'sello', 'admin'];
 
 const SOCIAL_PLATFORMS = [
   {
