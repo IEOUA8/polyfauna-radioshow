@@ -10,11 +10,12 @@ import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
 
 const ROLE_META = {
-  citizen:  { label: 'Wave Citizen'  },
-  artist:   { label: 'Artista'       },
-  promoter: { label: 'Promotor'      },
-  club:     { label: 'Club / Venue'  },
-  admin:    { label: 'Admin'         },
+  citizen:  { label: 'Wave Citizen'       },
+  artist:   { label: 'Artista'            },
+  promoter: { label: 'Promotor'           },
+  club:     { label: 'Club / Venue'       },
+  sello:    { label: 'Sello Discográfico' },
+  admin:    { label: 'Admin'              },
 };
 
 function SettingsTile({ icon: Icon, label, description, onClick, badge, delay = 0, danger = false }) {
@@ -240,10 +241,10 @@ export default function ControlCenter({ setCurrentSection }) {
           <div className="space-y-2">
             <SettingsTile icon={Edit3} label="Editar Perfil" description="Nombre, bio, avatar y redes sociales"
               onClick={() => setEditOpen(true)} delay={0.05} />
+            <SettingsTile icon={Heart} label="Mi Panel" description="Favoritos, playlists y contenido"
+              onClick={() => setCurrentSection?.('mi-panel')} delay={0.1} />
             <SettingsTile icon={Ticket} label="Ticket Vault" description="Tus entradas y eventos"
-              onClick={() => setCurrentSection?.('tickets')} delay={0.1} />
-            <SettingsTile icon={Heart} label="Mi Panel" description="Perfil público, favoritos y actividad"
-              onClick={() => setCurrentSection?.('my-panel')} delay={0.15} />
+              onClick={() => setCurrentSection?.('tickets')} delay={0.15} />
           </div>
         </div>
 
@@ -251,7 +252,7 @@ export default function ControlCenter({ setCurrentSection }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Preferencias</p>
           <div className="space-y-2">
-            <SettingsTile icon={Bell} label="Notificaciones" description="Alertas de eventos y nueva actividad"
+            <SettingsTile icon={Bell} label="Notificaciones" description="Mensajes y alertas de actividad"
               onClick={() => setCurrentSection?.('inbox')} delay={0.2} />
             <div>
               <SettingsTile
@@ -272,8 +273,8 @@ export default function ControlCenter({ setCurrentSection }) {
         {isAdmin && (
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Administración</p>
-            <SettingsTile icon={Shield} label="Panel de Administración" description="Gestionar usuarios, eventos y contenido"
-              onClick={() => navigate('/admin')} delay={0.3} />
+            <SettingsTile icon={Shield} label="Solicitudes y Comunidad" description="Aprobar roles y notificar a la comunidad"
+              onClick={() => setCurrentSection?.('mi-panel')} delay={0.3} />
           </div>
         )}
 

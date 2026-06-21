@@ -9,30 +9,30 @@ import TopBar from '@/components/TopBar';
 import RightPanel from '@/components/RightPanel';
 import GlobalPlayer from '@/components/GlobalPlayer';
 import BottomNav from '@/components/BottomNav';
+import MobileMenu from '@/components/MobileMenu';
 import OnboardingModal from '@/components/OnboardingModal';
 import EventTerminal from '@/components/EventTerminal';
 import RadioConsolePage from '@/components/RadioConsolePage';
 import PodcastsPage from '@/components/PodcastsPage';
 import MusicPage from '@/components/MusicPage';
 import ArtistsPage from '@/components/ArtistsPage';
-import CommunityGrid from '@/components/CommunityGrid';
-import BlogSection from '@/components/BlogSection';
-import InterviewsSection from '@/components/InterviewsSection';
+import BlogInterviewsSection from '@/components/BlogInterviewsSection';
 import SignalInbox from '@/components/SignalInbox';
 import TicketVault from '@/components/TicketVault';
 import ControlCenter from '@/components/ControlCenter';
 import MyPanel from '@/components/MyPanel';
-import PromoterDashboard from '@/components/PromoterDashboard';
 import EventManagerPanel from '@/components/EventManagerPanel';
 import { useAuth } from '@/contexts/AuthContext';
 
-const PUBLIC_SECTIONS = ['radio-console', 'podcasts'];
+const PUBLIC_SECTIONS  = ['radio-console', 'podcasts'];
+const CREATOR_ROLES    = ['artist', 'club', 'promoter', 'sello', 'admin'];
 
 function GuestGate({ section }) {
   const labels = {
-    music: 'Música', events: 'Event Terminal', community: 'Community Grid',
-    artists: 'Artists & Labels', inbox: 'Signal Inbox', blog: 'Blog',
-    interviews: 'Interviews', tickets: 'Ticket Vault', settings: 'Control Center',
+    music: 'Música', events: 'Event Terminal', artists: 'Artists & Labels',
+    inbox: 'Signal Inbox', blog: 'Blog & Entrevistas',
+    tickets: 'Ticket Vault', settings: 'Control Center',
+    'mi-panel': 'Mi Panel', promoter: 'Gestor de Eventos',
   };
   return (
     <motion.div
@@ -50,12 +50,12 @@ function GuestGate({ section }) {
       </p>
       <div className="flex gap-3">
         <Link to="/login"
-          className="px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          className="px-5 py-2.5 rounded-xl text-sm font-bold"
           style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)' }}>
           Iniciar sesión
         </Link>
         <Link to="/signup"
-          className="px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          className="px-5 py-2.5 rounded-xl text-sm font-bold"
           style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
           Crear cuenta
         </Link>
@@ -67,18 +67,18 @@ function GuestGate({ section }) {
 function PolyfaunaOS() {
   const { currentUser, userRole } = useAuth();
   const [currentSection, setCurrentSection] = useState('radio-console');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState(null);
+  const [isPlaying, setIsPlaying]           = useState(false);
+  const [currentTrack, setCurrentTrack]     = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const mainRef = useRef(null);
-  const touchStartX = useRef(null);
-  const touchStartY = useRef(null);
+  const mainRef      = useRef(null);
+  const touchStartX  = useRef(null);
+  const touchStartY  = useRef(null);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSection]);
 
-  // Swipe to open/close sidebar on mobile
+  // Swipe right from left edge → open mobile menu
   useEffect(() => {
     const onTouchStart = (e) => {
       touchStartX.current = e.touches[0].clientX;
@@ -88,40 +88,40 @@ function PolyfaunaOS() {
       if (touchStartX.current === null) return;
       const dx = e.changedTouches[0].clientX - touchStartX.current;
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
-      if (dy > 60) return; // vertical scroll — ignore
+      if (dy > 60) return;
       if (dx > 60 && touchStartX.current < 40) setMobileMenuOpen(true);
       if (dx < -60) setMobileMenuOpen(false);
       touchStartX.current = null;
     };
     document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    document.addEventListener('touchend',   onTouchEnd,   { passive: true });
     return () => {
       document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchend',   onTouchEnd);
     };
   }, []);
 
-  const renderSection = () => {
-    const isGuest = !currentUser;
-    const isProtected = !PUBLIC_SECTIONS.includes(currentSection);
+  const isGuestProtected = !currentUser && !PUBLIC_SECTIONS.includes(currentSection);
 
-    // Guest trying to access protected section → show gate
-    if (isGuest && isProtected) return <GuestGate section={currentSection} />;
+  const renderSection = () => {
+    if (isGuestProtected) return <GuestGate section={currentSection} />;
 
     switch (currentSection) {
       case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
       case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} />;
       case 'music':         return <MusicPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} />;
       case 'events':        return <EventTerminal />;
-      case 'community':     return <CommunityGrid />;
-      case 'inbox':         return <SignalInbox />;
       case 'artists':       return <ArtistsPage />;
-      case 'blog':          return <BlogSection />;
-      case 'interviews':    return <InterviewsSection />;
+      case 'blog':          return <BlogInterviewsSection />;
+      case 'inbox':         return <SignalInbox />;
       case 'tickets':       return <TicketVault />;
       case 'settings':      return <ControlCenter setCurrentSection={setCurrentSection} />;
-      case 'mi-panel':      return userRole === 'admin' ? <MyPanel setCurrentSection={setCurrentSection} /> : <GuestGate section="mi-panel" />;
-      case 'promoter':      return (userRole === 'promoter' || userRole === 'club' || userRole === 'admin') ? <EventManagerPanel /> : <GuestGate section="promoter" />;
+      case 'mi-panel':      return CREATOR_ROLES.includes(userRole) || userRole === 'citizen'
+                              ? <MyPanel setCurrentSection={setCurrentSection} />
+                              : <GuestGate section="mi-panel" />;
+      case 'promoter':      return (userRole === 'promoter' || userRole === 'club' || userRole === 'admin')
+                              ? <EventManagerPanel />
+                              : <GuestGate section="promoter" />;
       default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
     }
   };
@@ -134,15 +134,17 @@ function PolyfaunaOS() {
       </Helmet>
 
       <div className="flex h-full">
+        {/* Desktop sidebar */}
         <Sidebar
           currentSection={currentSection}
           setCurrentSection={setCurrentSection}
-          mobileOpen={mobileMenuOpen}
-          setMobileOpen={setMobileMenuOpen}
         />
 
         <div className="flex flex-col flex-1 min-w-0 h-full">
-          <TopBar setCurrentSection={setCurrentSection} setMobileMenuOpen={setMobileMenuOpen} />
+          <TopBar
+            setCurrentSection={setCurrentSection}
+            setMobileMenuOpen={setMobileMenuOpen}
+          />
           <main ref={mainRef} className="flex-1 overflow-y-auto pb-48 lg:pb-32">
             <AnimatePresence mode="wait">
               <motion.div
@@ -172,6 +174,15 @@ function PolyfaunaOS() {
       />
 
       <BottomNav currentSection={currentSection} setCurrentSection={setCurrentSection} />
+
+      {/* Mobile fullscreen menu */}
+      <MobileMenu
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        currentSection={currentSection}
+        setCurrentSection={(s) => { setCurrentSection(s); setMobileMenuOpen(false); }}
+      />
+
       <OnboardingModal />
       <Toaster />
     </div>
