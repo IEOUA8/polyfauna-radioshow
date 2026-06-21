@@ -142,7 +142,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
-        className="fixed bottom-14 lg:bottom-4 left-4 right-4 lg:left-[256px] xl:right-[304px] z-50 h-[82px] flex items-center px-4 md:px-6"
+        className="fixed bottom-14 lg:bottom-4 left-4 right-4 lg:left-[256px] xl:right-[304px] z-50 h-[82px] flex items-center px-3 sm:px-4 md:px-6"
         style={{
           background: 'rgba(8, 12, 11, 0.75)',
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
@@ -153,10 +153,10 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         }}
       >
         {/* ── Track Info ── */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
           <div className="relative shrink-0">
             <div
-              className="w-12 h-12 rounded-xl overflow-hidden"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden"
               style={{
                 border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: isPlaying ? '0 0 16px rgba(255,255,255,0.12)' : 'none',
@@ -167,7 +167,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <motion.span
               animate={{ opacity: isPlaying ? [1, 0.4, 1] : 1 }}
               transition={{ duration: 1.4, repeat: Infinity }}
-              className="absolute -top-1.5 -left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
+              className="hidden sm:block absolute -top-1.5 -left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
               style={{
                 background: isPlaying
                   ? 'linear-gradient(90deg, #FF8A1F, #E07010)'
@@ -179,19 +179,19 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             >
               {isPlaying ? 'ON AIR' : 'PAUSED'}
             </motion.span>
+            {/* Dot live indicator — solo móvil */}
+            <motion.span
+              animate={isPlaying ? { opacity: [1, 0.3, 1] } : { opacity: 0.5 }}
+              transition={{ duration: 1.4, repeat: Infinity }}
+              className="sm:hidden absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#050909]"
+              style={{ background: isPlaying ? '#FF8A1F' : 'rgba(255,255,255,0.3)' }}
+            />
           </div>
 
-          <div className="min-w-0 hidden sm:block">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="text-sm font-bold text-white leading-tight truncate cursor-default">{trackTitle}</p>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p>{trackTitle}</p>
-                {trackSub && <p className="text-white/60 text-[10px]">{trackSub}</p>}
-              </TooltipContent>
-            </Tooltip>
-            <p className="text-xs text-white/35 truncate">{trackSub}</p>
+          {/* Info — visible siempre */}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-white leading-tight truncate">{trackTitle}</p>
+            <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{trackSub}</p>
           </div>
 
           {isOnDemand ? (
@@ -199,7 +199,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               type="button"
               onClick={backToRadio}
               title="Volver al radio stream"
-              className="hidden sm:flex items-center gap-1 text-white/25 hover:text-white/60 transition-colors p-1 text-[10px] font-bold uppercase tracking-wider"
+              className="hidden sm:flex items-center gap-1 text-white/25 hover:text-white/60 transition-colors p-1 text-[10px] font-bold uppercase tracking-wider shrink-0"
             >
               <Radio className="w-3.5 h-3.5" />
               Radio
@@ -208,7 +208,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button
               type="button"
               onClick={handleLike}
-              className="hidden sm:flex transition-colors p-1"
+              className="hidden sm:flex transition-colors p-1 shrink-0"
               style={{ color: isLiked ? '#FF5C7A' : 'rgba(255,255,255,0.25)' }}
               title={isLiked ? 'Quitar de favoritos' : 'Guardar en favoritos'}
             >
@@ -218,7 +218,8 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         </div>
 
         {/* ── Controls ── */}
-        <div className="flex flex-col items-center gap-1 flex-1">
+        {/* móvil: shrink-0 + ml-2 (solo play), sm+: flex-1 centrado */}
+        <div className="flex flex-col items-center gap-1 shrink-0 ml-2 sm:ml-0 sm:flex-1">
           <div className="flex items-center gap-3 md:gap-4">
             <button
               type="button"
