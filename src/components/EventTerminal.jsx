@@ -579,7 +579,7 @@ export default function EventTerminal() {
     if (bannerEvents.length <= 1) return;
     const timer = setInterval(() => {
       setFeaturedIndex(prev => (prev + 1) % bannerEvents.length);
-    }, 5500);
+    }, 8000);
     return () => clearInterval(timer);
   }, [bannerEvents.length]);
 
@@ -682,15 +682,6 @@ export default function EventTerminal() {
                 </>
               )}
 
-              {/* Counter top-right */}
-              {bannerEvents.length > 1 && (
-                <div
-                  className="absolute top-4 right-4 z-20 text-[11px] font-bold tabular-nums px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(0,0,0,0.50)', color: 'rgba(255,255,255,0.70)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
-                >
-                  {safeIndex + 1} / {bannerEvents.length}
-                </div>
-              )}
 
               <div className="relative z-10 p-6 md:p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
                 <div>
@@ -778,19 +769,6 @@ export default function EventTerminal() {
                 </div>
               </div>
 
-              {/* Progress bar auto-rotate */}
-              {bannerEvents.length > 1 && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] z-20" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                  <motion.div
-                    key={safeIndex}
-                    className="h-full"
-                    style={{ background: 'rgba(255,255,255,0.55)' }}
-                    initial={{ width: '0%' }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 5.5, ease: 'linear' }}
-                  />
-                </div>
-              )}
             </div>
 
             {/* Upcoming Events Grid */}
