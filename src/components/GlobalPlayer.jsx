@@ -175,44 +175,56 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
           WebkitBackdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
           borderRadius: '24px',
-          border: '1px solid rgba(32,199,232,0.18)',
-          boxShadow: '0 8px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(123,92,240,0.1), 0 0 32px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)',
         }}
       >
         {/* ── Track Info ── */}
         <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
           <div className="relative shrink-0">
+            {/* Móvil + live → organismo breathing en lugar de portada */}
+            {!isOnDemand ? (
+              <motion.div
+                className="sm:hidden w-10 h-10 flex items-center justify-center shrink-0"
+                animate={isPlaying ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <img src="/icons/symbol-ui.svg" alt="" className="w-9 h-9 object-contain" draggable={false} />
+              </motion.div>
+            ) : null}
+            {/* Portada — siempre en desktop, solo en on-demand en móvil */}
             <div
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden"
-              style={{
-                border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: isPlaying ? '0 0 16px rgba(255,255,255,0.12)' : 'none',
-              }}
+              className={`${!isOnDemand ? 'hidden sm:block' : ''} w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden`}
+              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <img src={trackArt} alt="Now playing" className="w-full h-full object-cover" />
             </div>
-            <motion.span
-              animate={{ opacity: isPlaying ? [1, 0.4, 1] : 1 }}
-              transition={{ duration: 1.4, repeat: Infinity }}
+            {/* Badge ON AIR — desktop */}
+            <span
               className="hidden sm:block absolute -top-1.5 -left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
               style={{
-                background: isPlaying
-                  ? 'linear-gradient(90deg, #FF8A1F, #E07010)'
-                  : 'rgba(255,255,255,0.15)',
-                color: '#080B14',
+                background: isPlaying ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+                color: isPlaying ? '#ECECEC' : 'rgba(255,255,255,0.35)',
                 letterSpacing: '0.05em',
-                boxShadow: isPlaying ? '0 0 8px rgba(255,138,31,0.5)' : 'none',
+                fontFamily: "'IBM Plex Mono', monospace",
               }}
             >
               {isPlaying ? 'ON AIR' : 'PAUSED'}
-            </motion.span>
-            {/* Dot live indicator — solo móvil */}
-            <motion.span
-              animate={isPlaying ? { opacity: [1, 0.3, 1] } : { opacity: 0.5 }}
-              transition={{ duration: 1.4, repeat: Infinity }}
-              className="sm:hidden absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#050909]"
-              style={{ background: isPlaying ? '#FF8A1F' : 'rgba(255,255,255,0.3)' }}
-            />
+            </span>
+            {/* Mini ecualizador — móvil live */}
+            {!isOnDemand && isPlaying && (
+              <div className="sm:hidden absolute -top-[7px] -right-1 flex items-end gap-[1.5px]" style={{ height: 12 }}>
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="w-[2px] rounded-full"
+                    style={{ background: '#ECECEC' }}
+                    animate={{ height: ['35%', '90%', '35%'] }}
+                    transition={{ duration: 0.6 + i * 0.15, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info — visible siempre */}
@@ -282,10 +294,10 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
-                  background: 'rgba(255,255,255,0.95)',
+                  background: '#ECECEC',
                   boxShadow: isPlaying
-                    ? '0 0 24px rgba(32,199,232,0.5), 0 4px 12px rgba(0,0,0,0.4)'
-                    : '0 0 14px rgba(32,199,232,0.25), 0 4px 10px rgba(0,0,0,0.3)',
+                    ? '0 0 18px rgba(255,255,255,0.22), 0 4px 12px rgba(0,0,0,0.4)'
+                    : '0 4px 10px rgba(0,0,0,0.3)',
                 }}
               >
                 {isPlaying
@@ -329,8 +341,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
                     className="h-full rounded-full"
                     style={{
                       width: `${progressPct}%`,
-                      background: 'rgba(255,255,255,0.9)',
-                      boxShadow: '0 0 6px rgba(32,199,232,0.4)',
+                      background: '#ECECEC',
                       transition: 'width 0.25s linear',
                     }}
                   />

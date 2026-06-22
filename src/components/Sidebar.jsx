@@ -66,13 +66,14 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
 
   return (
     <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-3 pt-6 pb-8 shrink-0">
-        <Logo size="md" />
+      {/* Logo — aire arriba 22px, sin padding inferior (nav tiene su propio margen) */}
+      <div className="px-5 pt-[22px] pb-0 shrink-0">
+        <Logo variant="header" />
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+      {/* Navigation — 30px de separación respecto al logo + divisor sutil */}
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto mt-[30px]">
+        <div className="mx-1 mb-[18px]" style={{ height: 1, background: '#1F1F1F' }} />
         {ALL_NAV.map((item) => {
           const active = currentSection === item.id;
           const locked = !item.public && !isLoggedIn;

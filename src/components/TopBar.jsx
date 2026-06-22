@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Calendar, Clock, Disc3, FileText, Headphones, Menu, Music, Radio, Search, X } from 'lucide-react';
+import { Calendar, Clock, Disc3, FileText, Headphones, Music, Radio, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -161,16 +161,19 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
           boxShadow: '0 1px 0 0 rgba(184,207,166,0.10), 0 4px 24px rgba(0,0,0,0.4)',
         }}
       >
-        {/* Hamburger — mobile only */}
+        {/* Organismo — ancla de marca + abre menú móvil */}
         <button
           type="button"
           onClick={() => setMobileMenuOpen?.(true)}
-          className="lg:hidden p-2 rounded-lg transition-colors shrink-0"
-          style={{ color: 'rgba(255,255,255,0.50)' }}
-          onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.80)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.50)'; e.currentTarget.style.background = 'transparent'; }}
+          className="lg:hidden shrink-0 p-1 rounded-lg active:opacity-70 transition-opacity"
+          aria-label="Abrir menú"
         >
-          <Menu className="w-5 h-5" />
+          <img
+            src="/icons/symbol-ui.svg"
+            alt="POLYFAUNA"
+            className="w-[30px] h-[30px] object-contain"
+            draggable={false}
+          />
         </button>
 
         {/* Search */}

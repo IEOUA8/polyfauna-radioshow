@@ -44,7 +44,7 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
                   <motion.div
                     layoutId="bottom-nav-bar"
                     className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.85)', width: 24 }}
+                    style={{ background: '#ECECEC', width: 24 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                   />
                 )}
@@ -57,7 +57,7 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
               >
                 <Icon
                   className="w-[18px] h-[18px]"
-                  style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)' }}
+                  style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? '#ECECEC' : '#5E5E5E' }}
                 />
                 {locked && (
                   <Lock
@@ -69,7 +69,7 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
 
               <span
                 className="text-[9px] font-semibold tracking-wide leading-none"
-                style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)' }}
+                style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? '#ECECEC' : '#5E5E5E' }}
               >
                 {label}
               </span>
