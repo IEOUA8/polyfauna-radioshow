@@ -169,7 +169,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
-        className="fixed bottom-14 lg:bottom-4 left-4 right-4 lg:left-[256px] xl:right-[304px] z-50 h-[82px] flex items-center px-3 sm:px-4 md:px-6"
+        className="fixed bottom-[72px] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 h-[76px] flex items-center px-3 sm:px-4 md:px-6"
         style={{
           background: 'rgba(8, 12, 11, 0.75)',
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',

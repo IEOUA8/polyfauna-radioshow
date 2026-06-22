@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, Link, Link2, Lock, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, LayoutGrid, LayoutList, Link, Link2, Lock, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useLikes } from '@/hooks/useLikes';
@@ -397,6 +397,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
   const [activeGenre, setActiveGenre] = useState('All');
   const [selectedPod, setSelectedPod] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
   const { isLiked, toggle: toggleLike } = useLikes();
   const isCreator = currentUser && CREATOR_ROLES.includes(profile?.role);
 
@@ -514,22 +515,45 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
             className="space-y-5"
           >
             {/* Header */}
-            <div className="flex items-start justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <h1 className="text-xl font-black text-white">Podcasts</h1>
                 <p className="text-sm text-white/40 mt-1">Sesiones y mixes curados de la comunidad.</p>
               </div>
-              {isCreator && (
-                <button
-                  type="button"
-                  onClick={() => setShowUpload(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all hover:scale-105 shrink-0"
-                  style={{ background: 'linear-gradient(135deg,#A78BFA,#7C5CFF)', color: '#fff', boxShadow: '0 0 16px rgba(167,139,250,0.3)' }}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Subir
-                </button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* View toggle */}
+                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className="flex items-center justify-center w-8 h-8 transition-colors"
+                    style={{ background: viewMode === 'grid' ? 'rgba(255,255,255,0.10)' : 'transparent' }}
+                    title="Vista cuadrícula"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" style={{ color: viewMode === 'grid' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)' }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    className="flex items-center justify-center w-8 h-8 transition-colors"
+                    style={{ background: viewMode === 'list' ? 'rgba(255,255,255,0.10)' : 'transparent' }}
+                    title="Vista lista"
+                  >
+                    <LayoutList className="w-3.5 h-3.5" style={{ color: viewMode === 'list' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)' }} />
+                  </button>
+                </div>
+                {isCreator && (
+                  <button
+                    type="button"
+                    onClick={() => setShowUpload(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg,#A78BFA,#7C5CFF)', color: '#fff', boxShadow: '0 0 16px rgba(167,139,250,0.3)' }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Subir
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* ── Genre filter pills ── */}
@@ -576,11 +600,97 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
               })}
             </div>
 
-            {/* ── Podcast grid ── */}
+            {/* ── Podcast grid / list ── */}
             {filtered.length === 0 ? (
               <EmptyState label="No hay podcasts disponibles" icon={Headphones} />
+            ) : viewMode === 'list' ? (
+              /* ── Vista lista (SoundCloud style) ── */
+              <div className="space-y-1.5">
+                {filtered.map((pod, i) => {
+                  const isActive = currentTrack?.id === pod.id;
+                  const isCurrentlyPlaying = isActive && isPlaying;
+                  const gColor = getGenreColor(pod.genre);
+                  return (
+                    <motion.div
+                      key={pod.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl group cursor-pointer"
+                      style={{
+                        background: isActive ? `${gColor}0C` : 'rgba(255,255,255,0.025)',
+                        border: `1px solid ${isActive ? `${gColor}30` : 'rgba(255,255,255,0.06)'}`,
+                        transition: 'background 0.2s, border-color 0.2s',
+                      }}
+                      onClick={() => setSelectedPod(pod)}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; } }}
+                    >
+                      {/* Thumb */}
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"
+                        style={{ border: `1px solid ${isActive ? `${gColor}40` : 'rgba(255,255,255,0.07)'}` }}>
+                        <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} className="w-full h-full object-cover" />
+                        {isCurrentlyPlaying && (
+                          <div className="absolute inset-0 flex items-center justify-center"
+                            style={{ background: `${gColor}55` }}>
+                            <div className="flex items-end gap-px h-4">
+                              {[4, 7, 5, 6].map((h, j) => (
+                                <motion.div key={j} className="w-0.5 rounded-t-sm"
+                                  style={{ background: '#fff' }}
+                                  animate={{ height: [`${h}px`, `${h * 2}px`] }}
+                                  transition={{ duration: 0.35 + j * 0.07, repeat: Infinity, repeatType: 'reverse' }} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold leading-tight truncate" style={{ color: isActive ? gColor : 'white' }}>
+                          {pod.title}
+                        </p>
+                        <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                          {pod.artists?.name || 'PolyFauna'}
+                          {pod.duration ? ` · ${fmtDuration(pod.duration)}` : ''}
+                        </p>
+                      </div>
+
+                      {/* Like */}
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleLike(pod.id);
+                          if (!isLiked(pod.id)) toast({ title: pod.title, description: 'Guardado en tu biblioteca', style: { borderLeft: `3px solid ${gColor}` } });
+                        }}
+                        className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/5"
+                      >
+                        <Heart className="w-4 h-4" style={{ fill: isLiked(pod.id) ? gColor : 'none', color: isLiked(pod.id) ? gColor : 'rgba(255,255,255,0.25)' }} />
+                      </button>
+
+                      {/* Play */}
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); handlePlay(pod); }}
+                        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all"
+                        style={{
+                          background: isCurrentlyPlaying ? gColor : 'rgba(255,255,255,0.08)',
+                          border: `1px solid ${isCurrentlyPlaying ? 'transparent' : 'rgba(255,255,255,0.10)'}`,
+                        }}
+                      >
+                        {isCurrentlyPlaying
+                          ? <Pause className="w-4 h-4 fill-current" style={{ color: '#080B14' }} />
+                          : <Play className="w-4 h-4 fill-current ml-0.5" style={{ color: 'rgba(255,255,255,0.75)' }} />
+                        }
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              /* ── Vista cuadrícula ── */
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filtered.map((pod, i) => {
                   const isActive = currentTrack?.id === pod.id;
                   const isCurrentlyPlaying = isActive && isPlaying;
@@ -591,7 +701,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                       key={pod.id}
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.06 }}
+                      transition={{ delay: i * 0.05 }}
                       className="rounded-xl overflow-hidden flex flex-col group cursor-pointer"
                       style={{
                         background: 'rgba(11, 16, 15, 0.90)',
@@ -612,7 +722,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
 
                         {pod.genre && (
                           <span
-                            className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-md"
+                            className="absolute top-2 left-2 text-[9px] font-bold px-1.5 py-0.5 rounded"
                             style={{
                               background: `${gColor}22`,
                               color: gColor,
@@ -628,32 +738,31 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                           <motion.span
                             animate={{ opacity: [1, 0.4, 1] }}
                             transition={{ duration: 1.2, repeat: Infinity }}
-                            className="absolute top-2 right-2 text-[9px] font-black uppercase px-2 py-0.5 rounded"
+                            className="absolute top-2 right-2 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
                             style={{ background: gColor, color: '#080B14' }}
                           >
-                            {isCurrentlyPlaying ? 'ON AIR' : 'PAUSED'}
+                            {isCurrentlyPlaying ? 'ON AIR' : '⏸'}
                           </motion.span>
                         )}
 
-                        {/* Play button overlay */}
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handlePlay(pod); }}
                           className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                         >
                           <div
-                            className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl"
-                            style={{ background: gColor, boxShadow: `0 0 30px ${gColor}80` }}
+                            className="w-11 h-11 rounded-full flex items-center justify-center shadow-2xl"
+                            style={{ background: gColor, boxShadow: `0 0 24px ${gColor}80` }}
                           >
                             {isCurrentlyPlaying
-                              ? <Pause className="w-6 h-6 fill-current" style={{ color: '#080B14' }} />
-                              : <Play className="w-6 h-6 ml-0.5 fill-current" style={{ color: '#080B14' }} />
+                              ? <Pause className="w-5 h-5 fill-current" style={{ color: '#080B14' }} />
+                              : <Play className="w-5 h-5 ml-0.5 fill-current" style={{ color: '#080B14' }} />
                             }
                           </div>
                         </button>
 
                         {isCurrentlyPlaying && (
-                          <div className="absolute bottom-3 left-3 flex items-end gap-px h-5">
+                          <div className="absolute bottom-2.5 left-2.5 flex items-end gap-px h-4">
                             {[5, 9, 6, 8, 4].map((h, j) => (
                               <motion.div
                                 key={j}
@@ -667,52 +776,29 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                         )}
                       </div>
 
-                      <div className="p-3 flex flex-col gap-1">
-                        <p className="text-sm font-bold leading-tight" style={{ color: isActive ? gColor : 'white' }}>
+                      <div className="p-2.5 flex flex-col gap-1">
+                        <p className="text-xs font-bold leading-tight line-clamp-2" style={{ color: isActive ? gColor : 'white' }}>
                           {pod.title}
                         </p>
-                        <p className="text-xs text-white/40">{pod.artists?.name || 'PolyFauna'}</p>
-                        {pod.description && (
-                          <p className="text-[11px] text-white/30 line-clamp-2 mt-0.5">{pod.description}</p>
-                        )}
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-[11px] text-white/30">
-                            {new Date(pod.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {pod.duration && (
-                              <span className="text-[11px] text-white/30">{fmtDuration(pod.duration)}</span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleLike(pod.id);
-                                if (!isLiked(pod.id)) {
-                                  toast({
-                                    title: pod.title,
-                                    description: 'Guardado en tu biblioteca',
-                                    style: { borderLeft: `3px solid ${gColor}` },
-                                  });
-                                }
-                              }}
-                              className="p-1 rounded-full transition-colors hover:bg-white/5"
-                              title={isLiked(pod.id) ? 'Quitar like' : 'Me gusta'}
-                            >
-                              <motion.div
-                                animate={isLiked(pod.id) ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <Heart
-                                  className="w-3.5 h-3.5 transition-colors"
-                                  style={{
-                                    fill: isLiked(pod.id) ? gColor : 'none',
-                                    color: isLiked(pod.id) ? gColor : 'rgba(255,255,255,0.3)',
-                                  }}
-                                />
-                              </motion.div>
-                            </button>
-                          </div>
+                        <p className="text-[10px] text-white/40 truncate">{pod.artists?.name || 'PolyFauna'}</p>
+                        <div className="flex items-center justify-between mt-0.5">
+                          {pod.duration ? (
+                            <span className="text-[10px] text-white/25">{fmtDuration(pod.duration)}</span>
+                          ) : <span />}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleLike(pod.id);
+                              if (!isLiked(pod.id)) toast({ title: pod.title, description: 'Guardado en tu biblioteca', style: { borderLeft: `3px solid ${gColor}` } });
+                            }}
+                            className="p-1 rounded-full transition-colors hover:bg-white/5"
+                          >
+                            <Heart
+                              className="w-3 h-3"
+                              style={{ fill: isLiked(pod.id) ? gColor : 'none', color: isLiked(pod.id) ? gColor : 'rgba(255,255,255,0.3)' }}
+                            />
+                          </button>
                         </div>
                       </div>
                     </motion.div>

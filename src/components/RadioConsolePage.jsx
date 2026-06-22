@@ -101,7 +101,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: 'easeOut' }}
-        className="holo-border rounded-2xl overflow-hidden p-6 relative"
+        className="holo-border rounded-2xl overflow-hidden p-4 md:p-6 relative"
         style={{
           background: 'rgba(13, 20, 19, 0.54)',
           backdropFilter: 'blur(40px) saturate(190%) brightness(1.06)',
@@ -146,18 +146,19 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             fill="rgba(142,158,131,0.025)" />
         </svg>
 
-        <div className="relative flex flex-col md:flex-row gap-6 items-start">
+        {/* ── Main row: compact on mobile ── */}
+        <div className="relative flex items-center gap-3 md:gap-5">
           {/* Album art */}
           <div className="relative shrink-0">
             <motion.div
               animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
               transition={isPlaying ? { duration: 12, repeat: Infinity, ease: 'linear' } : { duration: 0.5 }}
-              className="w-28 h-28 rounded-full overflow-hidden"
+              className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden"
               style={{
-                border: '3px solid rgba(32,199,232,0.25)',
+                border: '2px solid rgba(32,199,232,0.22)',
                 boxShadow: isPlaying
-                  ? '0 0 32px rgba(255,255,255,0.18), 0 0 64px rgba(123,92,240,0.15), 0 8px 32px rgba(0,0,0,0.5)'
-                  : '0 0 16px rgba(255,255,255,0.07), 0 8px 24px rgba(0,0,0,0.4)',
+                  ? '0 0 24px rgba(255,255,255,0.14), 0 6px 24px rgba(0,0,0,0.5)'
+                  : '0 0 12px rgba(255,255,255,0.06), 0 6px 18px rgba(0,0,0,0.4)',
               }}
             >
               <img
@@ -166,18 +167,17 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 className="w-full h-full object-cover"
               />
             </motion.div>
-            {/* Center dot */}
             <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full z-10"
-              style={{ background: 'linear-gradient(135deg, #20C7E8, #7C5CFF)', boxShadow: '0 0 8px rgba(32,199,232,0.8)' }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full z-10"
+              style={{ background: 'linear-gradient(135deg, #20C7E8, #7C5CFF)', boxShadow: '0 0 6px rgba(32,199,232,0.8)' }}
             />
           </div>
 
+          {/* Info */}
           <div className="flex-1 min-w-0">
-            {/* Live badge */}
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1.5">
               <span
-                className="relative inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full overflow-hidden"
+                className="relative inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full overflow-hidden"
                 style={{
                   background: isOnline ? 'rgba(255,112,67,0.12)' : 'rgba(255,255,255,0.07)',
                   border: `1px solid ${isOnline ? 'rgba(255,112,67,0.40)' : 'rgba(255,255,255,0.1)'}`,
@@ -195,37 +195,33 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF8A1F' }} />
                   </span>
                 )}
-                {isOnline && (
-                  <motion.span
-                    className="absolute inset-0 rounded-full pointer-events-none"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)',
-                    }}
-                    animate={{ x: ['-150%', '150%'] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'linear', repeatDelay: 1.5 }}
-                  />
-                )}
                 {isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Live Channel' : 'Offline'}
               </span>
             </div>
 
-            <h1 className="text-2xl font-black text-white leading-tight truncate">
+            <h1 className="text-base md:text-xl font-black text-white leading-tight truncate">
               {song?.title || 'PolyFauna Radio'}
             </h1>
-            <p className="text-white/50 text-sm mt-1 truncate">
+            <p className="text-white/50 text-xs md:text-sm mt-0.5 truncate">
               {song?.artist || (isOnline ? 'Transmisión en vivo · 24/7' : 'Estación offline')}
             </p>
 
-            <div className="mt-5">
-              <HoloSpectrum isPlaying={isPlaying} height={68} />
+            <div className="hidden md:flex items-center gap-1.5 text-white/35 text-xs mt-1.5">
+              <Users className="w-3 h-3" />
+              <span>{listeners > 0 ? `${listeners} oyente${listeners !== 1 ? 's' : ''}` : 'En vivo'}</span>
+            </div>
+
+            {/* Spectrum — desktop inline */}
+            <div className="hidden md:block mt-4">
+              <HoloSpectrum isPlaying={isPlaying} height={56} />
             </div>
           </div>
 
-          {/* Play controls */}
-          <div className="flex flex-col items-center gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 text-white/40 text-xs">
-              <Users className="w-3.5 h-3.5" />
-              <span>{listeners > 0 ? `${listeners} oyente${listeners !== 1 ? 's' : ''}` : 'En vivo'}</span>
+          {/* Play button */}
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 text-white/35 text-[10px] md:hidden mb-1">
+              <Users className="w-2.5 h-2.5" />
+              <span>{listeners > 0 ? listeners : '—'}</span>
             </div>
 
             <div className="relative flex items-center justify-center">
@@ -233,13 +229,13 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 <>
                   <motion.span
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -8, border: '1.5px solid rgba(32,199,232,0.35)' }}
+                    style={{ inset: -6, border: '1.5px solid rgba(32,199,232,0.30)' }}
                     animate={{ scale: [1, 1.4], opacity: [0.5, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
                   />
                   <motion.span
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -4, border: '1px solid rgba(255,255,255,0.12)' }}
+                    style={{ inset: -3, border: '1px solid rgba(255,255,255,0.10)' }}
                     animate={{ scale: [1, 1.25], opacity: [0.4, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut', delay: 0.4 }}
                   />
@@ -248,25 +244,30 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               <button
                 type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
                   background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
                   boxShadow: isPlaying
-                    ? '0 0 32px rgba(32,199,232,0.55), 0 4px 16px rgba(0,0,0,0.4)'
-                    : '0 0 20px rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.3)',
+                    ? '0 0 24px rgba(32,199,232,0.55), 0 4px 14px rgba(0,0,0,0.4)'
+                    : '0 0 16px rgba(255,255,255,0.16), 0 4px 10px rgba(0,0,0,0.3)',
                 }}
               >
                 {isPlaying
-                  ? <Pause className="w-5 h-5 fill-current" style={{ color: '#080B14' }} />
-                  : <Play className="w-5 h-5 fill-current ml-0.5" style={{ color: '#080B14' }} />
+                  ? <Pause className="w-4 h-4 fill-current" style={{ color: '#080B14' }} />
+                  : <Play className="w-4 h-4 fill-current ml-0.5" style={{ color: '#080B14' }} />
                 }
               </button>
             </div>
           </div>
         </div>
 
-        {/* Action buttons — floating glass pills */}
-        <div className="flex flex-wrap gap-2.5 mt-6 relative">
+        {/* Spectrum — mobile (below main row) */}
+        <div className="mt-3 md:hidden">
+          <HoloSpectrum isPlaying={isPlaying} height={40} />
+        </div>
+
+        {/* Action buttons */}
+        <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 mt-4 md:mt-6 relative">
           {[
             { id: 'room',  label: 'Abrir sala en vivo', icon: Tv2,           accent: 'rgba(32,199,232,{a})',  glow: 'rgba(32,199,232,0.18)',  onClick: handleOpenRoom,    active: false },
             { id: 'ask',   label: 'Preguntar al host',  icon: MessageCircle, accent: 'rgba(167,139,250,{a})', glow: 'rgba(167,139,250,0.18)', onClick: handleAskHost,     active: false },

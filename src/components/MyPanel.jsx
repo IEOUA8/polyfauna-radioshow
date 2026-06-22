@@ -170,7 +170,7 @@ export default function MyPanel({ setCurrentSection }) {
     : null;
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-0 overflow-x-hidden">
 
       {/* ── Hero / Cover ── */}
       <motion.div
@@ -212,8 +212,8 @@ export default function MyPanel({ setCurrentSection }) {
         )}
 
         {/* Content */}
-        <div className="relative px-6 pt-8 pb-7">
-          <div className="flex flex-col sm:flex-row items-start gap-5">
+        <div className="relative px-4 sm:px-6 pt-6 sm:pt-8 pb-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
 
             {/* ── Avatar ── */}
             <div className="relative shrink-0" style={{ width: 96, height: 96 }}>
@@ -273,7 +273,7 @@ export default function MyPanel({ setCurrentSection }) {
                   )}
 
                   {profile?.bio && (
-                    <p className="text-sm mt-2.5 max-w-lg leading-relaxed" style={{ color: 'rgba(255,255,255,0.52)' }}>
+                    <p className="text-sm mt-2.5 max-w-lg leading-relaxed break-words" style={{ color: 'rgba(255,255,255,0.52)' }}>
                       {profile.bio}
                     </p>
                   )}
@@ -323,7 +323,7 @@ export default function MyPanel({ setCurrentSection }) {
           </div>
 
           {/* ── Stats tiles ── */}
-          <div className="flex items-center gap-2.5 mt-5 flex-wrap">
+          <div className="flex items-center gap-2 mt-4 flex-wrap">
             {[
               { label: 'Favoritos', value: favCount, icon: Heart },
               { label: 'Playlists', value: plCount,  icon: ListMusic },
@@ -385,12 +385,12 @@ export default function MyPanel({ setCurrentSection }) {
       </motion.div>
 
       {/* ── Divider line ── */}
-      <div className="mx-6" style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+      <div className="mx-4 sm:mx-6" style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
 
       {/* ── Tabs ── */}
-      <div className="px-6 pt-5">
+      <div className="px-3 sm:px-6 pt-4 overflow-x-auto scrollbar-none">
         <div
-          className="inline-flex gap-1 p-1 rounded-xl"
+          className="inline-flex gap-1 p-1 rounded-xl min-w-max"
           style={{
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.07)',
@@ -403,7 +403,7 @@ export default function MyPanel({ setCurrentSection }) {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className="relative flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200"
+                className="relative flex items-center gap-1.5 text-xs font-bold px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 shrink-0"
                 style={{
                   background: active ? `${color}18` : 'transparent',
                   color: active ? color : 'rgba(255,255,255,0.32)',
@@ -420,7 +420,7 @@ export default function MyPanel({ setCurrentSection }) {
       </div>
 
       {/* ── Tab content ── */}
-      <div className="px-6 pt-5 pb-32">
+      <div className="px-4 sm:px-6 pt-4 pb-32">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
