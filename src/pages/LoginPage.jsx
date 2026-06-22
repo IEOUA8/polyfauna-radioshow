@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -200,6 +200,7 @@ function ForgotPasswordView({ onBack }) {
 // ── Login view ────────────────────────────────────────────────────────────────
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, isLoading, recoveryMode } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -214,7 +215,7 @@ const LoginPage = () => {
     setFormError('');
     if (!email || !password) { setFormError('Por favor completa todos los campos.'); return; }
     const { error } = await login(email, password);
-    if (!error) { navigate('/'); }
+    if (!error) { navigate(searchParams.get('next') || '/'); }
   };
 
   return (

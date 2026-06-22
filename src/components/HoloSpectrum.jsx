@@ -17,15 +17,15 @@ const BAR_DATA = Array.from({ length: N }, (_, i) => {
   };
 });
 
-export default function HoloSpectrum({ isPlaying = false, height = 80, className = '' }) {
+export default function HoloSpectrum({ isPlaying = false, height = 80, className = '', fillWidth = false }) {
   return (
-    <div className={`relative flex items-end ${className}`} style={{ height, gap: '3px' }}>
+    <div className={`relative flex items-end ${className}`} style={{ height, gap: fillWidth ? '2px' : '3px' }}>
       {BAR_DATA.map((bar, i) => (
         <motion.div
           key={i}
           style={{
             flex: '1',
-            maxWidth: '4px',
+            ...(fillWidth ? {} : { maxWidth: '4px' }),
             borderRadius: '1px 1px 0 0',
             background: `rgba(255, 255, 255, ${bar.opacity})`,
           }}

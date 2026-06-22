@@ -6,6 +6,7 @@ import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import HoloSpectrum from '@/components/HoloSpectrum';
 
 const BASE_STREAM = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
 const QUALITY_STREAMS = {
@@ -53,7 +54,6 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     setAudioDuration(0);
   }, [currentTrack?.id, streamUrl]);
 
-  // Cambio de calidad de stream desde ControlCenter
   useEffect(() => {
     const handler = (e) => {
       const { quality } = e.detail || {};
@@ -94,7 +94,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTimeUpdate    = () => setCurrentTime(audio.currentTime);
+    const onTimeUpdate     = () => setCurrentTime(audio.currentTime);
     const onDurationChange = () => setAudioDuration(audio.duration || 0);
     const onEnded = () => {
       if (repeatRef.current && audioRef.current) {
@@ -129,7 +129,8 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   const handleSeek = (e) => {
     if (!currentTrack || !audioDuration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const clientX = e.touches?.[0]?.clientX ?? e.clientX;
+    const pct  = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     if (audioRef.current) audioRef.current.currentTime = pct * audioDuration;
   };
 
@@ -161,6 +162,52 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     : song?.artist || (isPlaying ? 'Transmisión en vivo · 24/7' : 'En pausa');
   const progressPct  = isOnDemand && audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
+  // Media Session API — metadata for lock screen
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: trackTitle,
+      artist: trackSub,
+      album: 'PolyFauna Radio',
+      artwork: [{ src: trackArt, sizes: '512x512', type: 'image/jpeg' }],
+    });
+  }, [trackTitle, trackSub, trackArt]);
+
+  // Media Session API — playback state + action handlers
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    navigator.mediaSession.setActionHandler('play',  () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+    if (isOnDemand && audioDuration > 0) {
+      navigator.mediaSession.setActionHandler('seekbackward', ({ seekOffset = 10 }) => {
+        if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - seekOffset);
+      });
+      navigator.mediaSession.setActionHandler('seekforward', ({ seekOffset = 10 }) => {
+        if (audioRef.current) audioRef.current.currentTime = Math.min(audioDuration, audioRef.current.currentTime + seekOffset);
+      });
+      navigator.mediaSession.setActionHandler('seekto', ({ seekTime }) => {
+        if (audioRef.current && seekTime !== undefined) audioRef.current.currentTime = seekTime;
+      });
+    } else {
+      navigator.mediaSession.setActionHandler('seekbackward', null);
+      navigator.mediaSession.setActionHandler('seekforward', null);
+      navigator.mediaSession.setActionHandler('seekto', null);
+    }
+  }, [isPlaying, isOnDemand, audioDuration]);
+
+  // Media Session API — position state (enables lock screen scrubber)
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !isOnDemand || audioDuration <= 0) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: audioDuration,
+        playbackRate: 1,
+        position: Math.min(currentTime, audioDuration),
+      });
+    } catch (_) {}
+  }, [currentTime, audioDuration, isOnDemand]);
+
   return (
     <>
       <audio ref={audioRef} preload="none" />
@@ -169,7 +216,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
-        className="fixed bottom-[72px] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 h-[76px] flex items-center px-3 sm:px-4 md:px-6"
+        className="fixed bottom-[72px] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 flex flex-col sm:flex-row sm:items-center px-3 sm:px-4 md:px-6 pt-3 pb-2 sm:py-0 sm:h-[76px]"
         style={{
           background: 'rgba(8, 12, 11, 0.75)',
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
@@ -179,10 +226,10 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           boxShadow: '0 8px 48px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)',
         }}
       >
-        {/* ── Track Info ── */}
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+        {/* ── Row 1: Track Info + Mobile Play ── */}
+        <div className="flex items-center gap-2.5 sm:gap-3 sm:flex-1 min-w-0">
           <div className="relative shrink-0">
-            {/* Móvil + live → organismo breathing en lugar de portada */}
+            {/* Móvil + live → organismo breathing */}
             {!isOnDemand ? (
               <motion.div
                 className="sm:hidden w-10 h-10 flex items-center justify-center shrink-0"
@@ -211,28 +258,15 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             >
               {isPlaying ? 'ON AIR' : 'PAUSED'}
             </span>
-            {/* Mini ecualizador — móvil live */}
-            {!isOnDemand && isPlaying && (
-              <div className="sm:hidden absolute -top-[7px] -right-1 flex items-end gap-[1.5px]" style={{ height: 12 }}>
-                {[0, 1, 2].map((i) => (
-                  <motion.span
-                    key={i}
-                    className="w-[2px] rounded-full"
-                    style={{ background: '#ECECEC' }}
-                    animate={{ height: ['35%', '90%', '35%'] }}
-                    transition={{ duration: 0.6 + i * 0.15, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 }}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Info — visible siempre */}
+          {/* Info */}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-white leading-tight truncate">{trackTitle}</p>
             <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{trackSub}</p>
           </div>
 
+          {/* Like / Radio — desktop only */}
           {isOnDemand ? (
             <button
               type="button"
@@ -254,11 +288,64 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               <Heart className="w-4 h-4" style={isLiked ? { fill: '#FF5C7A' } : {}} />
             </button>
           )}
+
+          {/* Play button — mobile only, inline with info */}
+          <div className="sm:hidden relative flex items-center justify-center shrink-0 ml-1">
+            {isPlaying && (
+              <motion.span
+                className="absolute rounded-full pointer-events-none"
+                style={{ inset: -6, border: '1.5px solid rgba(255,255,255,0.18)' }}
+                animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
+              style={{
+                background: '#ECECEC',
+                boxShadow: isPlaying
+                  ? '0 0 18px rgba(255,255,255,0.22), 0 4px 12px rgba(0,0,0,0.4)'
+                  : '0 4px 10px rgba(0,0,0,0.3)',
+              }}
+            >
+              {isPlaying
+                ? <Pause className="w-4 h-4 fill-current" style={{ color: '#080B14' }} />
+                : <Play className="w-4 h-4 fill-current ml-0.5" style={{ color: '#080B14' }} />
+              }
+            </button>
+          </div>
         </div>
 
-        {/* ── Controls ── */}
-        {/* móvil: shrink-0 + ml-2 (solo play), sm+: flex-1 centrado */}
-        <div className="flex flex-col items-center gap-1 shrink-0 ml-2 sm:ml-0 sm:flex-1">
+        {/* ── Row 2 (mobile only): progress bar + spectrum ── */}
+        <div className="sm:hidden flex flex-col gap-1.5 mt-2 w-full">
+          {isOnDemand && audioDuration > 0 && (
+            <div className="flex items-center gap-2 text-[10px] text-white/30 font-medium">
+              <span className="tabular-nums">{formatTime(currentTime)}</span>
+              <div
+                className="flex-1 h-[3px] rounded-full overflow-hidden cursor-pointer"
+                style={{ background: 'rgba(255,255,255,0.08)' }}
+                onClick={handleSeek}
+                onTouchStart={handleSeek}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: '#ECECEC',
+                    transition: 'width 0.25s linear',
+                  }}
+                />
+              </div>
+              <span className="tabular-nums">{formatTime(audioDuration || currentTrack?.duration)}</span>
+            </div>
+          )}
+          <HoloSpectrum isPlaying={isPlaying} height={18} fillWidth className="w-full" />
+        </div>
+
+        {/* ── Desktop Controls (center) ── */}
+        <div className="hidden sm:flex flex-col items-center gap-1 flex-1">
           <div className="flex items-center gap-3 md:gap-4">
             <button
               type="button"
@@ -272,14 +359,14 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button
               type="button"
               onClick={handleSkipBack}
-              className="hidden sm:flex transition-colors"
+              className="flex transition-colors"
               title="Reiniciar pista"
               style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
             >
               <SkipBack className="w-5 h-5" />
             </button>
 
-            {/* Play button */}
+            {/* Play button — desktop */}
             <div className="relative flex items-center justify-center">
               {isPlaying && (
                 <motion.span
@@ -310,7 +397,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button
               type="button"
               onClick={isOnDemand ? backToRadio : undefined}
-              className="hidden sm:flex transition-colors"
+              className="flex transition-colors"
               title={isOnDemand ? 'Volver al radio' : undefined}
               style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
             >
@@ -327,8 +414,8 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             </button>
           </div>
 
-          {/* Progress bar */}
-          <div className="hidden sm:flex w-full max-w-sm items-center gap-2 text-[11px] text-white/30 font-medium">
+          {/* Progress bar — desktop */}
+          <div className="flex w-full max-w-sm items-center gap-2 text-[11px] text-white/30 font-medium">
             {isOnDemand ? (
               <>
                 <span className="tabular-nums">{formatTime(currentTime)}</span>
@@ -367,7 +454,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           </div>
         </div>
 
-        {/* ── Volume ── */}
+        {/* ── Volume — desktop ── */}
         <div className="flex-1 hidden md:flex justify-end items-center gap-3">
           <button type="button" onClick={() => setMuted(!muted)} className="text-white/25 hover:text-white/55 transition-colors">
             {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}

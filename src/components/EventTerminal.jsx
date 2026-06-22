@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronRight, ExternalLink, Loader2, MapPin, Search, Star, Ticket, Users, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronLeft, ChevronRight, ExternalLink, Loader2, MapPin, Search, Share2, Star, Ticket, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -346,9 +346,22 @@ function BuyModal({ event, onClose }) {
 
 /* ── Event detail page ── */
 function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
+  const [linkCopied, setLinkCopied] = React.useState(false);
   const lineup = event.lineup
     ? (Array.isArray(event.lineup) ? event.lineup : String(event.lineup).split(','))
     : [];
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/e/${event.id}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: event.title, url }); return; }
+      await navigator.clipboard.writeText(url);
+    } catch (_) {
+      await navigator.clipboard.writeText(url);
+    }
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2500);
+  };
 
   return (
     <motion.div
@@ -465,17 +478,35 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
         </div>
       )}
 
-      {/* Buy CTA */}
-      <motion.button
-        type="button"
-        onClick={onBuy}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="btn-cta w-full py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3 transition-all duration-200"
-      >
-        <Ticket className="w-5 h-5" />
-        Comprar Ticket
-      </motion.button>
+      {/* Buy CTA + Share */}
+      <div className="flex gap-3">
+        <motion.button
+          type="button"
+          onClick={onBuy}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="btn-cta flex-1 py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3 transition-all duration-200"
+        >
+          <Ticket className="w-5 h-5" />
+          Comprar Ticket
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={handleShare}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          className="py-4 px-4 rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all"
+          style={{
+            background: linkCopied ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
+            border: `1px solid ${linkCopied ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.10)'}`,
+            color: linkCopied ? '#22c55e' : 'rgba(255,255,255,0.60)',
+            minWidth: '3.5rem',
+          }}
+          title="Compartir enlace"
+        >
+          <Share2 className="w-5 h-5" />
+        </motion.button>
+      </div>
     </motion.div>
   );
 }
@@ -505,6 +536,16 @@ export default function EventTerminal() {
     );
   }, [events, search]);
 
+  // Eventos que aparecen en el banner: los marcados como featured ordenados por featured_order.
+  // Si ninguno tiene featured=true, muestra todos (comportamiento por defecto).
+  const bannerEvents = useMemo(() => {
+    if (!events) return [];
+    const featured = events
+      .filter(e => e.featured)
+      .sort((a, b) => (a.featured_order ?? 999) - (b.featured_order ?? 999));
+    return featured.length > 0 ? featured : events;
+  }, [events]);
+
   // Deep-link desde búsqueda global
   useEffect(() => {
     const handler = async (e) => {
@@ -523,6 +564,24 @@ export default function EventTerminal() {
     e.stopPropagation();
     toggleFav('event', id);
   };
+
+  const handlePrevFeatured = (e) => {
+    e.stopPropagation();
+    setFeaturedIndex(i => (i - 1 + bannerEvents.length) % bannerEvents.length);
+  };
+
+  const handleNextFeatured = (e) => {
+    e.stopPropagation();
+    setFeaturedIndex(i => (i + 1) % bannerEvents.length);
+  };
+
+  useEffect(() => {
+    if (bannerEvents.length <= 1) return;
+    const timer = setInterval(() => {
+      setFeaturedIndex(prev => (prev + 1) % bannerEvents.length);
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [bannerEvents.length]);
 
   if (loading) {
     return (
@@ -549,8 +608,8 @@ export default function EventTerminal() {
     );
   }
 
-  const safeIndex = Math.min(featuredIndex, events.length - 1);
-  const featured = events[safeIndex];
+  const safeIndex = Math.min(featuredIndex, bannerEvents.length - 1);
+  const featured = bannerEvents[safeIndex];
 
   return (
     <>
@@ -578,7 +637,7 @@ export default function EventTerminal() {
           >
             {/* Featured Event Banner */}
             <div
-              className="relative rounded-2xl overflow-hidden cursor-pointer"
+              className="relative rounded-2xl overflow-hidden cursor-pointer group"
               style={{ minHeight: 300 }}
               onClick={() => setSelectedEvent(featured)}
             >
@@ -595,12 +654,48 @@ export default function EventTerminal() {
                 />
               </AnimatePresence>
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-              <div className="relative z-10 p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
+              {/* Prev / Next arrows */}
+              {bannerEvents.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Evento anterior"
+                    onClick={handlePrevFeatured}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center
+                      opacity-80 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:scale-110"
+                    style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+                  >
+                    <ChevronLeft className="w-5 h-5 text-white" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Evento siguiente"
+                    onClick={handleNextFeatured}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center
+                      opacity-80 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:scale-110"
+                    style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+                  >
+                    <ChevronRight className="w-5 h-5 text-white" />
+                  </button>
+                </>
+              )}
+
+              {/* Counter top-right */}
+              {bannerEvents.length > 1 && (
+                <div
+                  className="absolute top-4 right-4 z-20 text-[11px] font-bold tabular-nums px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(0,0,0,0.50)', color: 'rgba(255,255,255,0.70)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                >
+                  {safeIndex + 1} / {bannerEvents.length}
+                </div>
+              )}
+
+              <div className="relative z-10 p-6 md:p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
                 <div>
                   <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                    Featured Event
+                    Evento Destacado
                   </span>
                   <AnimatePresence mode="wait">
                     <motion.h1
@@ -661,23 +756,41 @@ export default function EventTerminal() {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-5">
-                    {events.map((_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setFeaturedIndex(i); }}
-                        className="rounded-full transition-all"
-                        style={{
-                          width: i === safeIndex ? 20 : 7,
-                          height: 7,
-                          background: i === safeIndex ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)',
-                        }}
-                      />
-                    ))}
-                  </div>
+                  {/* Dots indicator */}
+                  {bannerEvents.length > 1 && (
+                    <div className="flex items-center gap-2 mt-5">
+                      {bannerEvents.map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          aria-label={`Ir al evento ${i + 1}`}
+                          onClick={(e) => { e.stopPropagation(); setFeaturedIndex(i); }}
+                          className="rounded-full transition-all duration-300"
+                          style={{
+                            width: i === safeIndex ? 22 : 8,
+                            height: 8,
+                            background: i === safeIndex ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Progress bar auto-rotate */}
+              {bannerEvents.length > 1 && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] z-20" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <motion.div
+                    key={safeIndex}
+                    className="h-full"
+                    style={{ background: 'rgba(255,255,255,0.55)' }}
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 5.5, ease: 'linear' }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Upcoming Events Grid */}

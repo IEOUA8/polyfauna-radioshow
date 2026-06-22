@@ -146,7 +146,7 @@ function QRModal({ ticket, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-[200] flex items-center justify-center p-4"
         style={{ background: 'rgba(4,7,7,0.92)', backdropFilter: 'blur(12px)' }}
         onClick={onClose}
       >

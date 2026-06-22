@@ -10,6 +10,7 @@ import UserDashboard from '@/pages/UserDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
 import ValidatePage from '@/pages/ValidatePage';
 import ArtistPublicPage from '@/pages/ArtistPublicPage';
+import EventPublicPage from '@/pages/EventPublicPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/signup"   element={<SignupPage />} />
           <Route path="/validate" element={<ValidatePage />} />
           <Route path="/artist/:slug" element={<ArtistPublicPage />} />
+          <Route path="/e/:eventId"   element={<EventPublicPage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <UserDashboard />

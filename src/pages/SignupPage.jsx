@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -299,6 +299,7 @@ function PendingView({ role }) {
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signup } = useAuth();
   const [step, setStep] = useState('role');   // 'role' | 'details' | 'pending'
   const [selectedRole, setSelectedRole] = useState('citizen');
@@ -332,7 +333,7 @@ const SignupPage = () => {
     if (error) return;
 
     if (selectedRole === 'citizen') {
-      navigate('/');
+      navigate(searchParams.get('next') || '/');
     } else {
       setStep('pending');
     }

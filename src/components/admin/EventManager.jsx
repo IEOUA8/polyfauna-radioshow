@@ -14,6 +14,7 @@ const EMPTY = {
   title: '', date: '', venue: '', city: '', lineup: '',
   image_url: '', price: '', description: '',
   tickets_total: '100', ticket_type: 'GA',
+  featured: false, featured_order: '',
 };
 
 const TICKET_TYPES = ['GA', 'VIP', 'Early Bird', 'Artist', 'Press'];
@@ -249,14 +250,15 @@ const EventManager = () => {
     setSaving(true);
     setFormError('');
     try {
-      const { ticket_type, ...rest } = formData;
+      const { ticket_type, featured_order: fo, ...rest } = formData;
       const payload = {
         ...rest,
-        price:         formData.price         ? parseFloat(formData.price)         : null,
-        tickets_total: formData.tickets_total  ? parseInt(formData.tickets_total)   : 100,
-        owner_id:      currentUser.id,
-        status:        'upcoming',
-        lineup:        formData.lineup
+        price:          formData.price         ? parseFloat(formData.price)         : null,
+        tickets_total:  formData.tickets_total  ? parseInt(formData.tickets_total)   : 100,
+        featured_order: formData.featured && fo ? parseInt(fo) : null,
+        owner_id:       currentUser.id,
+        status:         'upcoming',
+        lineup:         formData.lineup
           ? formData.lineup.split(',').map(s => s.trim()).filter(Boolean)
           : [],
       };
@@ -283,16 +285,18 @@ const EventManager = () => {
   const handleEdit = (event) => {
     setEditingEvent(event);
     setFormData({
-      title: event.title || '',
-      date: event.date ? event.date.slice(0, 16) : '',
-      venue: event.venue || '',
-      city: event.city || '',
-      lineup: event.lineup || '',
-      image_url: event.image_url || '',
-      price: event.price || '',
-      description: event.description || '',
-      tickets_total: event.tickets_total || '100',
-      ticket_type: event.ticket_type || 'GA',
+      title:          event.title || '',
+      date:           event.date ? event.date.slice(0, 16) : '',
+      venue:          event.venue || '',
+      city:           event.city || '',
+      lineup:         Array.isArray(event.lineup) ? event.lineup.join(', ') : (event.lineup || ''),
+      image_url:      event.image_url || '',
+      price:          event.price || '',
+      description:    event.description || '',
+      tickets_total:  event.tickets_total || '100',
+      ticket_type:    event.ticket_type || 'GA',
+      featured:       event.featured || false,
+      featured_order: event.featured_order != null ? String(event.featured_order) : '',
     });
     setIsDialogOpen(true);
   };
@@ -404,6 +408,51 @@ const EventManager = () => {
                     className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm resize-none" />
                 </div>
 
+                {/* Banner destacado */}
+                <div
+                  className="rounded-xl p-4 space-y-3"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${formData.featured ? 'rgba(255,138,31,0.35)' : 'hsl(var(--border))'}`, transition: 'border-color 0.2s' }}
+                >
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div className="relative shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={formData.featured}
+                        onChange={(e) => set('featured', e.target.checked)}
+                      />
+                      <div
+                        className="w-10 h-6 rounded-full transition-colors duration-200"
+                        style={{ background: formData.featured ? 'rgba(255,138,31,0.85)' : 'rgba(255,255,255,0.1)' }}
+                      />
+                      <div
+                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
+                        style={{ left: formData.featured ? '22px' : '4px' }}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Mostrar en banner destacado</p>
+                      <p className="text-xs text-muted-foreground">Aparece en el slider principal de la sección Eventos</p>
+                    </div>
+                  </label>
+
+                  {formData.featured && (
+                    <div className="flex items-center gap-3 pt-1 border-t border-border">
+                      <Label className="text-xs whitespace-nowrap text-muted-foreground">Posición en banner</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={formData.featured_order}
+                        onChange={(e) => set('featured_order', e.target.value)}
+                        placeholder="1"
+                        className="bg-background border-border text-foreground w-24 h-8 text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">1 = primero en el slider</p>
+                    </div>
+                  )}
+                </div>
+
                 {formError && (
                   <div className="rounded-lg px-4 py-3 text-sm font-medium text-red-300 text-center"
                     style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
@@ -435,7 +484,17 @@ const EventManager = () => {
                     <img src={event.image_url} alt={event.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-foreground font-semibold truncate">{event.title}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-foreground font-semibold truncate">{event.title}</p>
+                      {event.featured && (
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                          style={{ background: 'rgba(255,138,31,0.15)', color: 'rgba(255,138,31,0.90)', border: '1px solid rgba(255,138,31,0.25)' }}
+                        >
+                          Banner {event.featured_order != null ? `#${event.featured_order}` : ''}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground truncate">
                       {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {event.venue && ` · ${event.venue}`}
