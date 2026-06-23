@@ -23,19 +23,35 @@ const hardenEmailClientColors = (html) => html
   .replaceAll('<meta name="supported-color-schemes" content="dark light">', '<meta name="supported-color-schemes" content="dark">')
   .replace(
     '<style>\n',
-    `<style>\n  :root{ color-scheme:dark; supported-color-schemes:dark; }\n  body{ margin:0 !important; padding:0 !important; background:#0A0A0A !important; background-color:#0A0A0A !important; color:#ECECEC !important; }\n  .email-bg{ background:#0A0A0A !important; background-color:#0A0A0A !important; }\n  .email-card{ background:#0E0E0E !important; background-color:#0E0E0E !important; }\n`,
+    `<style>\n  :root{ color-scheme:dark; supported-color-schemes:dark; }\n  body{ margin:0 !important; padding:0 !important; background:#0A0A0A !important; background-color:#0A0A0A !important; background-image:linear-gradient(#0A0A0A,#0A0A0A) !important; color:#ECECEC !important; }\n  .email-bg{ background:#0A0A0A !important; background-color:#0A0A0A !important; background-image:linear-gradient(#0A0A0A,#0A0A0A) !important; }\n  .email-card{ background:#0E0E0E !important; background-color:#0E0E0E !important; background-image:linear-gradient(#0E0E0E,#0E0E0E) !important; }\n  .email-panel{ background:#141414 !important; background-color:#141414 !important; background-image:linear-gradient(#141414,#141414) !important; }\n  @media (prefers-color-scheme: dark){ body,.email-bg{ background:#0A0A0A !important; background-color:#0A0A0A !important; background-image:linear-gradient(#0A0A0A,#0A0A0A) !important; } .email-card{ background:#0E0E0E !important; background-color:#0E0E0E !important; background-image:linear-gradient(#0E0E0E,#0E0E0E) !important; } }\n`,
   )
   .replaceAll(
     '<body style="margin:0;padding:0;background:#0A0A0A;">',
-    '<body bgcolor="#0A0A0A" style="margin:0 !important;padding:0 !important;background:#0A0A0A !important;background-color:#0A0A0A !important;color:#ECECEC !important;">',
+    '<body bgcolor="#0A0A0A" style="margin:0 !important;padding:0 !important;background:#0A0A0A !important;background-color:#0A0A0A !important;background-image:linear-gradient(#0A0A0A,#0A0A0A) !important;color:#ECECEC !important;">',
   )
   .replaceAll(
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0A0A0A" style="background:#0A0A0A;">',
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0A0A0A" class="email-bg" style="background:#0A0A0A !important;background-color:#0A0A0A !important;">',
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0A0A0A" class="email-bg" style="background:#0A0A0A !important;background-color:#0A0A0A !important;background-image:linear-gradient(#0A0A0A,#0A0A0A) !important;">',
   )
   .replaceAll(
     '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#0E0E0E;border:1px solid #1E1E1E;border-radius:18px;">',
-    '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0E0E0E" class="email-card" style="width:600px;max-width:600px;background:#0E0E0E !important;background-color:#0E0E0E !important;border:1px solid #1E1E1E;border-radius:18px;">',
+    '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0E0E0E" class="email-card" style="width:600px;max-width:600px;background:#0E0E0E !important;background-color:#0E0E0E !important;background-image:linear-gradient(#0E0E0E,#0E0E0E) !important;border:1px solid #1E1E1E;border-radius:18px;">',
+  )
+  .replaceAll(
+    'style="background:#141414;border:',
+    'class="email-panel" bgcolor="#141414" style="background:#141414 !important;background-color:#141414 !important;background-image:linear-gradient(#141414,#141414) !important;border:',
+  )
+  .replaceAll(
+    'style="background:#121212;border:',
+    'class="email-panel" bgcolor="#121212" style="background:#121212 !important;background-color:#121212 !important;background-image:linear-gradient(#121212,#121212) !important;border:',
+  )
+  .replaceAll(
+    'style="background:#0E0E0E;border:',
+    'class="email-card" bgcolor="#0E0E0E" style="background:#0E0E0E !important;background-color:#0E0E0E !important;background-image:linear-gradient(#0E0E0E,#0E0E0E) !important;border:',
+  )
+  .replaceAll(
+    '<td bgcolor="#ECECEC" style="border-radius:',
+    '<td bgcolor="#ECECEC" style="background:#ECECEC !important;background-color:#ECECEC !important;background-image:linear-gradient(#ECECEC,#ECECEC) !important;border-radius:',
   );
 
 const entries = Object.entries(sources).map(([key, source]) => {

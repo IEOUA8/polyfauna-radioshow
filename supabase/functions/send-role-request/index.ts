@@ -28,9 +28,21 @@ serve(async (req) => {
       applicant_type: roleLabel,
     });
     const adminHtml = emailWrapper(`
-      <h1 style="margin:0 0 8px;font-size:20px;font-weight:900;color:#F59E0B;">Nueva solicitud de rol</h1>
-      <p style="color:white;">${userName} · ${userEmail} · <strong>${roleLabel}</strong></p>
-      <a href="${appUrl}/admin" style="display:inline-block;padding:12px 28px;background:#fff;border-radius:10px;color:#080B14;text-decoration:none;font-weight:900;">Revisar en el panel →</a>
+      <h1 style="margin:0 0 8px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:21px;line-height:1.25;font-weight:900;color:#F5B84B !important;">Nueva solicitud de rol</h1>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#141414" class="email-panel" style="width:100%;background:#141414 !important;background-color:#141414 !important;background-image:linear-gradient(#141414,#141414) !important;border:1px solid #262626;border-radius:12px;margin:0 0 22px;">
+        <tr>
+          <td style="padding:16px 18px;">
+            <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;color:#ECECEC !important;">${userName} · ${userEmail} · <strong>${roleLabel}</strong></p>
+          </td>
+        </tr>
+      </table>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:10px;">
+            <a href="${appUrl}/admin" target="_blank" style="display:inline-block;padding:12px 28px;font-family:'Helvetica Neue',Arial,sans-serif;color:#081010 !important;text-decoration:none;font-weight:900;border-radius:10px;">Revisar en el panel &rarr;</a>
+          </td>
+        </tr>
+      </table>
     `);
     await Promise.all([
       sendEmail({ to: user.email, subject: 'Tu solicitud está en revisión', html: userHtml }),

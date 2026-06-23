@@ -12,9 +12,15 @@ serve(async (req) => {
     if (userId !== user.id || !user.email) return json({ error: 'Forbidden' }, 403);
     const safeName = escapeHtml(name || user.user_metadata?.name || 'Raver');
     const html = emailWrapper(`
-      <h1 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#ffffff;">Bienvenido a POLYFAUNA, ${safeName} 🎧</h1>
-      <p style="margin:0 0 24px;font-size:15px;color:rgba(255,255,255,0.55);line-height:1.6;">Tu cuenta ha sido creada. Ya puedes escuchar la radio en vivo, explorar podcasts y conectar con la comunidad.</p>
-      <a href="https://www.polyfauna.com" style="display:inline-block;padding:14px 32px;background:#0D1117;border-radius:11px;font-size:14px;font-weight:900;color:#ffffff;text-decoration:none;">Ir a la plataforma →</a>
+      <h1 style="margin:0 0 8px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:1.25;font-weight:900;color:#ECECEC !important;">Bienvenido a POLYFAUNA, ${safeName}</h1>
+      <p style="margin:0 0 24px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#9A9A9A !important;line-height:1.6;">Tu cuenta ha sido creada. Ya puedes escuchar la radio en vivo, explorar podcasts y conectar con la comunidad.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:11px;">
+            <a href="https://www.polyfauna.com" target="_blank" style="display:inline-block;padding:14px 32px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:900;color:#081010 !important;text-decoration:none;border-radius:11px;">Ir a la plataforma &rarr;</a>
+          </td>
+        </tr>
+      </table>
     `);
     await sendEmail({ to: user.email, subject: 'Bienvenido al bioma', html });
     return json({ ok: true });
