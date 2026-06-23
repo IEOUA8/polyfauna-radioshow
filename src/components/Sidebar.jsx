@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight, CalendarDays, Disc3, Dna, FileText, Gauge,
   Headphones, Lock, MessageSquare, Music, Radio,
-  SlidersHorizontal, Ticket, User as UserIcon,
+  SlidersHorizontal, Ticket,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import HoloSpectrum from '@/components/HoloSpectrum';
@@ -22,7 +22,6 @@ const ALL_NAV = [
   { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: false },
   { id: 'inbox',         label: 'Signal Inbox',       icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Ticket Vault',       icon: Ticket,            public: false },
-  { id: 'mi-panel',      label: 'Panel de Usuario',   icon: UserIcon,          public: false },
   { id: 'settings',      label: 'Control Center',     icon: SlidersHorizontal, public: false },
 ];
 

@@ -46,8 +46,8 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
     const wasSaved = isFav('session', sessionFavId);
     await toggleFav('session', sessionFavId);
     toast({
-      title: wasSaved ? 'Eliminada de favoritos' : '¡Sesión guardada!',
-      description: wasSaved ? '' : `"${song?.title || 'PolyFauna Radio'}" en tu lista.`,
+      title: wasSaved ? 'Sesión retirada' : 'Sesión agregada al Organismo',
+      description: wasSaved ? '' : `"${song?.title || 'PolyFauna Radio'}" vive ahora en tu Organismo.`,
     });
   };
 

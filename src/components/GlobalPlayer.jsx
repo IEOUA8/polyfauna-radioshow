@@ -223,7 +223,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
 
   const handleLike = async () => {
     if (!currentUser) {
-      toast({ title: 'Inicia sesión', description: 'Necesitas cuenta para guardar favoritos.' });
+      toast({ title: 'Inicia sesión', description: 'Necesitas cuenta para alimentar tu Organismo.' });
       return;
     }
     await toggleFav('song', liveTrackKey);
@@ -359,7 +359,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               onClick={handleLike}
               className="hidden sm:flex transition-colors p-1 shrink-0"
               style={{ color: isLiked ? '#FF5C7A' : 'rgba(255,255,255,0.25)' }}
-              title={isLiked ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+              title={isLiked ? 'Quitar del Organismo' : 'Agregar al Organismo'}
             >
               <Heart className="w-4 h-4" style={isLiked ? { fill: '#FF5C7A' } : {}} />
             </button>

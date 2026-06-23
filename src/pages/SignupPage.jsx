@@ -348,7 +348,7 @@ const SignupPage = () => {
       <div className="poly-texture" />
       <Helmet>
         <title>Crear cuenta — POLYFAUNA</title>
-        <meta name="description" content="Crea tu cuenta POLYFAUNA y accede a radio, podcasts, favoritos, comunidad, eventos y tickets." />
+        <meta name="description" content="Crea tu cuenta POLYFAUNA y accede a radio, podcasts, Organismo, comunidad, eventos y tickets." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://www.polyfauna.com/signup" />
       </Helmet>

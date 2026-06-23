@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Headphones, Lock, Music, Radio, User } from 'lucide-react';
+import { Dna, Headphones, Lock, Music, Radio, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { id: 'podcasts',      icon: Headphones, label: 'Podcasts', public: true  },
   { id: 'music',         icon: Music,     label: 'Música',   public: false },
   { id: 'organism',      icon: Dna,       label: 'Organismo', public: false },
-  { id: 'mi-panel',      icon: User,      label: 'Perfil',   public: false },
+  { id: 'settings',      icon: SlidersHorizontal, label: 'Control', public: false },
 ];
 
 export default function BottomNav({ currentSection, setCurrentSection }) {

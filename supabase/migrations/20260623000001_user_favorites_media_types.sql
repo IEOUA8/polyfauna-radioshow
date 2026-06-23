@@ -5,4 +5,4 @@ ALTER TABLE public.user_favorites
 
 ALTER TABLE public.user_favorites
   ADD CONSTRAINT user_favorites_item_type_check
-  CHECK (item_type IN ('event', 'podcast', 'artist', 'album', 'track'));
+  CHECK (item_type IN ('event', 'podcast', 'artist', 'album', 'track', 'session', 'song'));

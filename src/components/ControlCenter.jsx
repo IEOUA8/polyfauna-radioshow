@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Bell, BellOff, Check, ChevronRight, Edit3, FileText, Info, Loader2, LogOut, Mail, Shield, UserX, X, Zap } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff, Check, ChevronRight, Dna, Edit3, FileText, Gauge, Info, Loader2, LogOut, Mail, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,6 +8,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
+import UploadPodcastModal from '@/components/UploadPodcastModal';
+import RoleRequestsPanel from '@/components/RoleRequestsPanel';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const ROLE_META = {
@@ -18,6 +20,8 @@ const ROLE_META = {
   sello:    { label: 'Sello Discográfico' },
   admin:    { label: 'Admin'              },
 };
+
+const CREATOR_ROLES = ['artist', 'club', 'promoter', 'sello', 'admin'];
 
 function SettingsTile({ icon: Icon, label, description, onClick, badge, delay = 0, danger = false }) {
   return (
@@ -239,6 +243,7 @@ export default function ControlCenter({ setCurrentSection }) {
   const [qualityOpen, setQualityOpen]   = useState(false);
   const [termsOpen, setTermsOpen]       = useState(false);
   const [privacyOpen, setPrivacyOpen]   = useState(false);
+  const [showUpload, setShowUpload]     = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
 
@@ -265,6 +270,8 @@ export default function ControlCenter({ setCurrentSection }) {
   const displayName = profile?.display_name || currentUser.email?.split('@')[0] || 'Usuario';
   const avatar = profile?.avatar_url;
   const initials = displayName.slice(0, 2).toUpperCase();
+  const isCreator = CREATOR_ROLES.includes(role);
+  const hasPromoterHub = role === 'promoter' || role === 'club' || role === 'admin';
 
   return (
     <>
@@ -307,7 +314,7 @@ export default function ControlCenter({ setCurrentSection }) {
             </p>
             <div className="space-y-4 mt-2">
               {[
-                { h: 'Datos que recopilamos', b: 'Recopilamos tu dirección de correo electrónico para autenticación, nombre o alias de usuario, foto de perfil (opcional), y datos de actividad en la plataforma como favoritos y listas de reproducción.' },
+                { h: 'Datos que recopilamos', b: 'Recopilamos tu dirección de correo electrónico para autenticación, nombre o alias de usuario, foto de perfil (opcional), y datos de actividad en la plataforma como likes, Organismo, tickets y preferencias.' },
                 { h: 'Uso de los datos', b: 'Usamos tus datos para operar la plataforma, personalizar tu experiencia, enviarte notificaciones que hayas autorizado y gestionar tu cuenta. No vendemos ni compartimos información personal con terceros con fines comerciales.' },
                 { h: 'Cookies', b: 'Usamos cookies de sesión necesarias para el funcionamiento de la plataforma. Puedes desactivar las cookies opcionales desde la configuración de tu navegador, aunque esto puede afectar algunas funcionalidades.' },
                 { h: 'Tus derechos', b: 'Puedes solicitar acceso, corrección o eliminación de tus datos en cualquier momento escribiendo a soporte@polyfauna.com. Responderemos en un plazo máximo de 30 días.' },
@@ -326,6 +333,12 @@ export default function ControlCenter({ setCurrentSection }) {
             email={currentUser.email}
             onClose={() => setDeactivateOpen(false)}
             onConfirm={handleDeactivate}
+          />
+        )}
+        {showUpload && (
+          <UploadPodcastModal
+            onClose={() => setShowUpload(false)}
+            onSuccess={() => setShowUpload(false)}
           />
         )}
       </AnimatePresence>
@@ -411,8 +424,58 @@ export default function ControlCenter({ setCurrentSection }) {
           <div className="space-y-2">
             <SettingsTile icon={Edit3} label="Editar Perfil" description="Nombre, bio, avatar y redes sociales"
               onClick={() => setEditOpen(true)} delay={0.05} />
+            <SettingsTile icon={Dna} label="Abrir Organismo" description="Tu biblioteca viva creada con likes"
+              onClick={() => setCurrentSection?.('organism')} delay={0.08} />
           </div>
         </div>
+
+        {(isCreator || hasPromoterHub || isAdmin) && (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Herramientas</p>
+            <div className="space-y-2">
+              {isCreator && (
+                <SettingsTile
+                  icon={Upload}
+                  label="Subir Podcast / Mix"
+                  description="Publica contenido sonoro desde tu rol de creador"
+                  onClick={() => setShowUpload(true)}
+                  delay={0.12}
+                />
+              )}
+              {hasPromoterHub && (
+                <SettingsTile
+                  icon={Gauge}
+                  label="Gestor de Eventos"
+                  description="Administra eventos, cupos y operación"
+                  onClick={() => setCurrentSection?.('promoter')}
+                  delay={0.15}
+                />
+              )}
+              {isAdmin && (
+                <SettingsTile
+                  icon={Shield}
+                  label="Panel Operativo"
+                  description="Usuarios, contenido, eventos y administración"
+                  onClick={() => navigate('/admin')}
+                  delay={0.18}
+                />
+              )}
+            </div>
+
+            {isAdmin && (
+              <div className="mt-4 rounded-2xl p-4"
+                style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.12)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4" style={{ color: '#F59E0B' }} />
+                  <p className="text-xs font-black uppercase tracking-widest" style={{ color: '#F59E0B' }}>
+                    Solicitudes de rol
+                  </p>
+                </div>
+                <RoleRequestsPanel />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Preferences */}
         <div>

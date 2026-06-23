@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarDays, Disc3, Dna, FileText, Gauge, Headphones,
   Lock, LogIn, MessageSquare, Music, Radio,
-  Shield, SlidersHorizontal, Ticket, User as UserIcon, UserPlus, X,
+  Shield, SlidersHorizontal, Ticket, UserPlus, X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -19,7 +19,6 @@ const NAV_ITEMS = [
   { id: 'inbox',         label: 'Mensajes', icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Tickets',  icon: Ticket,            public: false },
   { id: 'settings',      label: 'Ajustes',  icon: SlidersHorizontal, public: false },
-  { id: 'mi-panel',      label: 'Mi Panel', icon: UserIcon,          public: false, requiresLogin: true },
 ];
 
 const ROLE_LABELS = {

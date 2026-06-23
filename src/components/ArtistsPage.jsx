@@ -231,7 +231,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
           onClick={(e) => { e.stopPropagation(); toggleFav('artist', artist.id); }}
           className="absolute top-2 right-2 p-1.5 rounded-full transition-colors opacity-0 group-hover:opacity-100"
           style={{ background: 'rgba(0,0,0,0.55)' }}
-          title={isFav('artist', artist.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+          title={isFav('artist', artist.id) ? 'Quitar del Organismo' : 'Agregar al Organismo'}
         >
           <Heart
             className="w-3.5 h-3.5 transition-colors"

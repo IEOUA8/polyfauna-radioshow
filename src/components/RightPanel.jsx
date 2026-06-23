@@ -416,7 +416,7 @@ export default function RightPanel({ setCurrentSection }) {
                     {/* Opciones de navegación */}
                     <div className="py-2 px-1.5">
                       {[
-                        { label: 'Mi Panel',     icon: User,    onClick: () => { setCurrentSection?.('mi-panel'); setMenuOpen(false); } },
+                        { label: 'Control Center', icon: User,  onClick: () => { setCurrentSection?.('settings'); setMenuOpen(false); } },
                         ...(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin'
                           ? [{ label: 'Promoter Hub', icon: Settings, onClick: () => { setCurrentSection?.('promoter'); setMenuOpen(false); } }]
                           : []),
