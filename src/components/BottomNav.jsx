@@ -33,31 +33,40 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
           const locked   = !isPublic && !currentUser;
 
           return (
-            <button
+            <motion.button
               key={id}
               type="button"
+              whileTap={locked ? undefined : { scale: 0.94 }}
               onClick={() => !locked && setCurrentSection(id)}
               disabled={locked}
               aria-current={isActive && !locked ? 'page' : undefined}
               aria-label={locked ? `${label}. Inicia sesión para acceder` : label}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 relative transition-none"
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 relative transition-none overflow-hidden rounded-2xl"
               title={locked ? 'Inicia sesión para acceder' : undefined}
             >
               <AnimatePresence>
                 {isActive && !locked && (
-                  <motion.div
-                    layoutId="bottom-nav-bar"
-                    className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full"
-                    style={{ background: '#ECECEC', width: 24 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-                  />
+                  <>
+                    <motion.div
+                      layoutId="bottom-nav-glow"
+                      className="absolute inset-x-2 top-1 bottom-1 rounded-2xl"
+                      style={{ background: 'rgba(255,255,255,0.045)' }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    />
+                    <motion.div
+                      layoutId="bottom-nav-bar"
+                      className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full"
+                      style={{ background: '#ECECEC', width: 24 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                    />
+                  </>
                 )}
               </AnimatePresence>
 
               <motion.div
                 animate={{ scale: isActive && !locked ? 1.12 : 1, y: isActive && !locked ? -1 : 0 }}
                 transition={{ type: 'spring', stiffness: 450, damping: 22 }}
-                className="relative"
+                className="relative z-10"
               >
                 <Icon
                   className="w-[18px] h-[18px]"
@@ -72,12 +81,12 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
               </motion.div>
 
               <span
-                className="text-[9px] font-semibold tracking-wide leading-none"
+                className="relative z-10 text-[9px] font-semibold tracking-wide leading-none"
                 style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? '#ECECEC' : '#5E5E5E' }}
               >
                 {label}
               </span>
-            </button>
+            </motion.button>
           );
         })}
       </div>

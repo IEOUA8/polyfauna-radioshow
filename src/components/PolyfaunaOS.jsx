@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { Loader2, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import Sidebar from '@/components/Sidebar';
@@ -44,8 +44,60 @@ function useMediaQuery(query) {
 
 function SectionLoader() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <Loader2 className="w-6 h-6 animate-spin text-white/40" aria-label="Cargando sección" />
+    <div className="min-h-[60vh] flex items-center justify-center px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.32, ease: 'easeOut' }}
+        className="flex flex-col items-center gap-4 text-center"
+        role="status"
+        aria-label="Cargando sección"
+      >
+        <div
+          className="relative w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden"
+          style={{
+            background: 'rgba(255,255,255,0.045)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+          }}
+        >
+          <motion.div
+            className="absolute inset-0 rounded-2xl"
+            animate={{
+              boxShadow: [
+                '0 0 0 0 rgba(255,255,255,0.10)',
+                '0 0 0 12px rgba(255,255,255,0)',
+              ],
+            }}
+            transition={{ duration: 1.7, repeat: Infinity, ease: 'easeOut' }}
+          />
+          <div className="relative flex items-end gap-1 h-7">
+            {[0, 1, 2, 3].map((index) => (
+              <motion.span
+                key={index}
+                className="w-1.5 rounded-full"
+                style={{ background: 'rgba(236,236,236,0.82)' }}
+                animate={{ height: [8, 24, 12, 18, 8] }}
+                transition={{
+                  duration: 1.1,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: index * 0.11,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-black text-white">Sintonizando señal</p>
+          <p
+            className="mt-1 text-[10px] uppercase text-white/25"
+            style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.22em' }}
+          >
+            Polyfauna bioma
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -207,10 +259,11 @@ function PolyfaunaOS() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSection}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
                 transition={{ duration: 0.22, ease: 'easeOut' }}
+                style={{ willChange: 'opacity, transform, filter' }}
               >
                 <Suspense fallback={<SectionLoader />}>
                   {renderSection()}

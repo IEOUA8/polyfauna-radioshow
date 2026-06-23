@@ -86,14 +86,24 @@ export function PulseLoader({ size = 'md', label }) {
   const sz = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-8 h-8' : 'w-6 h-6';
   return (
     <div className="flex items-center justify-center gap-3 py-6">
-      <div className={`${sz} rounded-full border-2 border-white/15 border-t-white/60 animate-spin`} />
-      {label && <span className="text-sm text-white/35">{label}</span>}
+      <motion.div
+        className={`${sz} rounded-full border-2 border-white/15 border-t-white/60`}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+      />
+      <span className="text-sm text-white/35">{label || 'Sintonizando señal...'}</span>
     </div>
   );
 }
 
 /* ── Empty state ── */
-export function EmptyState({ label = 'No hay contenido aún', subtitle, icon: Icon, action, actionLabel }) {
+export function EmptyState({
+  label = 'Aún no hay señales en este hábitat',
+  subtitle,
+  icon: Icon,
+  action,
+  actionLabel,
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -101,23 +111,39 @@ export function EmptyState({ label = 'No hay contenido aún', subtitle, icon: Ic
       transition={{ duration: 0.3 }}
       className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4"
     >
-      {Icon && (
-        <motion.div
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-14 h-14 rounded-2xl flex items-center justify-center mb-1"
-          style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
-          }}
-        >
-          <Icon className="w-6 h-6" style={{ color: 'rgba(255,255,255,0.50)' }} />
-        </motion.div>
-      )}
+      <motion.div
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+        className="relative w-14 h-14 rounded-2xl flex items-center justify-center mb-1 overflow-hidden"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+        }}
+      >
+        <motion.span
+          className="absolute inset-2 rounded-2xl border border-white/10"
+          animate={{ scale: [0.78, 1.12], opacity: [0.35, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+        />
+        {Icon ? (
+          <Icon className="relative z-10 w-6 h-6" style={{ color: 'rgba(255,255,255,0.50)' }} />
+        ) : (
+          <div className="relative z-10 flex items-end gap-0.5 h-6">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                className="w-1 rounded-full bg-white/45"
+                animate={{ height: [6, 18, 8] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut', delay: index * 0.16 }}
+              />
+            ))}
+          </div>
+        )}
+      </motion.div>
       <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
       <p className="text-xs max-w-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.22)' }}>
-        {subtitle || 'El contenido aparecerá aquí cuando esté disponible.'}
+        {subtitle || 'Cuando el bioma despierte contenido nuevo, aparecerá aquí.'}
       </p>
       {action && actionLabel && (
         <motion.button

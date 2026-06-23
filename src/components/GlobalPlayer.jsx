@@ -27,6 +27,27 @@ function formatTime(secs) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function MiniSignalBars({ active }) {
+  return (
+    <div className="flex items-end gap-0.5 h-3.5 shrink-0" aria-hidden="true">
+      {[0, 1, 2, 3].map((index) => (
+        <motion.span
+          key={index}
+          className="w-0.5 rounded-full"
+          style={{ background: active ? 'rgba(236,236,236,0.72)' : 'rgba(255,255,255,0.20)' }}
+          animate={active ? { height: [4, 12, 6, 10, 4] } : { height: 4 }}
+          transition={{
+            duration: 1,
+            repeat: active ? Infinity : 0,
+            ease: 'easeInOut',
+            delay: index * 0.1,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack, setCurrentSection }) {
   const { toast } = useToast();
   const { currentUser } = useAuth();
@@ -338,7 +359,10 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
 
           {/* Info */}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-white leading-tight truncate">{trackTitle}</p>
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-sm font-bold text-white leading-tight truncate">{trackTitle}</p>
+              <MiniSignalBars active={isPlaying} />
+            </div>
             <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{trackSub}</p>
           </div>
 
