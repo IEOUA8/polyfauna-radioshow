@@ -13,6 +13,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import Logo from '@/components/Logo';
 
 const EventManager     = lazy(() => import('@/components/admin/EventManager'));
 const PodcastManager   = lazy(() => import('@/components/admin/PodcastManager'));
@@ -1180,8 +1181,6 @@ const AdminDashboard = () => {
     label: 'Operación',
     items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'refunds', 'qr'].includes(item.id)),
   }];
-  const visibleItems = visibleGroups.flatMap(group => group.items);
-  const activeItem = visibleItems.find(i => i.id === activeSection) || visibleItems[0];
 
   const renderSection = () => {
     switch (activeSection) {
@@ -1213,25 +1212,13 @@ const AdminDashboard = () => {
 
       {/* Top bar */}
       <header
-        className="flex items-center gap-3 px-4 sm:px-5 py-3 shrink-0 z-20"
+        className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 z-20"
         style={{ background: 'rgba(6,10,9,0.98)', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingTop: 'max(12px, env(safe-area-inset-top))' }}
       >
-        <button
-          type="button"
-          onClick={() => setMobileNavOpen(true)}
-          className="lg:hidden w-11 h-11 -ml-1 rounded-xl flex items-center justify-center text-white/60 active:scale-95"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {activeItem && (
-            <>
-              <activeItem.icon className="w-4 h-4 shrink-0" style={{ color: activeItem.color }} />
-              <span className="text-sm font-bold text-white truncate">{activeItem.label}</span>
-            </>
-          )}
+        <div className="flex items-center min-w-0 flex-1">
+          <div className="w-[152px] sm:w-[190px]">
+            <Logo variant="header" className="opacity-95" />
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
