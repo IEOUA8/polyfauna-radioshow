@@ -46,7 +46,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
   const img = artist.image_url || FALLBACK;
 
   const profileUrl = artist.slug
-    ? `${window.location.origin}/?section=artists&artist=${artist.slug}`
+    ? `${window.location.origin}/profiles/${artist.slug}`
     : `${window.location.origin}/?section=artists`;
 
   const { data: albums } = useSupabaseQuery(

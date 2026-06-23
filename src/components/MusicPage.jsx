@@ -65,6 +65,13 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
     return () => window.removeEventListener('pf:open-item', handler);
   }, [albums]);
 
+  useEffect(() => {
+    const albumParam = new URLSearchParams(window.location.search).get('album');
+    if (!albumParam || !albums?.length) return;
+    const inList = albums.find(album => album.id === albumParam || album.slug === albumParam);
+    if (inList) setSelectedAlbum(inList);
+  }, [albums]);
+
   const handlePlayTrack = (track, album) => {
     if (!track.audio_url) return;
     setCurrentTrack({

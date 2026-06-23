@@ -209,7 +209,7 @@ export default function EventPublicPage() {
           performer: lineup.map(item => ({
             '@type': 'MusicGroup',
             name: item.artist?.name || item.name,
-            url: item.artist?.slug ? `https://www.polyfauna.com/?section=artists&artist=${item.artist.slug}` : undefined,
+            url: item.artist?.slug ? `https://www.polyfauna.com/profiles/${item.artist.slug}` : undefined,
           })),
           url: canonicalUrl,
         })}</script>
@@ -316,7 +316,7 @@ export default function EventPublicPage() {
                     };
 
                     return artist?.slug ? (
-                      <Link key={`${artist.id}-${i}`} to={`/?section=artists&artist=${artist.slug}`} className={className} style={style}>
+                      <Link key={`${artist.id}-${i}`} to={`/profiles/${artist.slug}`} className={className} style={style}>
                         {label}
                       </Link>
                     ) : (

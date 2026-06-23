@@ -581,6 +581,13 @@ export default function EventTerminal({ setCurrentSection }) {
     return () => window.removeEventListener('pf:open-item', handler);
   }, [events]);
 
+  useEffect(() => {
+    const eventParam = new URLSearchParams(window.location.search).get('event');
+    if (!eventParam || !events?.length) return;
+    const inList = events.find(ev => ev.id === eventParam || ev.slug === eventParam);
+    if (inList) setSelectedEvent(inList);
+  }, [events]);
+
   const toggleFavorite = (e, id) => {
     e.stopPropagation();
     toggleFav('event', id);

@@ -33,6 +33,7 @@ const NAV_GROUPS = [
       { id: 'dashboard', label: 'Dashboard',   icon: BarChart2,   color: 'rgba(255,255,255,0.85)' },
       { id: 'events',    label: 'Eventos',      icon: CalendarDays,color: 'rgba(255,255,255,0.85)' },
       { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: 'rgba(255,255,255,0.85)' },
+      { id: 'refunds',   label: 'Devoluciones', icon: RefreshCw,   color: 'rgba(255,255,255,0.85)' },
       { id: 'qr',        label: 'Lector QR',    icon: QrCode,      color: '#22c55e' },
       { id: 'wallet',    label: 'Wallet',        icon: Banknote,    color: 'rgba(255,255,255,0.85)' },
       { id: 'payouts',   label: 'Retiros',       icon: ArrowUpRight, color: 'rgba(255,255,255,0.85)' },
@@ -772,6 +773,128 @@ function PayoutsSection() {
   );
 }
 
+function RefundRequestsSection({ ownerId }) {
+  const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchRequests = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    let query = supabase
+      .from('ticket_refund_requests')
+      .select('*, events(title, date, venue, owner_id), user_tickets(ticket_number, status)')
+      .order('created_at', { ascending: false });
+    if (ownerId) query = query.eq('events.owner_id', ownerId);
+
+    const { data, error: requestError } = await query;
+    if (requestError) {
+      setError(requestError.code === '42P01' ? 'La tabla de devoluciones aún no está aplicada en Supabase.' : requestError.message);
+      setRequests([]);
+    } else {
+      setRequests(data || []);
+    }
+    setLoading(false);
+  }, [ownerId]);
+
+  useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+  const updateRequest = async (request, patch) => {
+    const { data, error: updateError } = await supabase
+      .from('ticket_refund_requests')
+      .update({
+        ...patch,
+        reviewed_by: currentUser?.id || null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', request.id)
+      .select('*, events(title, date, venue, owner_id), user_tickets(ticket_number, status)')
+      .single();
+
+    if (updateError) {
+      toast({ variant: 'destructive', title: 'No se pudo actualizar', description: updateError.message });
+      return;
+    }
+
+    setRequests(prev => prev.map(item => item.id === request.id ? data : item));
+    toast({ title: 'Solicitud actualizada', description: `Estado: ${data.status}` });
+  };
+
+  const statuses = ['requested', 'reviewing', 'approved', 'rejected', 'processing', 'refunded', 'cancelled'];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-black text-white">Devoluciones</h2>
+        <p className="text-sm text-white/40 mt-0.5">Solicitudes de reembolso para revisión operativa</p>
+      </div>
+
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <Loader2 className="w-7 h-7 animate-spin text-white/35" />
+        </div>
+      ) : error ? (
+        <div className="p-5 rounded-2xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+          <p className="text-sm font-bold text-red-300">No se pudieron cargar devoluciones</p>
+          <p className="text-xs text-red-200/55 mt-1">{error}</p>
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="p-8 rounded-2xl text-center" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <RefreshCw className="w-8 h-8 mx-auto mb-3 text-white/18" />
+          <p className="text-sm font-bold text-white/60">Sin solicitudes por ahora</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((request) => (
+            <div key={request.id} className="p-4 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-sm font-black text-white truncate">{request.events?.title || 'Evento'}</p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(96,165,250,0.10)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.18)' }}>
+                      {request.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/35">
+                    Ticket #{request.user_tickets?.ticket_number?.slice(0, 16) || request.ticket_id.slice(0, 8)}
+                    {request.events?.venue ? ` · ${request.events.venue}` : ''}
+                  </p>
+                  <p className="text-xs text-white/45 mt-2">Motivo: {request.reason}</p>
+                  {request.details && <p className="text-xs text-white/32 mt-1 leading-relaxed">{request.details}</p>}
+                </div>
+
+                <div className="w-full sm:w-56 space-y-2">
+                  <select
+                    value={request.status}
+                    onChange={e => updateRequest(request, { status: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl text-xs font-bold text-white outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  >
+                    {statuses.map(status => <option key={status} value={status} style={{ background: '#0b100f' }}>{status}</option>)}
+                  </select>
+                  <textarea
+                    defaultValue={request.admin_notes || ''}
+                    placeholder="Notas internas"
+                    rows={2}
+                    onBlur={e => {
+                      if (e.target.value !== (request.admin_notes || '')) updateRequest(request, { admin_notes: e.target.value || null });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-xs text-white placeholder:text-white/25 outline-none resize-none"
+                    style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────────── QR SECTION WRAPPER ─────────────────────── */
 function QRSection({ ownerId }) {
   const navigate = useNavigate();
@@ -1055,7 +1178,7 @@ const AdminDashboard = () => {
   const isAdmin = userRole === 'admin';
   const visibleGroups = isAdmin ? NAV_GROUPS : [{
     label: 'Operación',
-    items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'qr'].includes(item.id)),
+    items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'refunds', 'qr'].includes(item.id)),
   }];
   const visibleItems = visibleGroups.flatMap(group => group.items);
   const activeItem = visibleItems.find(i => i.id === activeSection) || visibleItems[0];
@@ -1065,6 +1188,7 @@ const AdminDashboard = () => {
       case 'dashboard':   return <DashboardSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'events':      return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos</p></div><EventManager /></div> : <PromoterDashboard />;
       case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} />;
+      case 'refunds':     return <RefundRequestsSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'qr':          return <QRSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'wallet':      return <WalletSection />;
       case 'payouts':     return <PayoutsSection />;

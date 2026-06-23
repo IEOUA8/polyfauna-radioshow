@@ -58,6 +58,12 @@ function ArtistRouteRedirect() {
   return <Navigate to={`/?section=artists&artist=${encodeURIComponent(slug || '')}`} replace />;
 }
 
+function InternalRouteRedirect({ section, param }) {
+  const params = useParams();
+  const value = params[param] || '';
+  return <Navigate to={`/?section=${section}&${param}=${encodeURIComponent(value)}`} replace />;
+}
+
 function App() {
   const redactTelemetry = (event) => {
     try {
@@ -82,6 +88,10 @@ function App() {
             <Route path="/signup"   element={<SignupPage />} />
             <Route path="/validate" element={<ValidatePage />} />
             <Route path="/artist/:slug" element={<ArtistRouteRedirect />} />
+            <Route path="/profiles/:slug" element={<ArtistRouteRedirect />} />
+            <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
+            <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
+            <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
             <Route path="/e/:eventId"   element={<EventPublicPage />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>

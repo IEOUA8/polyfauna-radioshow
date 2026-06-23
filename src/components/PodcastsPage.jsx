@@ -433,6 +433,13 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
     return () => window.removeEventListener('pf:open-item', handler);
   }, [podcasts]);
 
+  useEffect(() => {
+    const podcastParam = new URLSearchParams(window.location.search).get('podcast');
+    if (!podcastParam || !podcasts?.length) return;
+    const inList = podcasts.find(pod => pod.id === podcastParam || pod.slug === podcastParam);
+    if (inList) setSelectedPod(inList);
+  }, [podcasts]);
+
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const handlePlay = (pod) => {

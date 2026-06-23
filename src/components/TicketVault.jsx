@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, CheckCircle, Clock, Download, MapPin, Ticket, X, XCircle } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle, Clock, Download, MapPin, RefreshCw, Send, Ticket, X, XCircle } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { buildTicketQRPayload } from '@/lib/tickets';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { CardSkeleton, EmptyState, ErrorState, LoginRequired } from '@/components/SectionStates';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=600&auto=format&fit=crop';
 
@@ -14,7 +15,16 @@ const STATUS_CONFIG = {
   valid: { label: 'Válido',  color: '#22c55e', Icon: CheckCircle },
   ready: { label: 'Listo',   color: 'rgba(255,255,255,0.85)', Icon: CheckCircle },
   used:  { label: 'Usado',   color: 'rgba(255,255,255,0.25)', Icon: XCircle },
+  refunded: { label: 'Reembolsado', color: '#60a5fa', Icon: RefreshCw },
+  cancelled: { label: 'Cancelado', color: '#f87171', Icon: XCircle },
 };
+
+const REFUND_REASONS = [
+  { value: 'change_of_plans', label: 'Cambio de planes' },
+  { value: 'purchase_error', label: 'Error de compra' },
+  { value: 'event_cancelled', label: 'Evento cancelado o modificado' },
+  { value: 'other', label: 'Otro motivo' },
+];
 
 function qrPayload(ticket, signedToken) {
   return signedToken || buildTicketQRPayload(ticket.id);
@@ -265,12 +275,130 @@ function QRModal({ ticket, qrValue, onClose }) {
   );
 }
 
+function RefundRequestModal({ ticket, onClose, onSubmitted }) {
+  const [reason, setReason] = useState(REFUND_REASONS[0].value);
+  const [details, setDetails] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const submit = async () => {
+    setSubmitting(true);
+    const { data, error } = await supabase
+      .from('ticket_refund_requests')
+      .insert({
+        ticket_id: ticket.id,
+        user_id: ticket.user_id,
+        event_id: ticket.event_id,
+        reason,
+        details: details.trim() || null,
+      })
+      .select()
+      .single();
+
+    setSubmitting(false);
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo solicitar devolución',
+        description: error.code === '42P01'
+          ? 'La tabla de devoluciones aún no está aplicada en Supabase.'
+          : error.message,
+      });
+      return;
+    }
+
+    toast({ title: 'Solicitud enviada', description: 'Operación revisará tu caso y responderá desde la plataforma.' });
+    onSubmitted?.(data);
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center p-4"
+        style={{ background: 'rgba(4,7,7,0.82)', backdropFilter: 'blur(12px)' }}
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 18, scale: 0.96 }}
+          className="w-full max-w-md rounded-2xl overflow-hidden"
+          style={{ background: 'rgba(8,13,12,0.98)', border: '1px solid rgba(255,255,255,0.12)' }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div>
+              <h2 className="text-base font-black text-white">Solicitar devolución</h2>
+              <p className="text-xs text-white/35 mt-0.5">{ticket.events?.title || 'Ticket POLYFAUNA'}</p>
+            </div>
+            <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white/70"
+              style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="flex gap-3 p-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.16)' }}>
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#F59E0B' }} />
+              <p className="text-xs text-white/48 leading-relaxed">
+                Esta solicitud no invalida el QR ni ejecuta el reembolso automáticamente. Operación revisará condiciones, estado del evento y transacción.
+              </p>
+            </div>
+
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Motivo</span>
+              <select
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                className="mt-1.5 w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+              >
+                {REFUND_REASONS.map(opt => (
+                  <option key={opt.value} value={opt.value} style={{ background: '#0b100f' }}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Detalles</span>
+              <textarea
+                value={details}
+                onChange={e => setDetails(e.target.value)}
+                rows={4}
+                maxLength={700}
+                placeholder="Cuéntanos el contexto de la solicitud."
+                className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder:text-white/25 outline-none resize-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={submit}
+              disabled={submitting}
+              className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: 'rgba(255,255,255,0.92)', color: '#080B14' }}
+            >
+              {submitting ? <><Clock className="w-4 h-4 animate-spin" /> Enviando…</> : <><Send className="w-4 h-4" /> Enviar solicitud</>}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 /* ── Ticket Card ── */
-function TicketCard({ ticket, qrValue, index, onShowQR }) {
+function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequestRefund }) {
   const event  = ticket.events;
   const status = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.valid;
   const StatusIcon = status.Icon;
   const isUsed = ticket.status === 'used';
+  const canRequestRefund = !refundRequest && !['used', 'cancelled', 'refunded'].includes(ticket.status);
 
   return (
     <motion.div
@@ -349,6 +477,24 @@ function TicketCard({ ticket, qrValue, index, onShowQR }) {
         <span className="text-[10px] text-white/25">Toca el QR para expandir y descargar</span>
         <span className="text-[10px] font-mono" style={{ color: status.color }}>{ticket.status?.toUpperCase()}</span>
       </div>
+      <div className="px-4 pb-4">
+        {refundRequest ? (
+          <div className="px-3 py-2 rounded-xl text-[11px] font-bold"
+            style={{ background: 'rgba(96,165,250,0.08)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.18)' }}>
+            Devolución: {refundRequest.status}
+          </div>
+        ) : canRequestRefund ? (
+          <button
+            type="button"
+            onClick={() => onRequestRefund(ticket)}
+            className="w-full py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-2 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.045)', color: 'rgba(255,255,255,0.42)', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Solicitar devolución
+          </button>
+        ) : null}
+      </div>
     </motion.div>
   );
 }
@@ -357,7 +503,9 @@ function TicketCard({ ticket, qrValue, index, onShowQR }) {
 export default function TicketVault() {
   const { currentUser } = useAuth();
   const [activeTicket, setActiveTicket] = useState(null);
+  const [refundTicket, setRefundTicket] = useState(null);
   const [signedTokens, setSignedTokens] = useState({});
+  const [refundRequests, setRefundRequests] = useState([]);
 
   const { data: tickets, loading, error, refetch } = useSupabaseQuery(
     () => currentUser
@@ -379,6 +527,17 @@ export default function TicketVault() {
     });
     return () => { active = false; };
   }, [tickets]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    supabase
+      .from('ticket_refund_requests')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .then(({ data, error: refundError }) => {
+        if (!refundError) setRefundRequests(data || []);
+      });
+  }, [currentUser?.id]);
 
   if (!currentUser) return <div className="p-5"><LoginRequired message="Inicia sesión para ver tus entradas." /></div>;
 
@@ -404,6 +563,8 @@ export default function TicketVault() {
                 qrValue={qrPayload(ticket, signedTokens[ticket.id])}
                 index={i}
                 onShowQR={setActiveTicket}
+                refundRequest={refundRequests.find(req => req.ticket_id === ticket.id)}
+                onRequestRefund={setRefundTicket}
               />
             ))}
           </div>
@@ -415,6 +576,14 @@ export default function TicketVault() {
           ticket={activeTicket}
           qrValue={qrPayload(activeTicket, signedTokens[activeTicket.id])}
           onClose={() => setActiveTicket(null)}
+        />
+      )}
+
+      {refundTicket && (
+        <RefundRequestModal
+          ticket={refundTicket}
+          onClose={() => setRefundTicket(null)}
+          onSubmitted={(request) => setRefundRequests(prev => [request, ...prev])}
         />
       )}
     </>

@@ -10,6 +10,7 @@ import TopBar from '@/components/TopBar';
 import GlobalPlayer from '@/components/GlobalPlayer';
 import BottomNav from '@/components/BottomNav';
 import MobileMenu from '@/components/MobileMenu';
+import InstallAppBanner from '@/components/InstallAppBanner';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RightPanel            = lazy(() => import('@/components/RightPanel'));
@@ -119,6 +120,9 @@ function PolyfaunaOS() {
     if (currentSection === 'radio-console') url.searchParams.delete('section');
     else url.searchParams.set('section', currentSection);
     if (currentSection !== 'artists') url.searchParams.delete('artist');
+    if (currentSection !== 'music') url.searchParams.delete('album');
+    if (currentSection !== 'podcasts') url.searchParams.delete('podcast');
+    if (currentSection !== 'events') url.searchParams.delete('event');
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
   }, [currentSection]);
 
@@ -246,6 +250,7 @@ function PolyfaunaOS() {
       <Suspense fallback={null}>
         <OnboardingModal />
       </Suspense>
+      <InstallAppBanner />
       <Toaster />
     </div>
   );
