@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Bell, BellOff, Check, ChevronRight, Dna, Edit3, FileText, Gauge, Info, Loader2, LogOut, Mail, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Gauge, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -13,12 +13,12 @@ import RoleRequestsPanel from '@/components/RoleRequestsPanel';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const ROLE_META = {
-  citizen:  { label: 'Wave Citizen'       },
-  artist:   { label: 'Artista'            },
-  promoter: { label: 'Promotor'           },
-  club:     { label: 'Club / Venue'       },
-  sello:    { label: 'Sello Discográfico' },
-  admin:    { label: 'Admin'              },
+  citizen:  { label: 'Oyente',             description: 'Explora, escucha y alimenta tu Organismo.', color: '#B8CFA6', icon: Headphones },
+  artist:   { label: 'Artista',            description: 'Publica mixes, sesiones y presencia sonora.', color: '#A78BFA', icon: Mic2 },
+  promoter: { label: 'Promotor',           description: 'Activa eventos, comunidad y convocatorias.', color: '#FF8A1F', icon: CalendarDays },
+  club:     { label: 'Club / Venue',       description: 'Conecta programación, espacio y escena.', color: '#34D399', icon: Building2 },
+  sello:    { label: 'Sello Discográfico', description: 'Gestiona catálogo, artistas y lanzamientos.', color: '#10B981', icon: Disc3 },
+  admin:    { label: 'Admin',              description: 'Acceso operativo exclusivo de plataforma.', color: '#F87171', icon: Shield },
 };
 
 const CREATOR_ROLES = ['artist', 'club', 'promoter', 'sello', 'admin'];
@@ -266,6 +266,7 @@ export default function ControlCenter({ setCurrentSection }) {
 
   const role = profile?.role || 'citizen';
   const roleMeta = ROLE_META[role] || ROLE_META.citizen;
+  const RoleIcon = roleMeta.icon || Headphones;
   const isAdmin = role === 'admin';
   const displayName = profile?.display_name || currentUser.email?.split('@')[0] || 'Usuario';
   const avatar = profile?.avatar_url;
@@ -344,30 +345,33 @@ export default function ControlCenter({ setCurrentSection }) {
       </AnimatePresence>
 
       <div className="p-5 space-y-6">
-        {/* Hero card */}
+        {/* Identity */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative rounded-2xl overflow-hidden"
           style={{
-            background: 'rgba(11,16,15,0.90)',
-            border: '1px solid rgba(255,255,255,0.09)',
-            minHeight: 160,
+            background: `linear-gradient(135deg, rgba(11,16,15,0.96), rgba(7,12,11,0.92)), radial-gradient(circle at 86% 8%, ${roleMeta.color}18, transparent 34%)`,
+            border: `1px solid ${isAdmin ? 'rgba(248,113,113,0.26)' : 'rgba(255,255,255,0.09)'}`,
+            minHeight: 184,
           }}
         >
           <div
-            className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none"
+            className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
             style={{
-              background: 'radial-gradient(circle, rgba(255,255,255,0.03), transparent 70%)',
+              background: `radial-gradient(circle, ${roleMeta.color}12, transparent 68%)`,
               transform: 'translate(35%, -35%)',
             }}
           />
 
-          <div className="relative z-10 p-6 flex items-center gap-5">
-            {/* Avatar */}
-            <div className="relative shrink-0">
+          <div className="relative z-10 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+            <div className="relative shrink-0 self-start">
               <div
-                className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center text-2xl font-black text-white/70"
+                className="absolute rounded-[28px] pointer-events-none"
+                style={{ inset: -4, border: `1px solid ${roleMeta.color}40`, boxShadow: `0 0 36px ${roleMeta.color}18` }}
+              />
+              <div
+                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-[24px] overflow-hidden flex items-center justify-center text-3xl font-black text-white/70"
                 style={{
                   background: 'rgba(255,255,255,0.07)',
                   border: '1px solid rgba(255,255,255,0.12)',
@@ -378,34 +382,47 @@ export default function ControlCenter({ setCurrentSection }) {
                   : initials
                 }
               </div>
-              {isAdmin && (
-                <div
-                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid #080E09' }}
-                >
-                  <Shield className="w-3 h-3 text-white" />
-                </div>
-              )}
+              <div
+                className="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl flex items-center justify-center"
+                style={{ background: 'rgba(7,12,11,0.95)', border: `1px solid ${roleMeta.color}45`, boxShadow: '0 8px 18px rgba(0,0,0,0.45)' }}
+              >
+                <RoleIcon className="w-4 h-4" style={{ color: roleMeta.color }} />
+              </div>
             </div>
 
             <div className="flex-1 min-w-0">
-              <span
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold mb-2"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)' }}
-              >
-                {roleMeta.label}
-              </span>
-              <h1 className="text-xl font-black text-white leading-tight truncate">{displayName}</h1>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                  style={{ background: `${roleMeta.color}14`, color: roleMeta.color, border: `1px solid ${roleMeta.color}30` }}
+                >
+                  <RoleIcon className="w-3 h-3" />
+                  {roleMeta.label}
+                </span>
+                {isAdmin && (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                    style={{ background: 'rgba(248,113,113,0.14)', color: '#F87171', border: '1px solid rgba(248,113,113,0.32)' }}
+                  >
+                    <Shield className="w-3 h-3" />
+                    Distintivo Admin
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight truncate">{displayName}</h1>
               {profile?.username && (
                 <p className="text-xs text-white/35 mt-0.5">@{profile.username}</p>
               )}
+              <p className="text-sm text-white/45 mt-2 max-w-lg leading-relaxed">
+                {roleMeta.description}
+              </p>
               {profile?.city && (
-                <p className="text-xs text-white/25 mt-0.5">{profile.city}</p>
+                <p className="text-xs text-white/25 mt-2">{profile.city}</p>
               )}
             </div>
           </div>
 
-          <div className="relative z-10 px-6 pb-5 flex items-center gap-4 text-xs text-white/25">
+          <div className="relative z-10 px-5 sm:px-6 pb-5 flex flex-wrap items-center gap-3 text-xs text-white/25">
             <span className="flex items-center gap-1.5 truncate">
               <Mail className="w-3 h-3 shrink-0" />
               {currentUser.email}

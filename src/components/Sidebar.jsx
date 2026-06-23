@@ -71,8 +71,8 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
         <Logo variant="header" />
       </div>
 
-      {/* Navigation — 30px de separación respecto al logo + divisor sutil */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto mt-[30px]">
+      {/* Navigation — aire amplio respecto al logo + divisor sutil */}
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto mt-[38px]">
         <div className="mx-1 mb-[18px]" style={{ height: 1, background: '#1F1F1F' }} />
         {ALL_NAV.map((item) => {
           const active = currentSection === item.id;
