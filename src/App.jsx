@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Routes, Route, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,7 +11,6 @@ const SignupPage      = lazy(() => import('@/pages/SignupPage'));
 const UserDashboard   = lazy(() => import('@/pages/UserDashboard'));
 const AdminDashboard  = lazy(() => import('@/pages/AdminDashboard'));
 const ValidatePage    = lazy(() => import('@/pages/ValidatePage'));
-const ArtistPublicPage = lazy(() => import('@/pages/ArtistPublicPage'));
 const EventPublicPage = lazy(() => import('@/pages/EventPublicPage'));
 const VercelTelemetry = lazy(() => import('@/components/VercelTelemetry'));
 
@@ -54,6 +53,11 @@ function DeferredTelemetry({ beforeSend }) {
   );
 }
 
+function ArtistRouteRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={`/?section=artists&artist=${encodeURIComponent(slug || '')}`} replace />;
+}
+
 function App() {
   const redactTelemetry = (event) => {
     try {
@@ -77,7 +81,7 @@ function App() {
             <Route path="/login"    element={<LoginPage />} />
             <Route path="/signup"   element={<SignupPage />} />
             <Route path="/validate" element={<ValidatePage />} />
-            <Route path="/artist/:slug" element={<ArtistPublicPage />} />
+            <Route path="/artist/:slug" element={<ArtistRouteRedirect />} />
             <Route path="/e/:eventId"   element={<EventPublicPage />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>

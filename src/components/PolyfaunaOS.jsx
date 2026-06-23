@@ -118,6 +118,7 @@ function PolyfaunaOS() {
     const url = new URL(window.location.href);
     if (currentSection === 'radio-console') url.searchParams.delete('section');
     else url.searchParams.set('section', currentSection);
+    if (currentSection !== 'artists') url.searchParams.delete('artist');
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
   }, [currentSection]);
 
@@ -154,8 +155,16 @@ function PolyfaunaOS() {
       case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} />;
       case 'music':         return <MusicPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} />;
       case 'organism':      return <Organism currentTrack={currentTrack} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
-      case 'events':        return <EventTerminal />;
-      case 'artists':       return <ArtistsPage />;
+      case 'events':        return <EventTerminal setCurrentSection={setCurrentSection} />;
+      case 'artists':       return (
+                              <ArtistsPage
+                                setCurrentTrack={setCurrentTrack}
+                                setIsPlaying={setIsPlaying}
+                                currentTrack={currentTrack}
+                                isPlaying={isPlaying}
+                                setCurrentSection={setCurrentSection}
+                              />
+                            );
       case 'blog':          return <BlogInterviewsSection />;
       case 'inbox':         return <SignalInbox />;
       case 'tickets':       return <TicketVault />;

@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Disc3, Globe, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Heart, Instagram, Link2, Music, Play, Twitter } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
+import { lineupIncludesArtist } from '@/lib/artistIdentity';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
 
@@ -35,7 +36,7 @@ function SocialButton({ href, icon: Icon, label, color }) {
   );
 }
 
-function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
+function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIsPlaying, currentTrack, isPlaying, setCurrentSection }) {
   const { toast } = useToast();
   const links = typeof artist.social_links === 'object' && artist.social_links ? artist.social_links : {};
   const genres = artist.genres
@@ -44,18 +45,116 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
   const favoured = isFav('artist', artist.id);
   const img = artist.image_url || FALLBACK;
 
-  const publicUrl = artist.slug
-    ? `${window.location.origin}/artist/${artist.slug}`
-    : window.location.href;
+  const profileUrl = artist.slug
+    ? `${window.location.origin}/?section=artists&artist=${artist.slug}`
+    : `${window.location.origin}/?section=artists`;
+
+  const { data: albums } = useSupabaseQuery(
+    () => supabase
+      .from('albums')
+      .select('id, title, cover_url, genre, release_year, description, artists(name)')
+      .eq('artist_id', artist.id)
+      .order('created_at', { ascending: false })
+      .limit(6),
+    [artist.id]
+  );
+
+  const { data: tracks } = useSupabaseQuery(
+    () => supabase
+      .from('tracks')
+      .select('id, title, audio_url, duration, genre, albums(id, title, cover_url), artists(name)')
+      .eq('artist_id', artist.id)
+      .order('created_at', { ascending: false })
+      .limit(8),
+    [artist.id]
+  );
+
+  const { data: podcasts } = useSupabaseQuery(
+    () => supabase
+      .from('podcasts')
+      .select('id, title, audio_url, cover_url, duration, genre, artists(name)')
+      .eq('artist_id', artist.id)
+      .order('created_at', { ascending: false })
+      .limit(6),
+    [artist.id]
+  );
+
+  const { data: events } = useSupabaseQuery(
+    () => supabase
+      .from('events')
+      .select('id, title, date, venue, city, image_url, lineup')
+      .gte('date', new Date().toISOString())
+      .order('date', { ascending: true })
+      .limit(40),
+    [artist.id]
+  );
+
+  const artistEvents = useMemo(
+    () => (events || []).filter(event => lineupIncludesArtist(event.lineup, artist)).slice(0, 4),
+    [events, artist]
+  );
 
   const handleShare = async () => {
     const text = `${artist.name} en POLYFAUNA`;
     if (navigator.share) {
-      await navigator.share({ title: text, url: publicUrl });
+      await navigator.share({ title: text, url: profileUrl });
     } else {
-      await navigator.clipboard.writeText(publicUrl);
+      await navigator.clipboard.writeText(profileUrl);
       toast({ title: 'Enlace copiado', description: text });
     }
+  };
+
+  const playTrack = (track) => {
+    if (!track?.audio_url) return;
+    const active = currentTrack?.id === track.id;
+    if (active) {
+      setIsPlaying?.(!isPlaying);
+      return;
+    }
+    setCurrentTrack?.({
+      id: track.id,
+      title: track.title,
+      artist: track.artists?.name || artist.name,
+      album: track.albums?.title || track.genre || 'Música',
+      art: track.albums?.cover_url || img,
+      audio_url: track.audio_url,
+      duration: track.duration,
+    });
+    setIsPlaying?.(true);
+  };
+
+  const playPodcast = (podcast) => {
+    if (!podcast?.audio_url) return;
+    const active = currentTrack?.id === podcast.id;
+    if (active) {
+      setIsPlaying?.(!isPlaying);
+      return;
+    }
+    supabase.rpc('increment_podcast_plays', { p_podcast_id: podcast.id }).then(() => {});
+    setCurrentTrack?.({
+      id: podcast.id,
+      title: podcast.title,
+      artist: podcast.artists?.name || artist.name,
+      album: podcast.genre || 'Podcast / Mix',
+      art: podcast.cover_url || img,
+      audio_url: podcast.audio_url,
+      duration: podcast.duration,
+    });
+    setIsPlaying?.(true);
+  };
+
+  const openAlbum = (album) => {
+    setCurrentSection?.('music');
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'albums', id: album.id } }));
+    }, 60);
+  };
+
+  const openEvent = (event) => {
+    setCurrentSection?.('events');
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'events', id: event.id } }));
+    }, 60);
   };
 
   return (
@@ -192,6 +291,142 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav }) {
             </div>
           </div>
         )}
+
+        {(albums?.length > 0 || tracks?.length > 0 || podcasts?.length > 0 || artistEvents.length > 0) && (
+          <div className="space-y-5">
+            {tracks?.length > 0 && (
+              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
+                  <Music className="w-3.5 h-3.5" />
+                  Tracks
+                </h2>
+                <div className="space-y-2">
+                  {tracks.map((track) => {
+                    const active = currentTrack?.id === track.id;
+                    return (
+                      <button
+                        key={track.id}
+                        type="button"
+                        onClick={() => playTrack(track)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+                        style={{
+                          background: active ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.035)',
+                          border: `1px solid ${active ? 'rgba(32,199,232,0.22)' : 'rgba(255,255,255,0.07)'}`,
+                        }}
+                      >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center shrink-0">
+                          {track.albums?.cover_url
+                            ? <img src={track.albums.cover_url} alt="" className="w-full h-full object-cover" />
+                            : <Play className="w-4 h-4 text-white/45" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                          <p className="text-[11px] text-white/35 truncate">{track.albums?.title || track.genre || artist.name}</p>
+                        </div>
+                        <Play className="w-4 h-4 shrink-0" style={{ color: active ? '#20C7E8' : 'rgba(255,255,255,0.35)', fill: active ? '#20C7E8' : 'none' }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {albums?.length > 0 && (
+              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
+                  <Disc3 className="w-3.5 h-3.5" />
+                  Música
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {albums.map((album) => (
+                    <button
+                      key={album.id}
+                      type="button"
+                      onClick={() => openAlbum(album)}
+                      className="text-left rounded-xl overflow-hidden transition-colors"
+                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <div className="aspect-square bg-white/5 overflow-hidden">
+                        <img src={album.cover_url || img} alt={album.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-3">
+                        <p className="text-sm font-bold text-white truncate">{album.title}</p>
+                        <p className="text-[11px] text-white/35 truncate">{[album.genre, album.release_year].filter(Boolean).join(' · ') || artist.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {podcasts?.length > 0 && (
+              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
+                  <Headphones className="w-3.5 h-3.5" />
+                  Podcasts / Mixes
+                </h2>
+                <div className="space-y-2">
+                  {podcasts.map((podcast) => {
+                    const active = currentTrack?.id === podcast.id;
+                    return (
+                      <button
+                        key={podcast.id}
+                        type="button"
+                        onClick={() => playPodcast(podcast)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+                        style={{
+                          background: active ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.035)',
+                          border: `1px solid ${active ? 'rgba(32,199,232,0.22)' : 'rgba(255,255,255,0.07)'}`,
+                        }}
+                      >
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                          <img src={podcast.cover_url || img} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{podcast.title}</p>
+                          <p className="text-[11px] text-white/35 truncate">{podcast.genre || 'Mix POLYFAUNA'}</p>
+                        </div>
+                        <Play className="w-4 h-4 shrink-0" style={{ color: active ? '#20C7E8' : 'rgba(255,255,255,0.35)', fill: active ? '#20C7E8' : 'none' }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {artistEvents.length > 0 && (
+              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  Eventos vinculados
+                </h2>
+                <div className="space-y-2">
+                  {artistEvents.map((event) => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => openEvent(event)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                        <img src={event.image_url || img} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{event.title}</p>
+                        <p className="text-[11px] text-white/35 truncate">
+                          {[event.venue || event.city, event.date && new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -277,7 +512,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
   );
 }
 
-export default function ArtistsPage() {
+export default function ArtistsPage({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying, setCurrentSection }) {
   const [search, setSearch] = useState('');
   const [selectedArtist, setSelectedArtist] = useState(null);
   const { isFav, toggle: toggleFav } = useFavorites();
@@ -301,6 +536,13 @@ export default function ArtistsPage() {
     return () => window.removeEventListener('pf:open-item', handler);
   }, [artists]);
 
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('artist');
+    if (!slug || !artists?.length) return;
+    const inList = artists.find(a => a.slug === slug);
+    if (inList) setSelectedArtist(inList);
+  }, [artists]);
+
   const filtered = useMemo(() => {
     if (!artists) return [];
     const q = search.toLowerCase();
@@ -316,6 +558,11 @@ export default function ArtistsPage() {
           onBack={() => setSelectedArtist(null)}
           isFav={isFav}
           toggleFav={toggleFav}
+          setCurrentTrack={setCurrentTrack}
+          setIsPlaying={setIsPlaying}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          setCurrentSection={setCurrentSection}
         />
       ) : (
         <motion.div

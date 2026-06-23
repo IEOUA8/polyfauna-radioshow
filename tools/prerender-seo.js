@@ -69,10 +69,8 @@ async function main() {
   if (!fs.existsSync(templatePath)) throw new Error('dist/index.html no existe');
   const template = fs.readFileSync(templatePath, 'utf8');
 
-  const [events, artists] = await Promise.all([
-    fetchRows('events', 'id,title,description,date,venue,city,image_url,price,lineup,status,tickets_total,tickets_sold'),
-    fetchRows('artists', 'slug,name,bio,image_url,genres,social_links'),
-  ]);
+  const events = await fetchRows('events', 'id,title,description,date,venue,city,image_url,price,lineup,status,tickets_total,tickets_sold');
+  const artists = await fetchRows('artists', 'slug');
 
   if (events.length === 0 && artists.length === 0) {
     console.log('SEO prerender: sin datos remotos, se conserva dist/index.html');
@@ -99,17 +97,7 @@ async function main() {
     writePage(`e/${event.id}`, pageHtml(template, { title: `${event.title} — POLYFAUNA`, description, canonical, image, type: 'website', schema }));
   }
 
-  for (const artist of artists) {
-    if (!artist.slug) continue;
-    const canonical = `${SITE_URL}/artist/${artist.slug}`;
-    const image = artist.image_url || DEFAULT_COVER;
-    const description = artist.bio || `${artist.name}, artista de música electrónica en POLYFAUNA.`;
-    const sameAs = Object.values(artist.social_links || {}).filter(value => typeof value === 'string' && /^https?:\/\//.test(value));
-    const schema = { '@context': 'https://schema.org', '@type': 'MusicGroup', name: artist.name, description, image, genre: artist.genres || [], url: canonical, sameAs };
-    writePage(`artist/${artist.slug}`, pageHtml(template, { title: `${artist.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
-  }
-
-  console.log(`SEO prerender: ${events.length} eventos · ${artists.length} artistas`);
+  console.log(`SEO prerender: ${events.length} eventos · ${artists.length} artistas internos`);
 }
 
 main().catch(error => {

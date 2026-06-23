@@ -58,7 +58,7 @@ async function main() {
     if (event.id) entries.push(urlEntry(`${SITE_URL}/e/${event.id}`, event.created_at, 'weekly', '0.8'));
   }
   for (const artist of artists) {
-    if (artist.slug) entries.push(urlEntry(`${SITE_URL}/artist/${artist.slug}`, artist.created_at, 'weekly', '0.7'));
+    if (artist.slug) entries.push(urlEntry(`${SITE_URL}/?section=artists&artist=${artist.slug}`, artist.created_at, 'weekly', '0.7'));
   }
 
   fs.writeFileSync(path.join(publicDir, 'sitemap.xml'),

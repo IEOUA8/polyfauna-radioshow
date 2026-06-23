@@ -302,7 +302,7 @@ const ArtistManager = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-foreground font-semibold truncate">{artist.name}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-1">
-                    {artist.slug ? `/artist/${artist.slug}` : 'Sin slug'} · {Array.isArray(artist.genres) && artist.genres.length > 0 ? artist.genres.join(', ') : (artist.bio || 'Sin tags')}
+                    {artist.slug ? `?section=artists&artist=${artist.slug}` : 'Sin slug'} · {Array.isArray(artist.genres) && artist.genres.length > 0 ? artist.genres.join(', ') : (artist.bio || 'Sin tags')}
                   </p>
                 </div>
                 <div className="flex gap-2">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronLeft, ChevronRight, ExternalLink, Loader2, MapPin, Search, Share2, Star, Ticket, Users, X } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -346,9 +346,17 @@ function BuyModal({ event, onClose }) {
 }
 
 /* ── Event detail page ── */
-function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [] }) {
+function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], setCurrentSection }) {
   const [linkCopied, setLinkCopied] = React.useState(false);
   const lineup = resolveLineupArtists(event.lineup, artists);
+
+  const openArtist = (artist) => {
+    if (!artist?.id) return;
+    setCurrentSection?.('artists');
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'artists', id: artist.id } }));
+    }, 60);
+  };
 
   const handleShare = async () => {
     const url = `${window.location.origin}/e/${event.id}`;
@@ -473,10 +481,10 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [] }) {
                 border: artist ? '1px solid rgba(32,199,232,0.22)' : '1px solid rgba(255,255,255,0.1)',
               };
 
-              return artist?.slug ? (
-                <Link key={`${artist.id}-${i}`} to={`/artist/${artist.slug}`} className={className} style={style}>
+              return artist ? (
+                <button key={`${artist.id}-${i}`} type="button" onClick={() => openArtist(artist)} className={className} style={style}>
                   {label}
-                </Link>
+                </button>
               ) : (
                 <span key={`${name}-${i}`} className={className} style={style}>
                   {label}
@@ -520,7 +528,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [] }) {
   );
 }
 
-export default function EventTerminal() {
+export default function EventTerminal({ setCurrentSection }) {
   const { toast } = useToast();
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [buyingEvent, setBuyingEvent] = useState(null);
@@ -640,6 +648,7 @@ export default function EventTerminal() {
             isFav={isFav}
             toggleFav={toggleFav}
             artists={artists || []}
+            setCurrentSection={setCurrentSection}
           />
         ) : (
           <motion.div
