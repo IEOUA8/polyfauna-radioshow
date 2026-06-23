@@ -30,7 +30,9 @@ serve(async (req) => {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:10px;">
-            <a href="${appUrl}" target="_blank" style="display:inline-block;padding:13px 28px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:900;color:#081010 !important;text-decoration:none;border-radius:10px;">Explorar la plataforma &rarr;</a>
+            <a href="${appUrl}" target="_blank" style="display:inline-block;padding:13px 28px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:900;color:#081010 !important;-webkit-text-fill-color:#081010 !important;text-decoration:none;border-radius:10px;">
+              <span style="color:#081010 !important;-webkit-text-fill-color:#081010 !important;">Explorar la plataforma &rarr;</span>
+            </a>
           </td>
         </tr>
       </table>

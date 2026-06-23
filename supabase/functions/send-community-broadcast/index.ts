@@ -133,7 +133,7 @@ serve(async (req) => {
       }
       const safeBody = escapeEmailValue(body).replace(/\n/g, '<br/>');
       const safeCta = ctaLabel && ctaUrl
-        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:12px;"><a href="${escapeEmailValue(publicEmailUrl(ctaUrl, appUrl))}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:900;color:#081010 !important;text-decoration:none;border-radius:12px;">${escapeEmailValue(ctaLabel)}</a></td></tr></table>`
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:12px;"><a href="${escapeEmailValue(publicEmailUrl(ctaUrl, appUrl))}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:900;color:#081010 !important;-webkit-text-fill-color:#081010 !important;text-decoration:none;border-radius:12px;"><span style="color:#081010 !important;-webkit-text-fill-color:#081010 !important;">${escapeEmailValue(ctaLabel)}</span></a></td></tr></table>`
         : '';
       html = emailWrapper(`
         <h1 style="margin:0 0 12px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.25;font-weight:900;color:#ECECEC !important;">${escapeEmailValue(title)}</h1>

@@ -39,7 +39,9 @@ serve(async (req) => {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:10px;">
-            <a href="${appUrl}/admin" target="_blank" style="display:inline-block;padding:12px 28px;font-family:'Helvetica Neue',Arial,sans-serif;color:#081010 !important;text-decoration:none;font-weight:900;border-radius:10px;">Revisar en el panel &rarr;</a>
+            <a href="${appUrl}/admin" target="_blank" style="display:inline-block;padding:12px 28px;font-family:'Helvetica Neue',Arial,sans-serif;color:#081010 !important;-webkit-text-fill-color:#081010 !important;text-decoration:none;font-weight:900;border-radius:10px;">
+              <span style="color:#081010 !important;-webkit-text-fill-color:#081010 !important;">Revisar en el panel &rarr;</span>
+            </a>
           </td>
         </tr>
       </table>

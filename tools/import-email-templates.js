@@ -52,6 +52,10 @@ const hardenEmailClientColors = (html) => html
   .replaceAll(
     '<td bgcolor="#ECECEC" style="border-radius:',
     '<td bgcolor="#ECECEC" style="background:#ECECEC !important;background-color:#ECECEC !important;background-image:linear-gradient(#ECECEC,#ECECEC) !important;border-radius:',
+  )
+  .replaceAll(
+    'color:#0A0A0A;text-decoration:none;',
+    'color:#0A0A0A !important;-webkit-text-fill-color:#0A0A0A !important;text-decoration:none;',
   );
 
 const entries = Object.entries(sources).map(([key, source]) => {

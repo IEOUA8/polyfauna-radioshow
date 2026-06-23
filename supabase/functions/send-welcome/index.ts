@@ -17,7 +17,9 @@ serve(async (req) => {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#E7ECEC" style="background:#E7ECEC !important;background-color:#E7ECEC !important;background-image:linear-gradient(#E7ECEC,#E7ECEC) !important;border-radius:11px;">
-            <a href="https://www.polyfauna.com" target="_blank" style="display:inline-block;padding:14px 32px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:900;color:#081010 !important;text-decoration:none;border-radius:11px;">Ir a la plataforma &rarr;</a>
+            <a href="https://www.polyfauna.com" target="_blank" style="display:inline-block;padding:14px 32px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:900;color:#081010 !important;-webkit-text-fill-color:#081010 !important;text-decoration:none;border-radius:11px;">
+              <span style="color:#081010 !important;-webkit-text-fill-color:#081010 !important;">Ir a la plataforma &rarr;</span>
+            </a>
           </td>
         </tr>
       </table>
