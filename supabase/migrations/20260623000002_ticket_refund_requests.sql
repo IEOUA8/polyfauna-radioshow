@@ -2,6 +2,21 @@
 -- La solicitud no reembolsa automáticamente ni invalida el ticket.
 -- Operación/Admin revisa, aprueba y ejecuta el reembolso con el proveedor de pago.
 
+DO $$
+BEGIN
+  IF to_regclass('public.user_tickets') IS NULL THEN
+    RAISE EXCEPTION 'Falta public.user_tickets. Ejecuta primero 20260617000000_initial_schema.sql y las migraciones de tickets/pagos antes de 20260623000002_ticket_refund_requests.sql.';
+  END IF;
+
+  IF to_regclass('public.events') IS NULL THEN
+    RAISE EXCEPTION 'Falta public.events. Ejecuta primero 20260617000000_initial_schema.sql antes de 20260623000002_ticket_refund_requests.sql.';
+  END IF;
+
+  IF to_regclass('public.profiles') IS NULL THEN
+    RAISE EXCEPTION 'Falta public.profiles. Ejecuta primero las migraciones de perfiles/roles antes de 20260623000002_ticket_refund_requests.sql.';
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.ticket_refund_requests (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticket_id       UUID NOT NULL REFERENCES public.user_tickets(id) ON DELETE CASCADE,
