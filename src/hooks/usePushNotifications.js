@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 
-// The VAPID public key (safe to embed in frontend)
-const VAPID_PUBLIC_KEY = 'BOcrLjXe3bdPEc7kZV3XTEYbxOTQxGACDwiIzHTM6RB7Z39KE-NzTQINgpyidJ1n0thI--vXJpWCsfF8kiIEv34';
+// The VAPID public key is safe to expose in the browser.
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
+  || 'BOcrLjXe3bdPEc7kZV3XTEYbxOTQxGACDwiIzHTM6RB7Z39KE-NzTQINgpyidJ1n0thI--vXJpWCsfF8kiIEv34';
 
 function urlBase64ToUint8Array(base64String) {
   const padding  = '='.repeat((4 - (base64String.length % 4)) % 4);

@@ -22,12 +22,41 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
     const { userId, broadcast, title, body, url, icon, image } = await req.json();
+    const isServiceRole = token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const { data: { user } } = isServiceRole
+      ? { data: { user: null } }
+      : await supabase.auth.getUser(token);
+
+    let isAdmin = false;
+    if (user?.id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      isAdmin = profile?.role === 'admin';
+    }
+
+    if (broadcast && !isServiceRole && !isAdmin) {
+      return new Response(JSON.stringify({ error: 'Admin required for broadcast push' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!broadcast && userId && !isServiceRole && !isAdmin && user?.id !== userId) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const payload = JSON.stringify({ title, body, url, icon, image });
 
