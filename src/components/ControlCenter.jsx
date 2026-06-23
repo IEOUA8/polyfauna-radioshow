@@ -563,8 +563,12 @@ export default function ControlCenter({ setCurrentSection }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white">Notificaciones Push</p>
-                  <p className="text-xs mt-0.5 text-white/35">
-                    {pushLoading ? 'Procesando…' : pushSubscribed ? 'Activas — toca para desactivar' : 'Desactivadas — toca para activar'}
+                  <p className="text-xs mt-0.5 text-white/35 leading-relaxed">
+                    {pushLoading
+                      ? 'Procesando…'
+                      : pushSubscribed
+                        ? 'Activas para eventos, transmisiones, tickets, devoluciones y mensajes.'
+                        : 'Recibe avisos de eventos, transmisiones especiales, tickets, devoluciones y mensajes directos.'}
                   </p>
                 </div>
                 {/* Toggle pill */}

@@ -820,6 +820,22 @@ function RefundRequestsSection({ ownerId }) {
     }
 
     setRequests(prev => prev.map(item => item.id === request.id ? data : item));
+    if (patch.status && ['approved', 'rejected', 'refunded', 'cancelled'].includes(patch.status)) {
+      const label = {
+        approved: 'aprobada',
+        rejected: 'rechazada',
+        refunded: 'reembolsada',
+        cancelled: 'cancelada',
+      }[patch.status];
+      supabase.functions.invoke('send-push', {
+        body: {
+          userId: data.user_id,
+          title: 'Actualización de devolución',
+          body: `Tu solicitud de devolución fue ${label}${data.events?.title ? ` · ${data.events.title}` : ''}.`,
+          url: `${window.location.origin}/?section=tickets`,
+        },
+      }).catch(() => {});
+    }
     toast({ title: 'Solicitud actualizada', description: `Estado: ${data.status}` });
   };
 

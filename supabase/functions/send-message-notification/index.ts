@@ -2,6 +2,18 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { sendEmail, emailWrapper } from '../_shared/resend.ts';
 import { CORS_HEADERS, escapeHtml, json, requireUser } from '../_shared/auth.ts';
 
+async function sendPush(body: Record<string, unknown>) {
+  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -33,6 +45,12 @@ serve(async (req) => {
       <a href="${appUrl}" style="display:inline-block;padding:12px 28px;background:rgba(32,199,232,0.15);border:1px solid rgba(32,199,232,0.30);border-radius:10px;font-size:13px;font-weight:900;color:#20C7E8;text-decoration:none;">Leer mensaje →</a>
     `);
     await sendEmail({ to: recipient.email, subject: `Nuevo mensaje de ${String(message.from_name || 'Usuario').replace(/[\r\n]/g, ' ')} — POLYFAUNA`, html });
+    await sendPush({
+      userId: message.to_user_id,
+      title: 'Nuevo mensaje directo',
+      body: `${message.from_name || 'Alguien del bioma'}: ${String(message.subject || 'Mensaje nuevo').slice(0, 90)}`,
+      url: `${appUrl}/?section=inbox`,
+    });
     return json({ ok: true });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : 'Error interno' }, 500);

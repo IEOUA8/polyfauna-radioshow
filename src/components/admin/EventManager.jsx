@@ -268,8 +268,17 @@ const EventManager = () => {
         if (error) throw error;
         toast({ title: 'Evento actualizado' });
       } else {
-        const { error } = await supabase.from('events').insert([payload]);
+        const { data: createdEvent, error } = await supabase.from('events').insert([payload]).select('id, title, venue, city, date, image_url').single();
         if (error) throw error;
+        supabase.functions.invoke('send-push', {
+          body: {
+            broadcast: true,
+            title: 'Nuevo evento en Polyfauna',
+            body: [createdEvent?.title, createdEvent?.venue || createdEvent?.city].filter(Boolean).join(' · '),
+            url: `${window.location.origin}/?section=events&event=${createdEvent?.id}`,
+            image: createdEvent?.image_url || undefined,
+          },
+        }).catch(() => {});
         toast({ title: '¡Evento publicado!' });
       }
       setIsDialogOpen(false);

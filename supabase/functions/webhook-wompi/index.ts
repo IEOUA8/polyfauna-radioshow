@@ -23,6 +23,18 @@ const STATUS_MAP: Record<string, string> = {
   ERROR:    'error',
 };
 
+async function sendPush(body: Record<string, unknown>) {
+  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST')
     return new Response('Method not allowed', { status: 405 });
@@ -169,9 +181,16 @@ Deno.serve(async (req) => {
               qrDataUrl,
             },
           });
+
+          await sendPush({
+            userId: transaction.buyer_id,
+            title: 'Ticket confirmado',
+            body: `Tu acceso para ${transaction.events?.title || 'el evento'} ya está en tu Ticket Vault.`,
+            url: `${Deno.env.get('APP_URL') || 'https://www.polyfauna.com'}/?section=tickets`,
+          });
         }
       } catch (emailErr) {
-        console.error('Webhook: error enviando email de ticket:', emailErr);
+        console.error('Webhook: error enviando confirmación de ticket:', emailErr);
       }
     }
 

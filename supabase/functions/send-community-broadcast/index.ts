@@ -14,6 +14,18 @@ const CORS_HEADERS = {
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
+async function sendPush(body: Record<string, unknown>) {
+  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') {
@@ -138,6 +150,15 @@ serve(async (req) => {
       );
       sent += batch.length;
       if (i + BATCH_SIZE < recipients.length) await sleep(BATCH_DELAY_MS);
+    }
+
+    if (templateType === 'radio-special') {
+      await sendPush({
+        broadcast: true,
+        title: 'Transmisión especial en vivo',
+        body: `${templateData.programName} · ${templateData.artist}`,
+        url: publicEmailUrl(templateData.listenUrl, appUrl),
+      });
     }
 
     return new Response(JSON.stringify({ ok: true, sent }), { headers: CORS_HEADERS });
