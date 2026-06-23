@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, CalendarDays, CheckCircle, ChevronDown, ChevronRight, Clock, FileText, Headphones, LogOut, MapPin, Play, QrCode, Radio, Settings, Shield, User, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Bell, CalendarDays, CheckCircle, ChevronRight, Clock, FileText, Headphones, MapPin, Play, QrCode, Radio, User, X } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
@@ -305,27 +304,14 @@ function ArtistAvatar({ artist, index }) {
 }
 
 export default function RightPanel({ setCurrentSection }) {
-  const { currentUser, userRole, logout } = useAuth();
+  const { currentUser } = useAuth();
   const { profile } = useProfile();
   const { unreadCount } = useNotifications();
-  const navigate = useNavigate();
   const [playing, setPlaying] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const displayName = profile?.display_name || currentUser?.email?.split('@')[0] || 'Wave Citizen';
   const displayRole = profile ? (ROLE_LABEL[profile.role] || 'Wave Citizen') : (currentUser ? 'Wave Citizen' : 'Invitado');
-
-  const handleLogout = async () => { await logout(); navigate('/'); };
 
   const { data: tickets } = useSupabaseQuery(
     () => currentUser
@@ -361,115 +347,30 @@ export default function RightPanel({ setCurrentSection }) {
       <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         {currentUser ? (
           <div className="flex items-center gap-3">
-            {/* ── User menu trigger + glass panel ── */}
-            <div className="relative flex-1 min-w-0" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(o => !o)}
-                className="flex items-center gap-2.5 w-full rounded-xl py-1 px-1 transition-colors text-left"
-                style={{ background: menuOpen ? 'rgba(255,255,255,0.06)' : 'transparent' }}
-                onMouseEnter={e => { if (!menuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                onMouseLeave={e => { if (!menuOpen) e.currentTarget.style.background = 'transparent'; }}
+            <button
+              type="button"
+              onClick={() => setCurrentSection?.('settings')}
+              className="flex items-center gap-2.5 flex-1 min-w-0 rounded-xl py-1.5 px-1.5 transition-colors text-left group"
+              style={{ background: 'transparent' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              title="Abrir Control Center"
+            >
+              <div
+                className="w-9 h-9 rounded-full overflow-hidden shrink-0"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.06) 100%)', border: '2px solid rgba(255,255,255,0.1)' }}
               >
-                <div
-                  className="w-9 h-9 rounded-full overflow-hidden shrink-0"
-                  style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.06) 100%)', border: '2px solid rgba(255,255,255,0.1)' }}
-                >
-                  {profile?.avatar_url
-                    ? <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
-                    : <User className="w-4 h-4 text-white m-auto mt-1.5" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
-                  <p className="text-[11px] leading-tight truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{displayRole}</p>
-                </div>
-                <motion.div animate={{ rotate: menuOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                  <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" />
-                </motion.div>
-              </button>
-
-              {/* Glass panel */}
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.96, y: -6 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                    className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50"
-                    style={{
-                      background: 'rgba(8,13,12,0.78)',
-                      backdropFilter: 'blur(64px) saturate(200%)',
-                      WebkitBackdropFilter: 'blur(64px) saturate(200%)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      boxShadow: '0 32px 72px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.03)',
-                    }}
-                  >
-                    {/* Brillo superior glass */}
-                    <div className="absolute top-0 left-0 right-0 h-px"
-                      style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.18) 50%, transparent 90%)' }} />
-                    {/* Reflejo lateral izquierdo */}
-                    <div className="absolute top-2 left-0 bottom-2 w-px"
-                      style={{ background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.07) 40%, rgba(255,255,255,0.07) 60%, transparent)' }} />
-
-                    {/* Opciones de navegación */}
-                    <div className="py-2 px-1.5">
-                      {[
-                        { label: 'Control Center', icon: User,  onClick: () => { setCurrentSection?.('settings'); setMenuOpen(false); } },
-                        ...(profile?.role === 'promoter' || profile?.role === 'club' || userRole === 'admin'
-                          ? [{ label: 'Promoter Hub', icon: Settings, onClick: () => { setCurrentSection?.('promoter'); setMenuOpen(false); } }]
-                          : []),
-                        ...(userRole === 'admin'
-                          ? [{ label: 'Admin Panel', icon: Shield, onClick: () => { navigate('/admin'); setMenuOpen(false); } }]
-                          : []),
-                      ].map(({ label, icon: Icon, onClick }) => (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={onClick}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 group"
-                          style={{ color: 'rgba(255,255,255,0.60)' }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.92)';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.background = 'transparent';
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.60)';
-                          }}
-                        >
-                          <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors"
-                            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}>
-                            <Icon className="w-3.5 h-3.5 text-white/60 group-hover:text-white/90 transition-colors" />
-                          </span>
-                          {label}
-                          <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-20 group-hover:opacity-60 transition-opacity" />
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Divider + logout */}
-                    <div className="px-3 pb-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <button
-                        type="button"
-                        onClick={() => { handleLogout(); setMenuOpen(false); }}
-                        className="mt-1.5 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-                        style={{ color: 'rgba(239,68,68,0.7)' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#ef4444'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(239,68,68,0.7)'; }}
-                      >
-                        <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                          <LogOut className="w-3.5 h-3.5 text-red-400" />
-                        </span>
-                        Cerrar sesión
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                {profile?.avatar_url
+                  ? <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                  : <User className="w-4 h-4 text-white m-auto mt-1.5" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white leading-tight truncate">{displayName}</p>
+                <p className="text-[11px] leading-tight truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{displayRole}</p>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-white/20 shrink-0 transition-colors group-hover:text-white/45" />
+            </button>
 
             {/* Bell */}
             <button type="button" onClick={() => setNotifOpen(v => !v)}
