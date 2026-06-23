@@ -24,7 +24,7 @@ function escapeHtml(value) {
 async function fetchRows(table, select) {
   const baseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!baseUrl || !anonKey) throw new Error('Faltan variables de Supabase');
+  if (!baseUrl || !anonKey) return [];
   const response = await fetch(`${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
   });
@@ -74,6 +74,11 @@ async function main() {
     fetchRows('artists', 'slug,name,bio,image_url,genres,social_links'),
   ]);
 
+  if (events.length === 0 && artists.length === 0) {
+    console.log('SEO prerender: sin datos remotos, se conserva dist/index.html');
+    return;
+  }
+
   for (const event of events) {
     if (!event.id) continue;
     const canonical = `${SITE_URL}/e/${event.id}`;
@@ -109,5 +114,5 @@ async function main() {
 
 main().catch(error => {
   console.error(`SEO prerender failed: ${error.message}`);
-  process.exitCode = 1;
+  console.warn('SEO prerender skipped: deploy continuará con la app SPA.');
 });
