@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -198,10 +198,34 @@ function ForgotPasswordView({ onBack }) {
 }
 
 // ── Login view ────────────────────────────────────────────────────────────────
+function SocialButton({ provider, label, mark, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(provider)}
+      disabled={disabled}
+      className="h-12 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-50"
+      style={{
+        background: 'rgba(255,255,255,0.045)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        color: 'rgba(255,255,255,0.82)',
+      }}
+    >
+      <span
+        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+        style={{ background: 'rgba(255,255,255,0.9)', color: '#080D0B' }}
+      >
+        {mark}
+      </span>
+      {label}
+    </button>
+  );
+}
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, isLoading, recoveryMode } = useAuth();
+  const { currentUser, login, signInWithProvider, isLoading, recoveryMode } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
@@ -214,6 +238,10 @@ const LoginPage = () => {
     ? requestedNext
     : '/';
 
+  useEffect(() => {
+    if (currentUser && !recoveryMode) navigate(nextPath, { replace: true });
+  }, [currentUser, navigate, nextPath, recoveryMode]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -222,8 +250,14 @@ const LoginPage = () => {
     if (!error) { navigate(nextPath); }
   };
 
+  const handleProvider = async (provider) => {
+    setFormError('');
+    const { error } = await signInWithProvider(provider, nextPath);
+    if (error) setFormError(error.message);
+  };
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-12 overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-8 sm:py-12 overflow-hidden">
       <div className="poly-texture" />
       <Helmet>
         <title>Iniciar sesión — POLYFAUNA</title>
@@ -237,10 +271,12 @@ const LoginPage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="poly-surface rounded-[2.5rem] p-10 md:p-12 shadow-2xl">
+        <div className="poly-surface rounded-[2rem] sm:rounded-[2.5rem] p-7 sm:p-10 md:p-12 shadow-2xl">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-3 mb-10">
-            <Logo size="lg" />
+          <div className="flex items-center justify-center gap-3 mb-7 sm:mb-9">
+            <div className="w-[210px] sm:w-[250px]">
+              <Logo variant="header" />
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -251,8 +287,29 @@ const LoginPage = () => {
             ) : (
               <motion.div key="login" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}>
 
-                <h1 className="text-3xl font-extrabold text-white text-center mb-3">Bienvenido</h1>
-                <p className="text-muted-foreground text-center mb-10 text-lg">Inicia sesión en tu cuenta</p>
+                <div className="text-center mb-8">
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.22em] mb-3"
+                    style={{ color: 'rgba(184,207,166,0.55)', fontFamily: "'IBM Plex Mono', monospace" }}
+                  >
+                    Acceso al bioma
+                  </p>
+                  <h1 className="font-display text-3xl sm:text-4xl font-medium text-white mb-3">Bienvenido</h1>
+                  <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'rgba(184,207,166,0.62)' }}>
+                    Entra a tu organismo: música guardada, tickets, comunidad y señales del ecosistema Polyfauna.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <SocialButton provider="google" label="Google" mark="G" onClick={handleProvider} disabled={isLoading} />
+                  <SocialButton provider="facebook" label="Facebook" mark="f" onClick={handleProvider} disabled={isLoading} />
+                </div>
+
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/25">o con correo</span>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-3">
@@ -305,7 +362,8 @@ const LoginPage = () => {
 
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-bold text-lg h-14 rounded-xl border-0 shadow-lg mt-4"
+                    className="w-full hover:opacity-90 font-bold text-lg h-14 rounded-xl border-0 shadow-lg mt-4"
+                    style={{ background: 'rgba(236,236,236,0.92)', color: '#080D0B' }}
                     disabled={isLoading}
                   >
                     {isLoading ? (

@@ -3,6 +3,13 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
 const AuthContext = createContext(undefined);
+const PENDING_OAUTH_ROLE_KEY = 'polyfauna.pendingOAuthRole';
+
+function getOauthRedirect(nextPath = '/') {
+  if (typeof window === 'undefined') return undefined;
+  const safePath = nextPath?.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/';
+  return `${window.location.origin}${safePath}`;
+}
 
 export const AuthProvider = ({ children }) => {
   const { toast } = useToast();
@@ -35,11 +42,56 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const consumePendingOAuthRole = useCallback(async (authUser) => {
+    if (typeof window === 'undefined' || !authUser?.id) return;
+    const role = window.localStorage.getItem(PENDING_OAUTH_ROLE_KEY);
+    if (!role || role === 'citizen') {
+      window.localStorage.removeItem(PENDING_OAUTH_ROLE_KEY);
+      return;
+    }
+
+    const { data: existing } = await supabase
+      .from('role_requests')
+      .select('id')
+      .eq('user_id', authUser.id)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (!existing?.id) {
+      const displayName = authUser.user_metadata?.name
+        || authUser.user_metadata?.full_name
+        || authUser.email?.split('@')[0]
+        || 'Usuario';
+      const { data: request } = await supabase
+        .from('role_requests')
+        .insert({
+          user_id: authUser.id,
+          requested_role: role,
+          form_data: {
+            name: displayName,
+            source: 'oauth',
+            provider: authUser.app_metadata?.provider || 'social',
+          },
+        })
+        .select('id')
+        .single();
+
+      if (request?.id) {
+        supabase.functions.invoke('send-role-request', {
+          body: { requestId: request.id },
+        }).catch(() => {});
+      }
+    }
+
+    window.localStorage.removeItem(PENDING_OAUTH_ROLE_KEY);
+  }, []);
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          await consumePendingOAuthRole(session.user);
           await fetchUserProfile(session.user);
         }
       } catch (err) {
@@ -60,6 +112,7 @@ export const AuthProvider = ({ children }) => {
       }
       setRecoveryMode(false);
       if (session?.user) {
+        await consumePendingOAuthRole(session.user);
         await fetchUserProfile(session.user);
       } else {
         setCurrentUser(null);
@@ -69,7 +122,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchUserProfile]);
+  }, [consumePendingOAuthRole, fetchUserProfile]);
 
   const signup = useCallback(async (email, password, name, role = 'citizen') => {
     setError(null);
@@ -131,6 +184,31 @@ export const AuthProvider = ({ children }) => {
     }
   }, [toast]);
 
+  const signInWithProvider = useCallback(async (provider, nextPath = '/', role = 'citizen') => {
+    setError(null);
+    try {
+      if (typeof window !== 'undefined') {
+        if (role && role !== 'citizen') window.localStorage.setItem(PENDING_OAUTH_ROLE_KEY, role);
+        else window.localStorage.removeItem(PENDING_OAUTH_ROLE_KEY);
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: getOauthRedirect(nextPath),
+          queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
+        },
+      });
+      if (error) throw error;
+      return { data, error: null };
+    } catch (err) {
+      if (typeof window !== 'undefined') window.localStorage.removeItem(PENDING_OAUTH_ROLE_KEY);
+      setError(err.message);
+      toast({ variant: 'destructive', title: 'No se pudo continuar', description: err.message });
+      return { data: null, error: err };
+    }
+  }, [toast]);
+
   const updatePassword = useCallback(async (newPassword) => {
     setIsLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -165,7 +243,7 @@ export const AuthProvider = ({ children }) => {
   }, [toast]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, logout, recoveryMode, updatePassword }}>
+    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, signInWithProvider, logout, recoveryMode, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

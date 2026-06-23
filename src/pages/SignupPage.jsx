@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,9 +28,9 @@ const ROLES = [
   },
   {
     id: 'promoter',
-    label: 'Promotor',
+    label: 'Promotor / Colectivo',
     icon: Megaphone,
-    description: 'Organiza eventos y vende tickets en la plataforma.',
+    description: 'Cura escena, organiza eventos y vende tickets.',
     approval: true,
     color: '#F97316',
   },
@@ -79,6 +79,30 @@ function StrengthBar({ password }) {
   );
 }
 
+function SocialButton({ provider, label, mark, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(provider)}
+      disabled={disabled}
+      className="h-12 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-50"
+      style={{
+        background: 'rgba(255,255,255,0.045)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        color: 'rgba(255,255,255,0.82)',
+      }}
+    >
+      <span
+        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+        style={{ background: 'rgba(255,255,255,0.9)', color: '#080D0B' }}
+      >
+        {mark}
+      </span>
+      {label}
+    </button>
+  );
+}
+
 // ── Step 1: Role selector ─────────────────────────────────────────────────────
 
 function RoleStep({ selected, onSelect, onNext }) {
@@ -91,8 +115,16 @@ function RoleStep({ selected, onSelect, onNext }) {
       className="space-y-6"
     >
       <div className="text-center">
-        <h1 className="text-2xl font-extrabold text-white mb-1">¿Cómo quieres participar?</h1>
-        <p className="text-sm text-white/40">Elige tu rol en la comunidad POLYFAUNA</p>
+        <p
+          className="text-[10px] font-bold uppercase tracking-[0.22em] mb-3"
+          style={{ color: 'rgba(184,207,166,0.55)', fontFamily: "'IBM Plex Mono', monospace" }}
+        >
+          Nuevo organismo
+        </p>
+        <h1 className="font-display text-2xl sm:text-3xl font-medium text-white mb-2">¿Cómo quieres habitar Polyfauna?</h1>
+        <p className="text-sm leading-relaxed text-white/45">
+          Elige la forma de vida que mejor describe tu relación con el bioma.
+        </p>
       </div>
 
       <div className="space-y-2.5">
@@ -158,7 +190,7 @@ function RoleStep({ selected, onSelect, onNext }) {
 
 // ── Step 2: Account details ───────────────────────────────────────────────────
 
-function DetailsStep({ formData, onChange, onBack, onSubmit, isLoading, formError, selectedRole }) {
+function DetailsStep({ formData, onChange, onBack, onSubmit, onSocial, isLoading, formError, selectedRole }) {
   const role = ROLES.find(r => r.id === selectedRole);
   const passwordsMatch = formData.confirmPassword && formData.password === formData.confirmPassword;
 
@@ -188,6 +220,17 @@ function DetailsStep({ formData, onChange, onBack, onSubmit, isLoading, formErro
             </p>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <SocialButton provider="google" label="Google" mark="G" onClick={onSocial} disabled={isLoading} />
+        <SocialButton provider="facebook" label="Facebook" mark="f" onClick={onSocial} disabled={isLoading} />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-white/10" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/25">o registra correo</span>
+        <div className="h-px flex-1 bg-white/10" />
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
@@ -267,6 +310,7 @@ function DetailsStep({ formData, onChange, onBack, onSubmit, isLoading, formErro
 
 function PendingView({ role }) {
   const roleInfo = ROLES.find(r => r.id === role);
+  const needsApproval = Boolean(roleInfo?.approval);
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -278,10 +322,18 @@ function PendingView({ role }) {
         <Check className="w-8 h-8" style={{ color: roleInfo?.color || 'white' }} />
       </div>
       <div>
-        <h2 className="text-xl font-black text-white">¡Cuenta creada!</h2>
+        <h2 className="text-xl font-black text-white">{needsApproval ? '¡Solicitud recibida!' : 'Confirma tu correo'}</h2>
         <p className="text-sm text-white/50 mt-2 leading-relaxed">
-          Tu solicitud como <strong className="text-white">{roleInfo?.label}</strong> está en revisión.
-          Mientras tanto puedes explorar la plataforma como oyente.
+          {needsApproval ? (
+            <>
+              Tu solicitud como <strong className="text-white">{roleInfo?.label}</strong> está en revisión.
+              Mientras tanto puedes explorar el bioma como oyente.
+            </>
+          ) : (
+            <>
+              Te enviamos un enlace de verificación. Actívalo para que tu organismo quede conectado al bioma.
+            </>
+          )}
         </p>
       </div>
       <Link
@@ -300,7 +352,7 @@ function PendingView({ role }) {
 const SignupPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signup } = useAuth();
+  const { currentUser, signup, signInWithProvider } = useAuth();
   const [step, setStep] = useState('role');   // 'role' | 'details' | 'pending'
   const [selectedRole, setSelectedRole] = useState('citizen');
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -310,6 +362,10 @@ const SignupPage = () => {
   const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//')
     ? requestedNext
     : '/';
+
+  useEffect(() => {
+    if (currentUser) navigate(nextPath, { replace: true });
+  }, [currentUser, navigate, nextPath]);
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -336,15 +392,23 @@ const SignupPage = () => {
 
     if (error) return;
 
-    if (selectedRole === 'citizen') {
+    if (selectedRole === 'citizen' && data?.session) {
       navigate(nextPath);
     } else {
       setStep('pending');
     }
   };
 
+  const handleSocial = async (provider) => {
+    setFormError('');
+    setIsLoading(true);
+    const { error } = await signInWithProvider(provider, nextPath, selectedRole);
+    setIsLoading(false);
+    if (error) setFormError(error.message);
+  };
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-12 overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-8 sm:py-12 overflow-hidden">
       <div className="poly-texture" />
       <Helmet>
         <title>Crear cuenta — POLYFAUNA</title>
@@ -358,9 +422,11 @@ const SignupPage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="poly-surface rounded-[2.5rem] p-8 md:p-10 shadow-2xl">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <Logo size="lg" />
+        <div className="poly-surface rounded-[2rem] sm:rounded-[2.5rem] p-7 sm:p-8 md:p-10 shadow-2xl">
+          <div className="flex items-center justify-center gap-3 mb-7 sm:mb-8">
+            <div className="w-[210px] sm:w-[250px]">
+              <Logo variant="header" />
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -379,6 +445,7 @@ const SignupPage = () => {
                 onChange={handleChange}
                 onBack={() => setStep('role')}
                 onSubmit={handleSubmit}
+                onSocial={handleSocial}
                 isLoading={isLoading}
                 formError={formError}
                 selectedRole={selectedRole}
