@@ -79,30 +79,6 @@ function StrengthBar({ password }) {
   );
 }
 
-function SocialButton({ provider, label, mark, onClick, disabled }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onClick(provider)}
-      disabled={disabled}
-      className="h-12 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-50"
-      style={{
-        background: 'rgba(255,255,255,0.045)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        color: 'rgba(255,255,255,0.82)',
-      }}
-    >
-      <span
-        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
-        style={{ background: 'rgba(255,255,255,0.9)', color: '#080D0B' }}
-      >
-        {mark}
-      </span>
-      {label}
-    </button>
-  );
-}
-
 // ── Step 1: Role selector ─────────────────────────────────────────────────────
 
 function RoleStep({ selected, onSelect, onNext }) {
@@ -190,7 +166,7 @@ function RoleStep({ selected, onSelect, onNext }) {
 
 // ── Step 2: Account details ───────────────────────────────────────────────────
 
-function DetailsStep({ formData, onChange, onBack, onSubmit, onSocial, isLoading, formError, selectedRole }) {
+function DetailsStep({ formData, onChange, onBack, onSubmit, isLoading, formError, selectedRole }) {
   const role = ROLES.find(r => r.id === selectedRole);
   const passwordsMatch = formData.confirmPassword && formData.password === formData.confirmPassword;
 
@@ -220,17 +196,6 @@ function DetailsStep({ formData, onChange, onBack, onSubmit, onSocial, isLoading
             </p>
           )}
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <SocialButton provider="google" label="Google" mark="G" onClick={onSocial} disabled={isLoading} />
-        <SocialButton provider="facebook" label="Facebook" mark="f" onClick={onSocial} disabled={isLoading} />
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/25">o registra correo</span>
-        <div className="h-px flex-1 bg-white/10" />
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
@@ -352,7 +317,7 @@ function PendingView({ role }) {
 const SignupPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentUser, signup, signInWithProvider } = useAuth();
+  const { currentUser, signup } = useAuth();
   const [step, setStep] = useState('role');   // 'role' | 'details' | 'pending'
   const [selectedRole, setSelectedRole] = useState('citizen');
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -399,14 +364,6 @@ const SignupPage = () => {
     }
   };
 
-  const handleSocial = async (provider) => {
-    setFormError('');
-    setIsLoading(true);
-    const { error } = await signInWithProvider(provider, nextPath, selectedRole);
-    setIsLoading(false);
-    if (error) setFormError(error.message);
-  };
-
   return (
     <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-8 sm:py-12 overflow-hidden">
       <div className="poly-texture" />
@@ -445,7 +402,6 @@ const SignupPage = () => {
                 onChange={handleChange}
                 onBack={() => setStep('role')}
                 onSubmit={handleSubmit}
-                onSocial={handleSocial}
                 isLoading={isLoading}
                 formError={formError}
                 selectedRole={selectedRole}

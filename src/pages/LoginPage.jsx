@@ -198,34 +198,10 @@ function ForgotPasswordView({ onBack }) {
 }
 
 // ── Login view ────────────────────────────────────────────────────────────────
-function SocialButton({ provider, label, mark, onClick, disabled }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onClick(provider)}
-      disabled={disabled}
-      className="h-12 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-50"
-      style={{
-        background: 'rgba(255,255,255,0.045)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        color: 'rgba(255,255,255,0.82)',
-      }}
-    >
-      <span
-        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
-        style={{ background: 'rgba(255,255,255,0.9)', color: '#080D0B' }}
-      >
-        {mark}
-      </span>
-      {label}
-    </button>
-  );
-}
-
 const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentUser, login, signInWithProvider, isLoading, recoveryMode } = useAuth();
+  const { currentUser, login, isLoading, recoveryMode } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
@@ -248,12 +224,6 @@ const LoginPage = () => {
     if (!email || !password) { setFormError('Por favor completa todos los campos.'); return; }
     const { error } = await login(email, password);
     if (!error) { navigate(nextPath); }
-  };
-
-  const handleProvider = async (provider) => {
-    setFormError('');
-    const { error } = await signInWithProvider(provider, nextPath);
-    if (error) setFormError(error.message);
   };
 
   return (
@@ -298,17 +268,6 @@ const LoginPage = () => {
                   <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'rgba(184,207,166,0.62)' }}>
                     Entra a tu organismo: música guardada, tickets, comunidad y señales del ecosistema Polyfauna.
                   </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  <SocialButton provider="google" label="Google" mark="G" onClick={handleProvider} disabled={isLoading} />
-                  <SocialButton provider="facebook" label="Facebook" mark="f" onClick={handleProvider} disabled={isLoading} />
-                </div>
-
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/25">o con correo</span>
-                  <div className="h-px flex-1 bg-white/10" />
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
