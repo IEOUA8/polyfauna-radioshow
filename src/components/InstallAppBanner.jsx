@@ -18,6 +18,14 @@ function isSafari() {
   return /^((?!chrome|android|crios|fxios).)*safari/i.test(window.navigator.userAgent || '');
 }
 
+function isMobileInstallContext() {
+  const ua = window.navigator.userAgent || '';
+  const mobileUA = /android|iphone|ipad|ipod|mobile/i.test(ua);
+  const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
+  const compactViewport = window.matchMedia?.('(max-width: 820px)').matches;
+  return mobileUA || (coarsePointer && compactViewport);
+}
+
 export default function InstallAppBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [visible, setVisible] = useState(false);
@@ -25,6 +33,7 @@ export default function InstallAppBanner() {
   const iosInstall = useMemo(() => isIOS() && isSafari(), []);
 
   useEffect(() => {
+    if (!isMobileInstallContext()) return undefined;
     if (isStandalone()) return undefined;
 
     const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0);
@@ -71,7 +80,7 @@ export default function InstallAppBanner() {
     if (iosInstall) setShowIOSSteps(true);
   };
 
-  if (!deferredPrompt && !iosInstall) return null;
+  if (!isMobileInstallContext() || (!deferredPrompt && !iosInstall)) return null;
 
   return (
     <AnimatePresence>
