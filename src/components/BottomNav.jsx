@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Headphones, Lock, Music, Radio, User } from 'lucide-react';
+import { Dna, Headphones, Lock, Music, Radio, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
   { id: 'radio-console', icon: Radio,     label: 'Radio',    public: true  },
   { id: 'podcasts',      icon: Headphones, label: 'Podcasts', public: true  },
-  { id: 'events',        icon: Calendar,  label: 'Eventos',  public: false },
   { id: 'music',         icon: Music,     label: 'Música',   public: false },
+  { id: 'organism',      icon: Dna,       label: 'Organismo', public: false },
   { id: 'mi-panel',      icon: User,      label: 'Perfil',   public: false },
 ];
 
@@ -18,7 +18,8 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
       style={{
-        height: 56,
+        height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         background: 'rgba(4,8,8,0.97)',
         backdropFilter: 'blur(48px) saturate(200%)',
         WebkitBackdropFilter: 'blur(48px) saturate(200%)',
@@ -26,7 +27,7 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
         boxShadow: '0 -8px 32px rgba(0,0,0,0.6)',
       }}
     >
-      <div className="flex items-stretch justify-around h-full px-1">
+      <div className="flex items-stretch justify-around h-[56px] px-1">
         {NAV_ITEMS.map(({ id, icon: Icon, label, public: isPublic }) => {
           const isActive = currentSection === id;
           const locked   = !isPublic && !currentUser;
@@ -36,6 +37,9 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
               key={id}
               type="button"
               onClick={() => !locked && setCurrentSection(id)}
+              disabled={locked}
+              aria-current={isActive && !locked ? 'page' : undefined}
+              aria-label={locked ? `${label}. Inicia sesión para acceder` : label}
               className="flex flex-col items-center justify-center gap-0.5 flex-1 relative transition-none"
               title={locked ? 'Inicia sesión para acceder' : undefined}
             >

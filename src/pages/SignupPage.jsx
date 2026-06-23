@@ -306,6 +306,10 @@ const SignupPage = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const requestedNext = searchParams.get('next');
+  const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//')
+    ? requestedNext
+    : '/';
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -333,7 +337,7 @@ const SignupPage = () => {
     if (error) return;
 
     if (selectedRole === 'citizen') {
-      navigate(searchParams.get('next') || '/');
+      navigate(nextPath);
     } else {
       setStep('pending');
     }
@@ -343,7 +347,10 @@ const SignupPage = () => {
     <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-12 overflow-hidden">
       <div className="poly-texture" />
       <Helmet>
-        <title>Crear Cuenta - POLYFAUNA</title>
+        <title>Crear cuenta — POLYFAUNA</title>
+        <meta name="description" content="Crea tu cuenta POLYFAUNA y accede a radio, podcasts, favoritos, comunidad, eventos y tickets." />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href="https://www.polyfauna.com/signup" />
       </Helmet>
 
       <motion.div
@@ -386,7 +393,7 @@ const SignupPage = () => {
             <div className="mt-6 text-center pt-5 border-t border-white/5">
               <p className="text-sm text-white/40">
                 ¿Ya tienes cuenta?{' '}
-                <Link to="/login" className="text-white/80 hover:text-white font-bold transition-colors">
+                <Link to={`/login?next=${encodeURIComponent(nextPath)}`} className="text-white/80 hover:text-white font-bold transition-colors">
                   Iniciar sesión
                 </Link>
               </p>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+  <g stroke="#1C1C1C" stroke-width="1">
+    <path d="M0 105H1200M0 315H1200M0 525H1200"/>
+    <path d="M200 0V630M600 0V630M1000 0V630"/>
+  </g>
+  <text x="76" y="67" fill="#8C8C8C" font-family="IBM Plex Mono, monospace" font-size="16" letter-spacing="4">BIOMA SONORO · COLOMBIA</text>
+  <g transform="translate(64 128) scale(1.55)">
+    <g fill="none" stroke="#ECECEC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M111 102 Q98 78 84 54"/><path d="M130 102 Q142 78 152 56"/>
+      <path d="M101 134 Q80 146 62 160"/><path d="M117 153 Q112 178 108 202"/>
+      <path d="M141 132 Q168 138 190 150"/>
+    </g>
+    <path d="M120 96 C139 96 147 111 146 126 C145 145 137 158 120 158 C103 158 95 145 95 126 C95 111 101 96 120 96 Z" fill="#ECECEC"/>
+    <circle cx="129" cy="132" r="6" fill="#0A0A0A"/>
+    <g fill="#ECECEC"><circle cx="84" cy="54" r="7"/><circle cx="152" cy="56" r="7"/><circle cx="62" cy="160" r="7"/><circle cx="108" cy="202" r="7"/><circle cx="190" cy="150" r="7"/></g>
+  </g>
+  <text x="410" y="312" fill="#ECECEC" font-family="Jost, Helvetica, sans-serif" font-size="82" font-weight="300" letter-spacing="24">POLYFAUNA</text>
+  <text x="414" y="373" fill="#8C8C8C" font-family="Jost, Helvetica, sans-serif" font-size="21" font-weight="300" letter-spacing="11">RADIO · PODCASTS · EVENTS</text>
+  <text x="76" y="571" fill="#5E5E5E" font-family="IBM Plex Mono, monospace" font-size="14" letter-spacing="3">TECHNO · EXPERIMENTAL · CULTURA ELECTRÓNICA</text>
+  <text x="1124" y="571" fill="#ECECEC" font-family="IBM Plex Mono, monospace" font-size="14" text-anchor="end">POLYFAUNA.COM</text>
+</svg>

@@ -15,28 +15,46 @@ import { useToast } from '@/components/ui/use-toast';
 
 // ── BroadcastPanel ────────────────────────────────────────────────────────────
 
+const EMPTY_BROADCAST_FORM = {
+  templateType: 'generic', subject: '', title: '', body: '', ctaLabel: '', ctaUrl: '',
+  programName: '', artist: '', datetime: '', genre: '', bpm: '', listenUrl: '',
+  eventName: '', eventDate: '', eventVenue: '', lineup: '', eventImage: '', ticketsUrl: '',
+  event2Name: '', event2Date: '', event2Venue: '',
+};
+
 function BroadcastPanel() {
   const { toast } = useToast();
-  const [form, setForm] = useState({ subject: '', title: '', body: '', ctaLabel: '', ctaUrl: '' });
+  const [form, setForm] = useState(EMPTY_BROADCAST_FORM);
   const [sending, setSending] = useState(false);
   const [open, setOpen] = useState(false);
 
   const handleSend = useCallback(async () => {
-    if (!form.subject.trim() || !form.title.trim() || !form.body.trim()) return;
+    if (!form.subject.trim()) return;
     setSending(true);
     try {
       const { error } = await supabase.functions.invoke('send-community-broadcast', {
-        body: { ...form, adminSecret: import.meta.env.VITE_BROADCAST_SECRET },
+        body: {
+          ...form,
+          templateData: form,
+        },
       });
       if (error) throw new Error(error.message);
       toast({ title: 'Broadcast enviado', description: 'Emails en camino a toda la comunidad.' });
-      setForm({ subject: '', title: '', body: '', ctaLabel: '', ctaUrl: '' });
+      setForm(EMPTY_BROADCAST_FORM);
       setOpen(false);
     } catch (err) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
     setSending(false);
   }, [form, toast]);
+
+  const isReady = form.subject.trim() && (
+    form.templateType === 'radio-special'
+      ? ['programName', 'artist', 'datetime', 'genre', 'bpm', 'listenUrl'].every(key => form[key].trim())
+      : form.templateType === 'upcoming-events'
+        ? ['eventName', 'eventDate', 'eventVenue', 'lineup', 'eventImage', 'ticketsUrl', 'event2Name', 'event2Date', 'event2Venue'].every(key => form[key].trim())
+        : form.title.trim() && form.body.trim()
+  );
 
   const field = (key, placeholder, tag = 'input') => {
     const style = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'white', width: '100%', borderRadius: '10px', padding: '10px 12px', fontSize: '13px', outline: 'none', resize: 'vertical' };
@@ -59,16 +77,48 @@ function BroadcastPanel() {
           <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
             <div className="px-4 pb-4 space-y-3" style={{ borderTop: '1px solid rgba(245,158,11,0.12)' }}>
               <div className="pt-3 space-y-2.5">
+                <select
+                  value={form.templateType}
+                  onChange={e => setForm(p => ({ ...p, templateType: e.target.value }))}
+                  aria-label="Plantilla del broadcast"
+                  className="w-full rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+                  style={{ background: '#171717', border: '1px solid rgba(255,255,255,0.09)', color: 'white' }}
+                >
+                  <option value="generic">Mensaje general</option>
+                  <option value="radio-special">Programa de radio especial</option>
+                  <option value="upcoming-events">Eventos próximos</option>
+                </select>
                 {field('subject',  'Asunto del email (ej. "Nuevo podcast disponible")')}
-                {field('title',    'Título principal del email')}
-                {field('body',     'Contenido del mensaje…', 'textarea')}
-                {field('ctaLabel', 'Texto del botón (opcional, ej. "Escuchar ahora")')}
-                {field('ctaUrl',   'URL del botón (opcional)')}
+                {form.templateType === 'generic' && <>
+                  {field('title',    'Título principal del email')}
+                  {field('body',     'Contenido del mensaje…', 'textarea')}
+                  {field('ctaLabel', 'Texto del botón (opcional, ej. "Escuchar ahora")')}
+                  {field('ctaUrl',   'URL del botón (opcional)')}
+                </>}
+                {form.templateType === 'radio-special' && <>
+                  {field('programName', 'Nombre del programa')}
+                  {field('artist', 'Selector / artista')}
+                  {field('datetime', 'Fecha y horario')}
+                  {field('genre', 'Hábitat / género')}
+                  {field('bpm', 'BPM')}
+                  {field('listenUrl', 'URL para escuchar')}
+                </>}
+                {form.templateType === 'upcoming-events' && <>
+                  {field('eventName', 'Evento destacado')}
+                  {field('eventDate', 'Fecha del evento destacado')}
+                  {field('eventVenue', 'Lugar del evento destacado')}
+                  {field('lineup', 'Lineup')}
+                  {field('eventImage', 'URL pública del flyer')}
+                  {field('ticketsUrl', 'URL de tickets')}
+                  {field('event2Name', 'Evento secundario')}
+                  {field('event2Date', 'Fecha del evento secundario')}
+                  {field('event2Venue', 'Lugar del evento secundario')}
+                </>}
               </div>
               <button
                 type="button"
                 onClick={handleSend}
-                disabled={sending || !form.subject.trim() || !form.title.trim() || !form.body.trim()}
+                disabled={sending || !isReady}
                 className="w-full py-2.5 rounded-xl text-sm font-black disabled:opacity-40 flex items-center justify-center gap-2"
                 style={{ background: '#F59E0B', color: '#080B14' }}
               >
@@ -288,7 +338,7 @@ export default function MyPanel({ setCurrentSection }) {
                       <a href={profile.website} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs transition-colors hover:text-white/60"
                         style={{ color: 'rgba(255,255,255,0.28)' }}>
-                        <Link className="w-3 h-3" />
+                        <LinkIcon className="w-3 h-3" />
                         {profile.website.replace(/^https?:\/\//, '')}
                       </a>
                     )}

@@ -1,20 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, ArrowLeft, CheckCircle, Loader2, QrCode, RefreshCw, ScanLine, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, CloudUpload, Download, Loader2, QrCode, RefreshCw, ScanLine, Wifi, WifiOff, XCircle } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '@/lib/customSupabaseClient';
+import { parseTicketQRPayload } from '@/lib/tickets';
+import { downloadEventPack, getOfflineScannerState, syncOfflineScans, validateTicketOffline } from '@/lib/offlineTickets';
 import { useAuth } from '@/contexts/AuthContext';
-
-/* ── Extraer UUID del payload del QR ── */
-function parseQRPayload(raw) {
-  // Formato: polyfauna://ticket/{uuid}
-  const match = raw.match(/polyfauna:\/\/ticket\/([0-9a-f-]{36})/i);
-  if (match) return match[1];
-  // Fallback: si escanearon directamente un UUID
-  if (/^[0-9a-f-]{36}$/i.test(raw.trim())) return raw.trim();
-  return null;
-}
 
 /* ── Pantalla de resultado fullscreen ── */
 function ResultScreen({ result, onScanNext }) {
@@ -44,7 +36,7 @@ function ResultScreen({ result, onScanNext }) {
 
       <div>
         <p className="text-2xl font-black text-white">
-          {isValid ? '¡Acceso autorizado!' : isUsed ? 'Ticket ya usado' : 'Ticket inválido'}
+          {isValid ? (result.offline ? 'Acceso offline registrado' : '¡Acceso autorizado!') : isUsed ? 'Ticket ya usado' : 'Ticket inválido'}
         </p>
         {result.event_title && (
           <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -59,6 +51,11 @@ function ResultScreen({ result, onScanNext }) {
         {result.ticket_number && (
           <p className="text-xs font-mono mt-3" style={{ color: 'rgba(255,255,255,0.25)' }}>
             #{result.ticket_number}
+          </p>
+        )}
+        {result.pendingSync && (
+          <p className="text-xs mt-3 font-bold" style={{ color: '#f59e0b' }}>
+            Pendiente de sincronizar con Polyfauna
           </p>
         )}
         {!isValid && (
@@ -223,6 +220,42 @@ export default function ValidatePage() {
   const [checking, setChecking] = useState(false);
   const [eventName, setEventName] = useState('');
   const [scanKey, setScanKey] = useState(0); // re-mount scanner on "next scan"
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [offlineState, setOfflineState] = useState({ ready: false, pending: 0, ticketCount: 0, cachedAt: null });
+  const [offlineBusy, setOfflineBusy] = useState(false);
+
+  const refreshOfflineState = useCallback(async () => {
+    setOfflineState(await getOfflineScannerState(eventId));
+  }, [eventId]);
+
+  const prepareOffline = useCallback(async () => {
+    if (!eventId) return;
+    setOfflineBusy(true);
+    try {
+      await downloadEventPack(eventId);
+      await refreshOfflineState();
+    } catch (error) {
+      setResult({ code: 'ERROR', error: error.message || 'No se pudo descargar el evento' });
+      setPhase('result');
+    } finally {
+      setOfflineBusy(false);
+    }
+  }, [eventId, refreshOfflineState]);
+
+  const syncPending = useCallback(async () => {
+    if (!navigator.onLine) return;
+    setOfflineBusy(true);
+    try {
+      await syncOfflineScans();
+      await refreshOfflineState();
+      if (eventId) await downloadEventPack(eventId);
+      await refreshOfflineState();
+    } catch (_) {
+      // La cola permanece intacta para el siguiente intento.
+    } finally {
+      setOfflineBusy(false);
+    }
+  }, [eventId, refreshOfflineState]);
 
   // Carga nombre del evento si viene en params
   useEffect(() => {
@@ -231,26 +264,56 @@ export default function ValidatePage() {
       .then(({ data }) => { if (data) setEventName(data.title); });
   }, [eventId]);
 
-  const handleValidate = useCallback(async (ticketId) => {
+  useEffect(() => {
+    refreshOfflineState().catch(() => {});
+    const onOnline = () => { setOnline(true); syncPending(); };
+    const onOffline = () => setOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [refreshOfflineState, syncPending]);
+
+  const handleValidate = useCallback(async (rawText) => {
     if (checking) return;
     setChecking(true);
     setPhase('checking');
 
-    const { data, error } = await supabase.rpc('validate_ticket', { p_ticket_id: ticketId });
+    const ticketId = parseTicketQRPayload(rawText);
+    if (!ticketId) {
+      setResult({ code: 'INVALID_QR', error: 'El código no pertenece a Polyfauna' });
+      setChecking(false);
+      setPhase('result');
+      return;
+    }
 
-    if (error) {
-      setResult({ code: 'ERROR', error: error.message });
-    } else {
+    let data = null;
+    let error = null;
+    if (navigator.onLine) {
+      const rpcName = eventId ? 'validate_ticket_for_event' : 'validate_ticket';
+      const params = eventId
+        ? { p_ticket_id: ticketId, p_event_id: eventId }
+        : { p_ticket_id: ticketId };
+      ({ data, error } = await supabase.rpc(rpcName, params));
+    }
+
+    if (data && !error) {
       setResult(data);
+    } else {
+      const offlineResult = await validateTicketOffline(rawText, eventId);
+      setResult(error && offlineResult.code === 'OFFLINE_NOT_READY'
+        ? { code: 'ERROR', error: error.message }
+        : offlineResult);
+      await refreshOfflineState();
     }
     setChecking(false);
     setPhase('result');
-  }, [checking]);
+  }, [checking, eventId, refreshOfflineState]);
 
   const handleDetected = useCallback((rawText) => {
-    const uuid = parseQRPayload(rawText);
-    if (!uuid) return; // QR que no es un ticket de PolyFauna, ignorar
-    handleValidate(uuid);
+    handleValidate(rawText);
   }, [handleValidate]);
 
   const handleScanNext = () => {
@@ -329,6 +392,24 @@ export default function ValidatePage() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4 py-8 relative overflow-hidden">
+        {eventId && phase === 'scanning' && (
+          <div className="w-full max-w-md rounded-2xl p-3 flex items-center gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {online ? <Wifi className="w-4 h-4 text-green-400 shrink-0" /> : <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white">{online ? 'Conectado' : offlineState.ready ? 'Modo offline listo' : 'Sin conexión'}</p>
+              <p className="text-[10px] text-white/35 truncate">
+                {offlineState.ready ? `${offlineState.ticketCount} tickets en caché` : 'Descarga el evento antes de abrir puertas'}
+                {offlineState.pending > 0 ? ` · ${offlineState.pending} pendientes` : ''}
+              </p>
+            </div>
+            <button type="button" onClick={offlineState.pending ? syncPending : prepareOffline} disabled={offlineBusy || (!online && !offlineState.ready)}
+              className="px-3 py-2 rounded-xl text-[10px] font-black flex items-center gap-1.5 disabled:opacity-40"
+              style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+              {offlineBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : offlineState.pending ? <CloudUpload className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+              {offlineState.pending ? 'Sincronizar' : offlineState.ready ? 'Actualizar' : 'Preparar'}
+            </button>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {phase === 'result' && result ? (
             <ResultScreen key="result" result={result} onScanNext={handleScanNext} />

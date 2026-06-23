@@ -89,17 +89,40 @@ export default function ArtistPublicPage() {
   const genres = artist.genres
     ? (Array.isArray(artist.genres) ? artist.genres : String(artist.genres).split(',').map(g => g.trim()))
     : [];
+  const canonicalUrl = `https://www.polyfauna.com/artist/${artist.slug || slug}`;
+  const seoDescription = artist.bio || `${artist.name}, artista de música electrónica en POLYFAUNA Radio, podcasts y eventos.`;
+  const sameAs = Object.values(links).filter(value => typeof value === 'string' && /^https?:\/\//.test(value));
 
   return (
     <>
       <Helmet>
         <title>{artist.name} — POLYFAUNA</title>
-        <meta name="description" content={artist.bio || `${artist.name} en POLYFAUNA Radio & Events`} />
+        <meta name="description" content={seoDescription} />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:site_name"   content="POLYFAUNA" />
+        <meta property="og:locale"      content="es_CO" />
         <meta property="og:title"       content={`${artist.name} — POLYFAUNA`} />
-        <meta property="og:description" content={artist.bio || `${artist.name} en POLYFAUNA`} />
+        <meta property="og:description" content={seoDescription} />
         <meta property="og:image"       content={img} />
+        <meta property="og:image:alt"   content={`${artist.name} en POLYFAUNA`} />
+        <meta property="og:url"         content={canonicalUrl} />
         <meta property="og:type"        content="profile" />
         <meta name="twitter:card"       content="summary_large_image" />
+        <meta name="twitter:title"      content={`${artist.name} — POLYFAUNA`} />
+        <meta name="twitter:description" content={seoDescription} />
+        <meta name="twitter:image"      content={img} />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'MusicGroup',
+          name: artist.name,
+          description: seoDescription,
+          image: img,
+          genre: genres,
+          url: canonicalUrl,
+          sameAs,
+          memberOf: { '@type': 'Organization', name: 'POLYFAUNA', url: 'https://www.polyfauna.com/' },
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen poly-bg text-white font-sans">

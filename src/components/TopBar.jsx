@@ -9,7 +9,7 @@ const TYPE_META = {
   podcasts:      { label: 'Podcast',  icon: Headphones,  section: 'podcasts', imgKey: 'cover_url',          nameKey: 'title' },
   artists:       { label: 'Artista',  icon: Disc3,       section: 'artists',  imgKey: 'image_url',          nameKey: 'name'  },
   albums:        { label: 'Álbum',    icon: Music,       section: 'music',    imgKey: 'cover_url',          nameKey: 'title' },
-  blog_articles: { label: 'Blog',     icon: FileText,    section: 'blog',     imgKey: 'cover_url',          nameKey: 'title' },
+  blog_articles: { label: 'Blog',     icon: FileText,    section: 'blog',     imgKey: 'featured_image_url', nameKey: 'title' },
 };
 
 const FALLBACK  = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=80&auto=format&fit=crop';
@@ -59,7 +59,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
         supabase.from('podcasts').select('id, title, cover_url').ilike('title', `%${q}%`).limit(3),
         supabase.from('artists').select('id, name, image_url').ilike('name', `%${q}%`).limit(3),
         supabase.from('albums').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
-        supabase.from('blog_articles').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
+        supabase.from('blog_articles').select('id, title, featured_image_url').ilike('title', `%${q}%`).limit(2),
       ]);
       const merged = [
         ...(evRes.data  || []).map(r => ({ ...r, _type: 'events'        })),
@@ -151,8 +151,10 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
         initial={{ y: -56, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 280, damping: 30 }}
-        className="h-16 flex items-center gap-3 px-4 md:px-5 shrink-0 sticky top-0 z-30"
+        className="min-h-[64px] flex items-center gap-3 px-4 md:px-5 shrink-0 sticky top-0 z-30"
         style={{
+          height: 'calc(64px + env(safe-area-inset-top, 0px))',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
           background: 'rgba(8, 12, 11, 0.80)',
           backdropFilter: 'blur(40px) saturate(200%)',
           WebkitBackdropFilter: 'blur(40px) saturate(200%)',

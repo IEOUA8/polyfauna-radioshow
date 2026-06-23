@@ -209,21 +209,27 @@ const LoginPage = () => {
 
   // PASSWORD_RECOVERY session detected → show reset form
   const effectiveMode = recoveryMode ? 'reset' : mode;
+  const requestedNext = searchParams.get('next');
+  const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//')
+    ? requestedNext
+    : '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
     if (!email || !password) { setFormError('Por favor completa todos los campos.'); return; }
     const { error } = await login(email, password);
-    if (!error) { navigate(searchParams.get('next') || '/'); }
+    if (!error) { navigate(nextPath); }
   };
 
   return (
     <div className="relative min-h-screen flex items-center justify-center poly-bg px-4 py-12 overflow-hidden">
       <div className="poly-texture" />
       <Helmet>
-        <title>Login - POLYFAUNA - Fractal Radio / Experimental Electronic Broadcast</title>
-        <meta name="description" content="Login to your POLYFAUNA account" />
+        <title>Iniciar sesión — POLYFAUNA</title>
+        <meta name="description" content="Inicia sesión en POLYFAUNA para guardar música, gestionar tickets y participar en la comunidad." />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href="https://www.polyfauna.com/login" />
       </Helmet>
 
       <motion.div
@@ -313,7 +319,7 @@ const LoginPage = () => {
                 <div className="mt-8 text-center pt-6 border-t border-white/5">
                   <p className="text-muted-foreground">
                     ¿No tienes cuenta?{' '}
-                    <Link to="/signup" className="text-white hover:text-primary font-bold transition-colors">
+                    <Link to={`/signup?next=${encodeURIComponent(nextPath)}`} className="text-white hover:text-primary font-bold transition-colors">
                       Regístrate
                     </Link>
                   </p>

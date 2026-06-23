@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, CheckCircle, Clock, Download, MapPin, Ticket, X, XCircle } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/customSupabaseClient';
+import { buildTicketQRPayload } from '@/lib/tickets';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { CardSkeleton, EmptyState, ErrorState, LoginRequired } from '@/components/SectionStates';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,11 +16,12 @@ const STATUS_CONFIG = {
   used:  { label: 'Usado',   color: 'rgba(255,255,255,0.25)', Icon: XCircle },
 };
 
-function qrPayload(ticket) {
-  return `polyfauna://ticket/${ticket.id}`;
+function qrPayload(ticket, signedToken) {
+  return signedToken || buildTicketQRPayload(ticket.id);
 }
 
 async function generateTicketPDF(ticket, qrCanvas) {
+  const { jsPDF } = await import('jspdf');
   const event = ticket.events;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [85, 170] });
 
@@ -123,7 +124,7 @@ async function generateTicketPDF(ticket, qrCanvas) {
 }
 
 /* ── QR Modal ── */
-function QRModal({ ticket, onClose }) {
+function QRModal({ ticket, qrValue, onClose }) {
   const event  = ticket.events;
   const status = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.valid;
   const StatusIcon = status.Icon;
@@ -201,7 +202,7 @@ function QRModal({ ticket, onClose }) {
               }}
             >
               <QRCodeSVG
-                value={qrPayload(ticket)}
+                value={qrValue}
                 size={200}
                 bgColor="#ffffff"
                 fgColor="#080B14"
@@ -250,7 +251,7 @@ function QRModal({ ticket, onClose }) {
           <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
             <QRCodeCanvas
               ref={qrCanvasRef}
-              value={qrPayload(ticket)}
+              value={qrValue}
               size={200}
               bgColor="#ffffff"
               fgColor="#080B14"
@@ -265,7 +266,7 @@ function QRModal({ ticket, onClose }) {
 }
 
 /* ── Ticket Card ── */
-function TicketCard({ ticket, index, onShowQR }) {
+function TicketCard({ ticket, qrValue, index, onShowQR }) {
   const event  = ticket.events;
   const status = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.valid;
   const StatusIcon = status.Icon;
@@ -332,7 +333,7 @@ function TicketCard({ ticket, index, onShowQR }) {
           title="Ver QR"
         >
           <QRCodeSVG
-            value={qrPayload(ticket)}
+            value={qrValue}
             size={44}
             bgColor="#ffffff"
             fgColor="#080B14"
@@ -356,6 +357,7 @@ function TicketCard({ ticket, index, onShowQR }) {
 export default function TicketVault() {
   const { currentUser } = useAuth();
   const [activeTicket, setActiveTicket] = useState(null);
+  const [signedTokens, setSignedTokens] = useState({});
 
   const { data: tickets, loading, error, refetch } = useSupabaseQuery(
     () => currentUser
@@ -363,6 +365,20 @@ export default function TicketVault() {
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );
+
+  useEffect(() => {
+    if (!tickets?.length) return;
+    let active = true;
+    Promise.all(tickets.map(async ticket => {
+      const { data, error: tokenError } = await supabase.functions.invoke('ticket-qr', {
+        body: { ticketId: ticket.id },
+      });
+      return [ticket.id, tokenError ? buildTicketQRPayload(ticket.id) : data?.token];
+    })).then(entries => {
+      if (active) setSignedTokens(Object.fromEntries(entries.filter(([, token]) => token)));
+    });
+    return () => { active = false; };
+  }, [tickets]);
 
   if (!currentUser) return <div className="p-5"><LoginRequired message="Inicia sesión para ver tus entradas." /></div>;
 
@@ -385,6 +401,7 @@ export default function TicketVault() {
               <TicketCard
                 key={ticket.id}
                 ticket={ticket}
+                qrValue={qrPayload(ticket, signedTokens[ticket.id])}
                 index={i}
                 onShowQR={setActiveTicket}
               />
@@ -394,7 +411,11 @@ export default function TicketVault() {
       </div>
 
       {activeTicket && (
-        <QRModal ticket={activeTicket} onClose={() => setActiveTicket(null)} />
+        <QRModal
+          ticket={activeTicket}
+          qrValue={qrPayload(activeTicket, signedTokens[activeTicket.id])}
+          onClose={() => setActiveTicket(null)}
+        />
       )}
     </>
   );

@@ -78,27 +78,29 @@ export const AuthProvider = ({ children }) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name } },
+        options: { data: { name, requested_role: role } },
       });
       if (error) throw error;
 
-      // If non-citizen role requested, create a role_request after signup
-      if (role !== 'citizen' && data?.user?.id) {
-        await supabase.from('role_requests').insert({
-          user_id: data.user.id,
-          requested_role: role,
-          status: 'pending',
-          form_data: { name, email },
-        });
-        // Notify user + admin via email
-        supabase.functions.invoke('send-role-request', {
-          body: { requestedRole: role, userName: name, userEmail: email },
-        }).catch(() => {});
+      // The database trigger creates the request even when email confirmation
+      // means Supabase has not issued a session yet.
+      if (role !== 'citizen' && data?.session) {
+        const { data: roleRequest } = await supabase
+          .from('role_requests')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (roleRequest?.id) {
+          supabase.functions.invoke('send-role-request', {
+            body: { requestId: roleRequest.id },
+          }).catch(() => {});
+        }
       }
 
       // Send welcome email
       supabase.functions.invoke('send-welcome', {
-        body: { userId: data?.user?.id, email, name },
+        body: { userId: data?.user?.id, name },
       }).catch(() => {});
 
       toast({ title: '¡Cuenta creada!', description: 'Bienvenido a POLYFAUNA.' });

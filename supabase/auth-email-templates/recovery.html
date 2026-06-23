@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es" style="margin:0;padding:0;">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>Restablece tu contraseña</title>
+<style>
+  :root{ color-scheme:dark; supported-color-schemes:dark; }
+  body{ margin:0 !important; padding:0 !important; background:#0A0A0A !important; background-color:#0A0A0A !important; color:#ECECEC !important; }
+  .email-bg{ background:#0A0A0A !important; background-color:#0A0A0A !important; }
+  .email-card{ background:#0E0E0E !important; background-color:#0E0E0E !important; }
+  @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  body,table,td{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  img{ border:0; line-height:100%; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+  a{ color:#ECECEC; }
+  @media only screen and (max-width:600px){
+    .px{ padding-left:24px !important; padding-right:24px !important; }
+    .h1{ font-size:24px !important; }
+  }
+</style>
+</head>
+<body bgcolor="#0A0A0A" style="margin:0 !important;padding:0 !important;background:#0A0A0A !important;background-color:#0A0A0A !important;color:#ECECEC !important;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#0A0A0A;font-size:1px;line-height:1px;">Una solicitud de acceso para tu cuenta de Polyfauna.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0A0A0A" class="email-bg" style="background:#0A0A0A !important;background-color:#0A0A0A !important;">
+<tr><td align="center" style="padding:34px 14px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0E0E0E" class="email-card" style="width:600px;max-width:600px;background:#0E0E0E !important;background-color:#0E0E0E !important;border:1px solid #1E1E1E;border-radius:18px;">
+<tr><td align="center" class="px" style="padding:38px 40px 6px;">
+<img src="https://www.polyfauna.com/icons/email-logo-header.png" alt="POLYFAUNA" width="188" style="display:block;width:188px;max-width:60%;height:auto;">
+</td></tr>
+<tr><td class="px" style="padding:26px 40px 0;"><p style="margin:0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;font-weight:500;letter-spacing:3px;color:#5E5E5E;text-transform:uppercase;">Señal de acceso</p></td></tr><tr><td class="px" style="padding:10px 40px 0;"><h1 class="h1" style="margin:0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-weight:300;font-size:29px;line-height:1.22;color:#ECECEC;letter-spacing:.2px;">Restablece tu contraseña.</h1></td></tr><tr><td class="px" style="padding:16px 40px 0;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.72;color:#9A9A9A;">Recibimos una solicitud para restablecer el acceso de <span style="color:#ECECEC;">{{ .Email }}</span>. Crea una nueva contraseña para volver al bioma.</p></td></tr><tr><td class="px" style="padding:30px 40px 6px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#ECECEC" style="border-radius:10px;"><a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:15px 30px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#0A0A0A;text-decoration:none;letter-spacing:.4px;border-radius:10px;">Crear nueva contraseña</a></td></tr></table></td></tr><tr><td class="px" style="padding:18px 40px 0;"><p style="margin:0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;line-height:1.6;color:#5E5E5E;word-break:break-all;">O copia este enlace:<br><span style="color:#8A8A8A;">{{ .ConfirmationURL }}</span></p></td></tr><tr><td class="px" style="padding:22px 40px 0;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.72;color:#9A9A9A;">Este enlace expira en 60 minutos. Si no fuiste tú quien lo solicitó, ignora este correo: tu cuenta sigue protegida.</p></td></tr><tr><td class="px" style="padding:34px 40px 0;"><div style="height:1px;background:#1E1E1E;line-height:1px;font-size:0;">&nbsp;</div></td></tr><tr><td class="px" style="padding:22px 40px 4px;"><p style="margin:0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-weight:300;letter-spacing:7px;font-size:14px;color:#ECECEC;">POLYFAUNA</p></td></tr><tr><td class="px" style="padding:6px 40px 0;"><p style="margin:0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:10px;letter-spacing:2px;color:#5E5E5E;text-transform:uppercase;">RADIO &#183; PODCASTS &#183; EVENTS</p></td></tr><tr><td class="px" style="padding:18px 40px 38px;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;line-height:1.7;color:#4E4E4E;">Recibes este correo porque formas parte del bioma Polyfauna.<br><a href="https://polyfauna.com" style="color:#6E6E6E;text-decoration:underline;">polyfauna.com</a><br>&copy; 2026 Polyfauna &#183; Pereira, Colombia</p></td></tr></table>
+</td></tr>
+</table>
+</body>
+</html>

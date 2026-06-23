@@ -63,7 +63,7 @@ export default function OnboardingModal() {
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-[70]"
+            className="fixed inset-0 z-[90]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -72,13 +72,19 @@ export default function OnboardingModal() {
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 z-[71] flex items-end sm:items-center justify-center p-4 pointer-events-none">
+          <div
+            className="fixed inset-0 z-[91] flex items-center justify-center p-4 pointer-events-none"
+            style={{
+              paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, y: 40, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="relative w-full max-w-sm rounded-3xl overflow-hidden pointer-events-auto"
+              className="relative w-full max-w-sm rounded-3xl overflow-y-auto pointer-events-auto max-h-[calc(100dvh-2rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]"
               style={{
                 background: 'rgba(7,11,10,0.98)',
                 border: '1px solid rgba(255,255,255,0.10)',
@@ -94,6 +100,7 @@ export default function OnboardingModal() {
               <button
                 type="button"
                 onClick={dismiss}
+                aria-label="Cerrar bienvenida"
                 className="absolute top-4 right-4 z-10 p-1.5 rounded-lg transition-colors"
                 style={{ color: 'rgba(255,255,255,0.30)', background: 'rgba(255,255,255,0.05)' }}
                 onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.70)'; }}
@@ -143,11 +150,17 @@ export default function OnboardingModal() {
                       key={i}
                       type="button"
                       onClick={() => setSlide(i)}
-                      animate={{ width: i === slide ? 20 : 6 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                      className="h-1.5 rounded-full"
-                      style={{ background: i === slide ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.16)' }}
-                    />
+                      aria-label={`Ir a la pantalla ${i + 1} de ${SLIDES.length}`}
+                      aria-current={i === slide ? 'step' : undefined}
+                      className="w-6 h-6 flex items-center justify-center rounded-full"
+                    >
+                      <motion.span
+                        animate={{ width: i === slide ? 20 : 6 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                        className="h-1.5 rounded-full"
+                        style={{ background: i === slide ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.16)' }}
+                      />
+                    </motion.button>
                   ))}
                 </div>
 

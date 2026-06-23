@@ -118,13 +118,15 @@ export default function EventPublicPage() {
     }
   };
 
-  const shareUrl  = `${window.location.origin}/e/${eventId}`;
   const isFree    = event && (!event.price || event.price === 0);
   const available = event ? (event.tickets_total || 0) - (event.tickets_sold || 0) : 0;
   const isSoldOut = event && available <= 0;
   const lineup    = event?.lineup
     ? (Array.isArray(event.lineup) ? event.lineup : String(event.lineup).split(','))
     : [];
+  const canonicalUrl = `https://www.polyfauna.com/e/${eventId}`;
+  const seoDescription = event?.description || `${event?.venue || 'Evento de música electrónica'} · ${formatDateLong(event?.date)}`;
+  const seoImage = event?.image_url || 'https://www.polyfauna.com/icons/og-cover.png';
 
   /* ── Loading ── */
   if (loading) {
@@ -153,17 +155,53 @@ export default function EventPublicPage() {
   return (
     <>
       <Helmet>
-        <title>{event.title} — PolyFauna</title>
-        <meta name="description" content={event.description || `${event.venue || ''} · ${formatDateLong(event.date)}`} />
-        <meta property="og:title"       content={event.title} />
-        <meta property="og:description" content={event.description || `${event.venue || ''} · ${formatDateLong(event.date)}`} />
-        <meta property="og:image"       content={event.image_url || FALLBACK} />
-        <meta property="og:url"         content={shareUrl} />
+        <title>{event.title} — Eventos POLYFAUNA</title>
+        <meta name="description" content={seoDescription} />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:site_name"   content="POLYFAUNA" />
+        <meta property="og:locale"      content="es_CO" />
+        <meta property="og:title"       content={`${event.title} — POLYFAUNA`} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:image"       content={seoImage} />
+        <meta property="og:image:alt"   content={`${event.title} en POLYFAUNA`} />
+        <meta property="og:url"         content={canonicalUrl} />
         <meta property="og:type"        content="website" />
         <meta name="twitter:card"        content="summary_large_image" />
-        <meta name="twitter:title"       content={event.title} />
-        <meta name="twitter:description" content={event.description || ''} />
-        <meta name="twitter:image"       content={event.image_url || FALLBACK} />
+        <meta name="twitter:title"       content={`${event.title} — POLYFAUNA`} />
+        <meta name="twitter:description" content={seoDescription} />
+        <meta name="twitter:image"       content={seoImage} />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Event',
+          name: event.title,
+          description: seoDescription,
+          image: [seoImage],
+          startDate: event.date,
+          eventStatus: event.status === 'cancelled'
+            ? 'https://schema.org/EventCancelled'
+            : 'https://schema.org/EventScheduled',
+          eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+          location: {
+            '@type': 'Place',
+            name: event.venue || event.city || 'POLYFAUNA',
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: event.city || 'Bogotá',
+              addressCountry: 'CO',
+            },
+          },
+          offers: {
+            '@type': 'Offer',
+            url: canonicalUrl,
+            price: Number(event.price || 0),
+            priceCurrency: 'COP',
+            availability: isSoldOut ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+          },
+          organizer: { '@type': 'Organization', name: 'POLYFAUNA', url: 'https://www.polyfauna.com/' },
+          performer: lineup.map(name => ({ '@type': 'MusicGroup', name: String(name).trim() })),
+          url: canonicalUrl,
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen" style={{ background: '#080B14' }}>

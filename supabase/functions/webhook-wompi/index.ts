@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { signTicketToken } from '../_shared/ticket-signing.ts';
 
 async function sha256hex(message: string): Promise<string> {
   const data = new TextEncoder().encode(message);
@@ -41,7 +42,9 @@ Deno.serve(async (req) => {
   };
 
   // ── Validar firma de Wompi ──────────────────────────────────────
-  const EVENTS_KEY = Deno.env.get('WOMPI_EVENTS_KEY')!;
+  const EVENTS_KEY = Deno.env.get('WOMPI_EVENTS_KEY');
+  if (!EVENTS_KEY)
+    return new Response(JSON.stringify({ error: 'Webhook no configurado' }), { status: 503 });
   const properties: string[] = signature?.properties ?? [];
   const values = properties.map(p => String(getNestedValue(data, p) ?? ''));
   const concat = values.join('') + String(timestamp) + EVENTS_KEY;
@@ -79,6 +82,21 @@ Deno.serve(async (req) => {
   if (transaction.status !== 'pending')
     return new Response(JSON.stringify({ received: true, note: 'ya procesado' }), { status: 200 });
 
+  // La firma prueba el origen del evento; además debemos comprobar que Wompi
+  // cobró exactamente el monto y la moneda que registramos al crear el checkout.
+  const receivedAmount = Number(tx?.amount_in_cents);
+  const receivedCurrency = String(tx?.currency ?? '').toUpperCase();
+  const expectedAmount = Number(transaction.amount_total) * 100;
+  if (receivedAmount !== expectedAmount || receivedCurrency !== 'COP') {
+    console.error('Webhook: monto o moneda no coinciden', { reference, receivedAmount, expectedAmount, receivedCurrency });
+    await supabase.from('transactions').update({
+      status: 'error',
+      wompi_transaction_id: String(tx?.id ?? ''),
+      wompi_payload: tx,
+    }).eq('id', transaction.id).eq('status', 'pending');
+    return new Response(JSON.stringify({ error: 'Monto o moneda inválidos' }), { status: 400 });
+  }
+
   const ourStatus = STATUS_MAP[wompiStatus] ?? 'error';
 
   let releaseAt: string | null = null;
@@ -88,72 +106,44 @@ Deno.serve(async (req) => {
     releaseAt = eventDate.toISOString();
   }
 
-  await supabase.from('transactions').update({
-    status:               ourStatus,
-    wompi_transaction_id: String(tx?.id ?? ''),
-    payment_method:       String((tx?.payment_method as Record<string, unknown>)?.type ?? 'unknown'),
-    wompi_payload:        tx,
-    paid_at:              ourStatus === 'approved' ? new Date().toISOString() : null,
-    release_at:           releaseAt,
-  }).eq('id', transaction.id);
+  // Los estados no aprobados no emiten entradas.
+  if (ourStatus !== 'approved') {
+    const { data: closed, error: closeError } = await supabase.from('transactions').update({
+      status: ourStatus,
+      wompi_transaction_id: String(tx?.id ?? ''),
+      payment_method: String((tx?.payment_method as Record<string, unknown>)?.type ?? 'unknown'),
+      wompi_payload: tx,
+    }).eq('id', transaction.id).eq('status', 'pending').select('id').maybeSingle();
 
-  // ── Si aprobado: emitir tickets ───────────────────────────────
-  if (ourStatus === 'approved') {
-    const quantity: number       = transaction.quantity ?? 1;
-    const assignedEmails: (string | null)[] = transaction.assigned_emails ?? [];
-    const firstTicketId: string[] = [];
-
-    for (let i = 0; i < quantity; i++) {
-      const ticketIndex    = i + 1;
-      // Ticket 1 = comprador; tickets 2-4 = email asignado (si hay)
-      const assignedEmail  = i === 0 ? null : (assignedEmails[i - 1] ?? null);
-
-      // Determinar a qué usuario pertenece este ticket
-      let targetUserId = transaction.buyer_id;
-      if (assignedEmail) {
-        const { data: foundId } = await supabase.rpc('get_user_id_by_email', {
-          p_email: assignedEmail,
-        });
-        if (foundId) targetUserId = foundId;
-      }
-
-      const { data: ticketResult, error: ticketErr } = await supabase
-        .rpc('issue_ticket_v2', {
-          p_event_id:       transaction.event_id,
-          p_user_id:        targetUserId,
-          p_ticket_type:    'GA',
-          p_ticket_index:   ticketIndex,
-          p_assigned_email: assignedEmail,
-        });
-
-      if (ticketErr) {
-        console.error(`Webhook: error emitiendo ticket ${ticketIndex}:`, ticketErr.message);
-      } else if (ticketResult?.success && ticketResult?.ticket_id) {
-        console.log(`Webhook: ticket ${ticketIndex}/${quantity} emitido → ${ticketResult.ticket_id}`);
-        if (ticketIndex === 1) firstTicketId.push(ticketResult.ticket_id);
-      } else {
-        console.warn(`Webhook: ticket ${ticketIndex} no emitido:`, ticketResult?.error ?? 'sin detalle');
-      }
+    if (closeError) {
+      console.error('Webhook: no se pudo cerrar la transacción', closeError.message);
+      return new Response(JSON.stringify({ error: 'No se pudo actualizar la transacción' }), { status: 500 });
     }
+    return new Response(JSON.stringify({ received: true, note: closed ? ourStatus : 'ya procesado' }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-    // Vincular primer ticket a la transacción (para compatibilidad)
-    if (firstTicketId.length > 0) {
-      await supabase.from('transactions')
-        .update({ ticket_id: firstTicketId[0] })
-        .eq('id', transaction.id);
-    }
+  // La emisión completa y el crédito al promotor ocurren atómicamente dentro
+  // de PostgreSQL. Un reintento del webhook devuelve los tickets ya creados.
+  const { data: fulfillment, error: fulfillmentError } = await supabase.rpc('fulfill_paid_transaction', {
+    p_transaction_id: transaction.id,
+    p_wompi_transaction_id: String(tx?.id ?? ''),
+    p_payment_method: String((tx?.payment_method as Record<string, unknown>)?.type ?? 'unknown'),
+    p_wompi_payload: tx,
+    p_release_at: releaseAt,
+  });
 
-    // Actualizar wallet del promotor
-    if (transaction.promoter_id) {
-      await supabase.rpc('add_to_pending_wallet', {
-        p_user_id: transaction.promoter_id,
-        p_amount:  transaction.promoter_amount,
-        p_total:   transaction.promoter_amount,
-      });
-    }
+  if (fulfillmentError || !fulfillment?.success) {
+    console.error('Webhook: no se pudo completar la compra', fulfillmentError?.message ?? fulfillment?.error);
+    return new Response(JSON.stringify({ error: 'No se pudo emitir la compra completa' }), { status: 500 });
+  }
+
+  const ticketIds: string[] = Array.isArray(fulfillment.ticket_ids) ? fulfillment.ticket_ids : [];
+  const firstTicketId = ticketIds[0];
 
     // Enviar email de confirmación al comprador
-    if (firstTicketId.length > 0 && transaction.buyer_id) {
+    if (firstTicketId && transaction.buyer_id && !fulfillment.already_processed) {
       try {
         const { data: { user: buyerUser } } = await supabase.auth.admin.getUserById(transaction.buyer_id);
         const { data: buyerProfile } = await supabase
@@ -161,10 +151,10 @@ Deno.serve(async (req) => {
 
         if (buyerUser?.email) {
           const { data: issuedTicket } = await supabase
-            .from('user_tickets').select('ticket_code').eq('id', firstTicketId[0]).single();
+            .from('user_tickets').select('ticket_number, ticket_type').eq('id', firstTicketId).single();
 
-          const ticketCode = issuedTicket?.ticket_code || firstTicketId[0];
-          const qrPayload  = JSON.stringify({ id: firstTicketId[0], code: ticketCode });
+          const ticketCode = issuedTicket?.ticket_number || firstTicketId;
+          const qrPayload  = await signTicketToken(firstTicketId, transaction.event_id, transaction.events?.date);
           const qrDataUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
 
           await supabase.functions.invoke('send-ticket-confirmation', {
@@ -175,6 +165,7 @@ Deno.serve(async (req) => {
               eventDate:  transaction.events?.date,
               eventCity:  transaction.events?.city,
               ticketCode,
+              ticketType: issuedTicket?.ticket_type || 'GA',
               qrDataUrl,
             },
           });
@@ -184,10 +175,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Webhook OK: transacción ${transaction.id} aprobada — ${quantity} ticket(s) emitidos`);
-  } else {
-    console.log(`Webhook: transacción ${transaction.id} → ${ourStatus}`);
-  }
+  console.log(`Webhook OK: transacción ${transaction.id} aprobada — ${ticketIds.length} ticket(s) emitidos`);
 
   return new Response(JSON.stringify({ received: true }), {
     status: 200,

@@ -33,6 +33,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   const { isFav, toggle: toggleFav } = useFavorites();
   const audioRef = useRef(null);
   const repeatRef = useRef(false);
+  const queueRef = useRef(null);
   const [volume, setVolume] = useState(0.75);
   const [muted, setMuted] = useState(false);
   const [streamError, setStreamError] = useState(false);
@@ -40,6 +41,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   const [audioDuration, setAudioDuration] = useState(0);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
+  const [playbackQueue, setPlaybackQueue] = useState(null);
   const [streamUrl, setStreamUrl] = useState(getStreamUrl);
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
 
@@ -70,6 +72,34 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   }, [currentTrack, isPlaying]);
 
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
+  useEffect(() => { queueRef.current = playbackQueue; }, [playbackQueue]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const { items = [], startIndex = 0 } = e.detail || {};
+      const queueItems = items.filter(item => item?.audio_url);
+      if (!queueItems.length) return;
+      const boundedIndex = Math.max(0, Math.min(startIndex, queueItems.length - 1));
+      const nextQueue = { items: queueItems, index: boundedIndex };
+      setPlaybackQueue(nextQueue);
+      queueRef.current = nextQueue;
+      setCurrentTrack?.(queueItems[boundedIndex]);
+      setCurrentTime(0);
+      setAudioDuration(0);
+      setIsPlaying(true);
+    };
+    window.addEventListener('pf:play-queue', handler);
+    return () => window.removeEventListener('pf:play-queue', handler);
+  }, [setCurrentTrack, setIsPlaying]);
+
+  useEffect(() => {
+    if (!currentTrack || !playbackQueue) return;
+    const expected = playbackQueue.items[playbackQueue.index];
+    if (!expected || expected.id !== currentTrack.id || expected.audio_url !== currentTrack.audio_url) {
+      setPlaybackQueue(null);
+      queueRef.current = null;
+    }
+  }, [currentTrack?.id, currentTrack?.audio_url, playbackQueue]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -103,6 +133,20 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         setCurrentTime(0);
         return;
       }
+      const queue = queueRef.current;
+      const nextIndex = queue ? queue.index + 1 : -1;
+      if (queue?.items?.[nextIndex]) {
+        const nextQueue = { items: queue.items, index: nextIndex };
+        setPlaybackQueue(nextQueue);
+        queueRef.current = nextQueue;
+        setCurrentTrack?.(queue.items[nextIndex]);
+        setIsPlaying(true);
+        setCurrentTime(0);
+        setAudioDuration(0);
+        return;
+      }
+      setPlaybackQueue(null);
+      queueRef.current = null;
       setCurrentTrack?.(null); setIsPlaying(false); setCurrentTime(0); setAudioDuration(0);
     };
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -134,12 +178,44 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     if (audioRef.current) audioRef.current.currentTime = pct * audioDuration;
   };
 
-  const backToRadio = () => { setCurrentTrack?.(null); setIsPlaying(false); setCurrentTime(0); setAudioDuration(0); };
+  const playQueueIndex = (index) => {
+    const queue = queueRef.current;
+    if (!queue?.items?.[index]) return false;
+    const nextQueue = { items: queue.items, index };
+    setPlaybackQueue(nextQueue);
+    queueRef.current = nextQueue;
+    setCurrentTrack?.(queue.items[index]);
+    setCurrentTime(0);
+    setAudioDuration(0);
+    setIsPlaying(true);
+    return true;
+  };
+
+  const backToRadio = () => {
+    setPlaybackQueue(null);
+    queueRef.current = null;
+    setCurrentTrack?.(null); setIsPlaying(false); setCurrentTime(0); setAudioDuration(0);
+  };
 
   const handleSkipBack = () => {
     if (!isOnDemand || !audioRef.current) return;
+    const queue = queueRef.current;
+    if (queue?.index > 0 && audioRef.current.currentTime < 3) {
+      playQueueIndex(queue.index - 1);
+      return;
+    }
     audioRef.current.currentTime = 0;
     setCurrentTime(0);
+  };
+
+  const handleSkipForward = () => {
+    if (!isOnDemand) return;
+    const queue = queueRef.current;
+    if (queue?.items?.[queue.index + 1]) {
+      playQueueIndex(queue.index + 1);
+      return;
+    }
+    backToRadio();
   };
 
   const liveTrackKey = `live-${song?.title || 'stream'}`;
@@ -216,7 +292,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
-        className="fixed bottom-[72px] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 flex flex-col sm:flex-row sm:items-center px-3 sm:px-4 md:px-6 pt-3 pb-2 sm:py-0 sm:h-[76px]"
+        className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 flex flex-col sm:flex-row sm:items-center px-3 sm:px-4 md:px-6 pt-3 pb-2 sm:py-0 sm:h-[76px]"
         style={{
           background: 'rgba(8, 12, 11, 0.75)',
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
@@ -302,6 +378,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button
               type="button"
               onClick={() => setIsPlaying(!isPlaying)}
+              aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir'}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
               style={{
                 background: '#ECECEC',
@@ -379,6 +456,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               <button
                 type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
+                aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir'}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
                   background: '#ECECEC',
@@ -396,9 +474,9 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
 
             <button
               type="button"
-              onClick={isOnDemand ? backToRadio : undefined}
+              onClick={handleSkipForward}
               className="flex transition-colors"
-              title={isOnDemand ? 'Volver al radio' : undefined}
+              title={queueRef.current?.items?.[queueRef.current?.index + 1] ? 'Siguiente' : isOnDemand ? 'Volver al radio' : undefined}
               style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
             >
               <SkipForward className="w-5 h-5" />

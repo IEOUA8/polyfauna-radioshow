@@ -15,6 +15,7 @@ dist/
 *.swo
 .vscode/
 .idea/
+.claude/
 
 # Logs
 *.log
@@ -26,3 +27,6 @@ yarn-error.log*
 .cache/
 .vite/
 .vercel
+
+# Supabase CLI local state
+supabase/.temp/

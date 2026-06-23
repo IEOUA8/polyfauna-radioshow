@@ -1,61 +1,41 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { sendEmail, emailWrapper } from '../_shared/resend.ts';
+import { CORS_HEADERS, escapeHtml, json, requireAdmin } from '../_shared/auth.ts';
 
-const ROLE_LABELS: Record<string, string> = {
-  artist:   'Artista',
-  promoter: 'Promotor',
-  club:     'Club / Venue',
-  sello:    'Sello Discográfico',
-};
+const ROLE_LABELS: Record<string, string> = { artist: 'Artista', promoter: 'Promotor', club: 'Club / Venue', sello: 'Sello Discográfico' };
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   try {
-    const { userEmail, userName, requestedRole, decision, rejectionReason } = await req.json();
-    const roleLabel = ROLE_LABELS[requestedRole] || requestedRole;
-    const appUrl    = Deno.env.get('APP_URL') || 'https://polyfauna.com';
-    const approved  = decision === 'approved';
+    const { admin, user, isAdmin } = await requireAdmin(req);
+    if (!user) return json({ error: 'Unauthorized' }, 401);
+    if (!isAdmin) return json({ error: 'Forbidden' }, 403);
+    const { requestId } = await req.json();
+    const { data: roleRequest } = await admin.from('role_requests')
+      .select('id, user_id, requested_role, status, rejection_reason, form_data')
+      .eq('id', requestId).single();
+    if (!roleRequest || !['approved', 'rejected'].includes(roleRequest.status)) return json({ error: 'Solicitud no resuelta' }, 400);
+    const { data: { user: target } } = await admin.auth.admin.getUserById(roleRequest.user_id);
+    if (!target?.email) return json({ error: 'Usuario sin correo' }, 404);
 
+    const approved = roleRequest.status === 'approved';
+    const roleLabel = ROLE_LABELS[roleRequest.requested_role] || 'Perfil';
+    const userName = escapeHtml(roleRequest.form_data?.name || target.user_metadata?.name || 'Usuario');
+    const reason = escapeHtml(roleRequest.rejection_reason || '');
+    const appUrl = Deno.env.get('APP_URL') || 'https://www.polyfauna.com';
     const html = emailWrapper(approved ? `
-      <h1 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#10B981;">
-        ¡Solicitud aprobada! ✅
-      </h1>
-      <p style="margin:0 0 20px;font-size:15px;color:rgba(255,255,255,0.55);line-height:1.6;">
-        Hola ${userName}, tu solicitud para el rol de <strong style="color:#10B981;">${roleLabel}</strong>
-        ha sido aprobada. Ya tienes acceso completo a las funciones de tu perfil.
-      </p>
-      <a href="${appUrl}" style="display:inline-block;padding:14px 32px;background:#10B981;border-radius:12px;font-size:14px;font-weight:900;color:#fff;text-decoration:none;">
-        Explorar la plataforma →
-      </a>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#10B981;">¡Solicitud aprobada! ✅</h1>
+      <p style="margin:0 0 20px;color:rgba(255,255,255,0.55);">Hola ${userName}, tu solicitud para el rol de <strong>${roleLabel}</strong> fue aprobada.</p>
+      <a href="${appUrl}" style="color:#10B981;">Explorar la plataforma →</a>
     ` : `
-      <h1 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#EF4444;">
-        Solicitud no aprobada
-      </h1>
-      <p style="margin:0 0 20px;font-size:15px;color:rgba(255,255,255,0.55);line-height:1.6;">
-        Hola ${userName}, lamentablemente tu solicitud para el rol de <strong style="color:rgba(255,255,255,0.75);">${roleLabel}</strong>
-        no fue aprobada en esta oportunidad.
-      </p>
-      ${rejectionReason ? `
-      <div style="padding:14px 16px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);border-radius:10px;margin-bottom:20px;">
-        <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.50);">
-          <strong style="color:rgba(255,255,255,0.60);">Motivo:</strong> ${rejectionReason}
-        </p>
-      </div>` : ''}
-      <p style="margin:0 0 24px;font-size:13px;color:rgba(255,255,255,0.35);">
-        Puedes volver a solicitarlo más adelante desde tu perfil.
-      </p>
-      <a href="${appUrl}" style="display:inline-block;padding:12px 28px;background:rgba(255,255,255,0.08);border-radius:10px;font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);text-decoration:none;">
-        Ir a la plataforma
-      </a>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#EF4444;">Solicitud no aprobada</h1>
+      <p style="margin:0 0 20px;color:rgba(255,255,255,0.55);">Hola ${userName}, tu solicitud para el rol de <strong>${roleLabel}</strong> no fue aprobada.</p>
+      ${reason ? `<p style="color:rgba(255,255,255,0.50);">Motivo: ${reason}</p>` : ''}
     `);
-
-    await sendEmail({
-      to: userEmail,
-      subject: approved ? `¡Eres ${roleLabel} en POLYFAUNA! 🎉` : `Solicitud de ${roleLabel} — POLYFAUNA`,
-      html,
-    });
-
-    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+    await sendEmail({ to: target.email, subject: approved ? `¡Eres ${roleLabel} en POLYFAUNA!` : `Solicitud de ${roleLabel} — POLYFAUNA`, html });
+    return json({ ok: true });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return json({ error: err instanceof Error ? err.message : 'Error interno' }, 500);
   }
 });

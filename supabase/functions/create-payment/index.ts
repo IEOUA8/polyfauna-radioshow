@@ -44,13 +44,18 @@ Deno.serve(async (req) => {
     if (!event_id)
       return new Response(JSON.stringify({ error: 'event_id requerido' }), { status: 400, headers: CORS });
 
-    // Validar cantidad
-    const qty = Math.max(1, Math.min(MAX_TICKETS, Math.round(Number(quantity))));
+    // Rechazar valores ambiguos en vez de ajustarlos silenciosamente.
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_TICKETS)
+      return new Response(JSON.stringify({ error: `quantity debe estar entre 1 y ${MAX_TICKETS}` }), { status: 400, headers: CORS });
 
     // Validar emails asignados (máx qty-1, uno por ticket extra)
+    if (!Array.isArray(assigned_emails))
+      return new Response(JSON.stringify({ error: 'assigned_emails debe ser una lista' }), { status: 400, headers: CORS });
+
     const emails: (string | null)[] = (assigned_emails as (string | null)[])
       .slice(0, qty - 1)
-      .map(e => (typeof e === 'string' && e.includes('@')) ? e.trim().toLowerCase() : null);
+      .map(e => (typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())) ? e.trim().toLowerCase() : null);
 
     // Obtener evento
     const { data: event, error: evErr } = await supabase
@@ -83,9 +88,31 @@ Deno.serve(async (req) => {
         { status: 400, headers: CORS },
       );
 
+    // Evita múltiples checkouts simultáneos para el mismo comprador/evento.
+    const pendingSince = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: pendingTransaction } = await supabase
+      .from('transactions')
+      .select('wompi_reference')
+      .eq('buyer_id', user.id)
+      .eq('event_id', event_id)
+      .eq('status', 'pending')
+      .gte('created_at', pendingSince)
+      .maybeSingle();
+
+    if (pendingTransaction)
+      return new Response(
+        JSON.stringify({ error: 'Ya existe un checkout pendiente para este evento. Complétalo o espera 30 minutos.' }),
+        { status: 409, headers: CORS },
+      );
+
     const amount_cop = Math.round((event.price || 0) * qty);
     if (amount_cop <= 0)
       return new Response(JSON.stringify({ error: 'Este evento es gratuito — usa purchase_ticket RPC' }), { status: 400, headers: CORS });
+
+    const INTEGRITY_KEY = Deno.env.get('WOMPI_INTEGRITY_KEY');
+    const PUBLIC_KEY = Deno.env.get('WOMPI_PUBLIC_KEY');
+    if (!INTEGRITY_KEY || !PUBLIC_KEY)
+      return new Response(JSON.stringify({ error: 'Pasarela de pago no configurada' }), { status: 503, headers: CORS });
 
     const platform_fee    = Math.round(amount_cop * PLATFORM_FEE_PCT / 100);
     const promoter_amount = amount_cop - platform_fee;
@@ -109,7 +136,6 @@ Deno.serve(async (req) => {
     if (txErr)
       return new Response(JSON.stringify({ error: 'Error creando transacción', detail: txErr.message }), { status: 500, headers: CORS });
 
-    const INTEGRITY_KEY = Deno.env.get('WOMPI_INTEGRITY_KEY')!;
     const signature = await sha256hex(`${reference}${amount_in_cents}COP${INTEGRITY_KEY}`);
 
     return new Response(
@@ -118,7 +144,7 @@ Deno.serve(async (req) => {
         amount_in_cents,
         currency:    'COP',
         signature,
-        public_key:  Deno.env.get('WOMPI_PUBLIC_KEY')!,
+        public_key:  PUBLIC_KEY,
         event_title: event.title,
         quantity:    qty,
       }),

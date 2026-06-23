@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, LayoutGrid, LayoutList, Link, Link2, Lock, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -65,6 +66,7 @@ const CREATOR_ROLES = ['artist', 'club', 'promoter', 'admin'];
    Podcast detail view
 ───────────────────────────────────────── */
 function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLiked, onLike, currentUser }) {
+  const { toast } = useToast();
   const gColor = getGenreColor(pod.genre);
   const dateStr = new Date(pod.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -629,7 +631,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                       {/* Thumb */}
                       <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"
                         style={{ border: `1px solid ${isActive ? `${gColor}40` : 'rgba(255,255,255,0.07)'}` }}>
-                        <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} className="w-full h-full object-cover" />
+                        <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         {isCurrentlyPlaying && (
                           <div className="absolute inset-0 flex items-center justify-center"
                             style={{ background: `${gColor}55` }}>
@@ -673,6 +675,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                       <button
                         type="button"
                         onClick={e => { e.stopPropagation(); handlePlay(pod); }}
+                        aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
                         className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all"
                         style={{
                           background: isCurrentlyPlaying ? gColor : 'rgba(255,255,255,0.08)',
@@ -716,6 +719,8 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                         <img
                           src={pod.cover_url || FALLBACK_IMG}
                           alt={pod.title}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -748,6 +753,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handlePlay(pod); }}
+                          aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
                           className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                         >
                           <div
@@ -820,14 +826,20 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
       </AnimatePresence>
 
       {/* Guest play gate modal */}
-      <AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
         {showLoginPrompt && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(8px)' }}
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(0,0,0,0.70)',
+              backdropFilter: 'blur(8px)',
+              paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+            }}
             onClick={() => setShowLoginPrompt(false)}
           >
             <motion.div
@@ -836,7 +848,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 340, damping: 30 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-sm rounded-2xl p-6 text-center space-y-4"
+              className="w-full max-w-sm rounded-2xl p-6 text-center space-y-4 max-h-[calc(100dvh-2rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] overflow-y-auto"
               style={{ background: 'rgba(11,16,15,0.98)', border: '1px solid rgba(255,255,255,0.10)' }}
             >
               <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center"
@@ -868,7 +880,9 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

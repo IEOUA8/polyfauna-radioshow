@@ -1,9 +1,9 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  CalendarDays, Disc3, FileText, Gauge, Headphones,
+  CalendarDays, Disc3, Dna, FileText, Gauge, Headphones,
   Lock, LogIn, MessageSquare, Music, Radio,
-  SlidersHorizontal, Ticket, User as UserIcon, UserPlus, X,
+  Shield, SlidersHorizontal, Ticket, User as UserIcon, UserPlus, X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { id: 'radio-console', label: 'Radio',    icon: Radio,             public: true  },
   { id: 'podcasts',      label: 'Podcasts', icon: Headphones,        public: true  },
   { id: 'music',         label: 'Música',   icon: Music,             public: false },
+  { id: 'organism',      label: 'Organismo', icon: Dna,              public: false },
   { id: 'events',        label: 'Eventos',  icon: CalendarDays,      public: false },
   { id: 'artists',       label: 'Artistas', icon: Disc3,             public: false },
   { id: 'blog',          label: 'Blog',     icon: FileText,          public: false },
@@ -35,6 +36,9 @@ function NavCard({ item, locked, active, onPress, idx }) {
     <motion.button
       type="button"
       onClick={locked ? undefined : onPress}
+      disabled={locked}
+      aria-current={active ? 'page' : undefined}
+      aria-label={locked ? `${item.label}. Inicia sesión para acceder` : item.label}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.04 + idx * 0.025, type: 'spring', stiffness: 340, damping: 30 }}
@@ -80,8 +84,9 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
   const displayName     = profile?.display_name || currentUser?.email?.split('@')[0] || 'Invitado';
 
   const PROMOTER_ITEM = { id: 'promoter', label: 'Gestor', icon: Gauge, public: false, requiresLogin: true };
+  const OPERATIONS_ITEM = { id: 'operations', label: 'Panel operativo', icon: Shield, public: false, requiresLogin: true, href: '/admin' };
   const showPromoter  = isLoggedIn && (role === 'promoter' || role === 'club' || role === 'admin');
-  const allItems      = showPromoter ? [...NAV_ITEMS, PROMOTER_ITEM] : NAV_ITEMS;
+  const allItems      = showPromoter ? [...NAV_ITEMS, PROMOTER_ITEM, OPERATIONS_ITEM] : NAV_ITEMS;
 
   return (
     <AnimatePresence>
@@ -161,6 +166,7 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
               <button
                 type="button"
                 onClick={onClose}
+                aria-label="Cerrar menú"
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                 style={{ background: '#161616', border: '1px solid #232323' }}
               >
@@ -181,7 +187,14 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
                       locked={locked}
                       active={active}
                       idx={idx}
-                      onPress={() => setCurrentSection(item.id)}
+                      onPress={() => {
+                        if (item.href) {
+                          window.location.assign(item.href);
+                          return;
+                        }
+                        setCurrentSection(item.id);
+                        onClose();
+                      }}
                     />
                   );
                 })}

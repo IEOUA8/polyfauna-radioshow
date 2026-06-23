@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, CalendarDays, Disc3, FileText, Gauge,
+  ArrowRight, CalendarDays, Disc3, Dna, FileText, Gauge,
   Headphones, Lock, MessageSquare, Music, Radio,
   SlidersHorizontal, Ticket, User as UserIcon,
 } from 'lucide-react';
@@ -16,6 +16,7 @@ const ALL_NAV = [
   { id: 'radio-console', label: 'Radio Console',     icon: Radio,             public: true  },
   { id: 'podcasts',      label: 'Podcasts',           icon: Headphones,        public: true  },
   { id: 'music',         label: 'Música',             icon: Music,             public: false },
+  { id: 'organism',      label: 'Organismo',          icon: Dna,               public: false },
   { id: 'events',        label: 'Event Terminal',     icon: CalendarDays,      public: false },
   { id: 'artists',       label: 'Artists & Labels',   icon: Disc3,             public: false },
   { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: false },

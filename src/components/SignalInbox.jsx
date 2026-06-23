@@ -86,7 +86,7 @@ function ComposeModal({ onClose, currentUser, senderProfile, initialTo = null, i
       return;
     }
     setSending(true);
-    const { error } = await supabase.from('messages').insert({
+    const { data: sentMessage, error } = await supabase.from('messages').insert({
       from_user_id:    currentUser.id,
       from_name:       senderProfile?.display_name || currentUser.email?.split('@')[0] || 'Usuario',
       from_role:       senderProfile?.role || 'citizen',
@@ -95,7 +95,7 @@ function ComposeModal({ onClose, currentUser, senderProfile, initialTo = null, i
       subject:         subject.trim(),
       body:            body.trim(),
       is_read:         false,
-    });
+    }).select('id').single();
     setSending(false);
     if (error) {
       toast({ title: 'Error al enviar', description: error.message, variant: 'destructive' });
@@ -103,13 +103,7 @@ function ComposeModal({ onClose, currentUser, senderProfile, initialTo = null, i
       toast({ title: 'Mensaje enviado', description: `Para: ${recipient.display_name || recipient.username}` });
       // Notify recipient by email — Edge Function resolves email via service role
       supabase.functions.invoke('send-message-notification', {
-        body: {
-          toUserId: recipient.id,
-          toName:   recipient.display_name || recipient.username || 'Usuario',
-          fromName: senderProfile?.display_name || currentUser.email?.split('@')[0] || 'Usuario',
-          subject:  subject.trim(),
-          preview:  body.trim(),
-        },
+        body: { messageId: sentMessage.id },
       }).catch(() => {});
       onClose(true);
     }

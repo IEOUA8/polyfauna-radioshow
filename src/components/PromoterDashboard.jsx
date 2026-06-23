@@ -221,10 +221,17 @@ function WalletTab({ userId }) {
           .order('requested_at', { ascending: false })
           .limit(5),
       ]);
-      setWallet(walletRes.data);
+      const payoutRows = payoutRes.data || [];
+      const reserved = payoutRows
+        .filter(p => p.status === 'pending' || p.status === 'processing')
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      setWallet(walletRes.data ? {
+        ...walletRes.data,
+        balance_available: Math.max(0, Number(walletRes.data.balance_available || 0) - reserved),
+      } : null);
       setHasAccount(!!acctRes.data?.id);
       setTxs(txRes.data || []);
-      setPayouts(payoutRes.data || []);
+      setPayouts(payoutRows);
       setLoading(false);
     };
     load();
@@ -238,12 +245,7 @@ function WalletTab({ userId }) {
       return;
     }
     setRequesting(true);
-    const { data: acct } = await supabase.from('promoter_accounts').select('*').eq('user_id', userId).single();
-    const { error } = await supabase.from('payouts').insert({
-      user_id: userId,
-      amount,
-      account_snapshot: acct,
-    });
+    const { data: payoutId, error } = await supabase.rpc('request_payout', { p_amount: amount });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
@@ -251,7 +253,7 @@ function WalletTab({ userId }) {
       setShowRequest(false);
       setRequestAmount('');
       setWallet(w => ({ ...w, balance_available: (w?.balance_available || 0) - amount }));
-      setPayouts(p => [{ id: Date.now(), amount, status: 'pending', requested_at: new Date().toISOString() }, ...p]);
+      setPayouts(p => [{ id: payoutId, amount, status: 'pending', requested_at: new Date().toISOString() }, ...p]);
     }
     setRequesting(false);
   };

@@ -61,7 +61,7 @@ CREATE TRIGGER profiles_updated_at
 CREATE TABLE IF NOT EXISTS public.user_favorites (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  item_type   TEXT NOT NULL CHECK (item_type IN ('event','podcast','artist')),
+  item_type   TEXT NOT NULL CHECK (item_type IN ('event','podcast','artist','album','track')),
   item_id     UUID NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (user_id, item_type, item_id)

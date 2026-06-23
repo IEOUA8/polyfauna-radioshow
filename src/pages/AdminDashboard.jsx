@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,21 +6,24 @@ import {
   AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, Disc3, FileText, Headphones, Home, Loader2, Menu,
   Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
-  Ticket, TrendingUp, Users, X, XCircle, ListMusic,
+  Ticket, TrendingUp, Users, WifiOff, X, XCircle, ListMusic,
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '@/lib/customSupabaseClient';
+import { parseTicketQRPayload } from '@/lib/tickets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import EventManager from '@/components/admin/EventManager';
-import PodcastManager from '@/components/admin/PodcastManager';
-import BlogManager from '@/components/admin/BlogManager';
-import InterviewManager from '@/components/admin/InterviewManager';
-import ShowManager from '@/components/admin/ShowManager';
-import UserManager from '@/components/admin/UserManager';
-import ArtistManager from '@/components/admin/ArtistManager';
-import AlbumManager from '@/components/admin/AlbumManager';
-import TrackManager from '@/components/admin/TrackManager';
+
+const EventManager     = lazy(() => import('@/components/admin/EventManager'));
+const PodcastManager   = lazy(() => import('@/components/admin/PodcastManager'));
+const BlogManager      = lazy(() => import('@/components/admin/BlogManager'));
+const InterviewManager = lazy(() => import('@/components/admin/InterviewManager'));
+const ShowManager      = lazy(() => import('@/components/admin/ShowManager'));
+const UserManager      = lazy(() => import('@/components/admin/UserManager'));
+const ArtistManager    = lazy(() => import('@/components/admin/ArtistManager'));
+const AlbumManager     = lazy(() => import('@/components/admin/AlbumManager'));
+const TrackManager     = lazy(() => import('@/components/admin/TrackManager'));
+const PromoterDashboard = lazy(() => import('@/components/PromoterDashboard'));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
 const NAV_GROUPS = [
@@ -55,16 +58,7 @@ const NAV_GROUPS = [
   },
 ];
 
-const ALL_ITEMS = NAV_GROUPS.flatMap(g => g.items);
-
 /* ─────────────────────── QR SCANNER ─────────────────────── */
-function parseQRPayload(raw) {
-  const match = raw.match(/polyfauna:\/\/ticket\/([0-9a-f-]{36})/i);
-  if (match) return match[1];
-  if (/^[0-9a-f-]{36}$/i.test(raw.trim())) return raw.trim();
-  return null;
-}
-
 function QRResultBanner({ result, onDismiss }) {
   const ok = result.code === 'VALID';
   return (
@@ -96,7 +90,7 @@ function QRResultBanner({ result, onDismiss }) {
   );
 }
 
-function QRScannerWidget({ scanKey }) {
+function QRScannerWidget({ scanKey, eventId }) {
   const scannerRef   = useRef(null);
   const containerRef = useRef(null);
   const [ready, setReady]       = useState(false);
@@ -111,15 +105,17 @@ function QRScannerWidget({ scanKey }) {
     if (processingRef.current) return;
     processingRef.current = true;
     setChecking(true);
-    const { data, error: rpcErr } = await supabase.rpc('validate_ticket', { p_ticket_id: uuid });
+    const { data, error: rpcErr } = eventId
+      ? await supabase.rpc('validate_ticket_for_event', { p_ticket_id: uuid, p_event_id: eventId })
+      : await supabase.rpc('validate_ticket', { p_ticket_id: uuid });
     setResult(rpcErr ? { code: 'ERROR', error: rpcErr.message } : data);
     if (!rpcErr && data?.code === 'VALID') setScanCount(c => c + 1);
     setChecking(false);
     setTimeout(() => { processingRef.current = false; }, 2500);
-  }, []);
+  }, [eventId]);
 
   const onDetected = useCallback((raw) => {
-    const uuid = parseQRPayload(raw);
+    const uuid = parseTicketQRPayload(raw);
     if (!uuid || processingRef.current) return;
     validate(uuid);
   }, [validate]);
@@ -271,17 +267,19 @@ function StatTile({ label, value, icon: Icon, loading, sub }) {
   );
 }
 
-function DashboardSection() {
+function DashboardSection({ ownerId }) {
   const [stats, setStats] = useState({ users: 0, events: 0, tickets: 0, revenue: 0 });
   const [loading, setLoading] = useState(true);
   const [recentTickets, setRecentTickets] = useState([]);
 
   useEffect(() => {
     const load = async () => {
+      let eventsQuery = supabase.from('events').select('id', { count: 'exact', head: true });
+      if (ownerId) eventsQuery = eventsQuery.eq('owner_id', ownerId);
       const [usersRes, eventsRes, ticketsRes] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('events').select('id', { count: 'exact', head: true }),
-        supabase.from('user_tickets').select('id, created_at, events(title, price), profiles(display_name, email)').order('created_at', { ascending: false }).limit(8),
+        ownerId ? Promise.resolve({ count: 0 }) : supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        eventsQuery,
+        supabase.from('user_tickets').select('id, user_id, created_at, events(title, price), profiles(display_name, email)').order('created_at', { ascending: false }).limit(50),
       ]);
 
       // calculate total sold & revenue from tickets
@@ -289,7 +287,7 @@ function DashboardSection() {
       const revenue = (allTickets.data || []).reduce((sum, t) => sum + (t.events?.price || 0), 0);
 
       setStats({
-        users: usersRes.count || 0,
+        users: ownerId ? new Set((ticketsRes.data || []).map(t => t.user_id)).size : usersRes.count || 0,
         events: eventsRes.count || 0,
         tickets: ticketsRes.data?.length ? (await supabase.from('user_tickets').select('id', { count: 'exact', head: true })).count || 0 : 0,
         revenue,
@@ -298,17 +296,17 @@ function DashboardSection() {
       setLoading(false);
     };
     load();
-  }, []);
+  }, [ownerId]);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-black text-white">Dashboard</h2>
-        <p className="text-sm text-white/40 mt-0.5">Resumen general de la plataforma</p>
+        <p className="text-sm text-white/40 mt-0.5">{ownerId ? 'Resumen de tus eventos' : 'Resumen general de la plataforma'}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile label="Usuarios" value={stats.users} icon={Users} loading={loading} sub="Registrados" />
+        <StatTile label={ownerId ? 'Asistentes' : 'Usuarios'} value={stats.users} icon={Users} loading={loading} sub={ownerId ? 'Con ticket' : 'Registrados'} />
         <StatTile label="Eventos" value={stats.events} icon={CalendarDays} loading={loading} sub="Creados" />
         <StatTile label="Tickets" value={stats.tickets} icon={Ticket} loading={loading} sub="Vendidos" />
         <StatTile
@@ -360,7 +358,7 @@ function DashboardSection() {
 }
 
 /* ─────────────────────── TICKETS SECTION ─────────────────────── */
-function TicketsSection() {
+function TicketsSection({ ownerId }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
@@ -368,21 +366,18 @@ function TicketsSection() {
   const [loadingBuyers, setLoadingBuyers] = useState(false);
 
   useEffect(() => {
-    supabase
+    let query = supabase
       .from('events')
       .select('id, title, date, venue, price, tickets_total, tickets_sold')
-      .order('date', { ascending: true })
-      .then(({ data }) => { setEvents(data || []); setLoading(false); });
-  }, []);
+      .order('date', { ascending: true });
+    if (ownerId) query = query.eq('owner_id', ownerId);
+    query.then(({ data }) => { setEvents(data || []); setLoading(false); });
+  }, [ownerId]);
 
   const loadBuyers = async (eventId) => {
     if (buyers[eventId]) { setExpanded(eventId); return; }
     setLoadingBuyers(true);
-    const { data } = await supabase
-      .from('tickets')
-      .select('id, ticket_number, ticket_type, status, created_at, profiles(display_name, email, avatar_url)')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.rpc('get_event_attendees', { p_event_id: eventId });
     setBuyers(b => ({ ...b, [eventId]: data || [] }));
     setExpanded(eventId);
     setLoadingBuyers(false);
@@ -477,10 +472,10 @@ function TicketsSection() {
                           <div className="space-y-2">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">Compradores</p>
                             {(buyers[ev.id] || []).map((t) => (
-                              <div key={t.id} className="flex items-center justify-between py-1.5">
+                              <div key={t.ticket_id} className="flex items-center justify-between py-1.5">
                                 <div>
                                   <p className="text-xs font-bold text-white">
-                                    {t.profiles?.display_name || t.profiles?.email || 'Usuario'}
+                                    {t.display_name || t.email || 'Usuario'}
                                   </p>
                                   <p className="text-[10px] font-mono text-white/30">#{t.ticket_number} · {t.ticket_type}</p>
                                 </div>
@@ -488,11 +483,11 @@ function TicketsSection() {
                                   <span
                                     className="text-[10px] font-bold px-2 py-0.5 rounded"
                                     style={{
-                                      background: t.status === 'used' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
-                                      color: t.status === 'used' ? '#ef4444' : '#22c55e',
+                                      background: t.ticket_status === 'used' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                                      color: t.ticket_status === 'used' ? '#ef4444' : '#22c55e',
                                     }}
                                   >
-                                    {t.status === 'used' ? 'Usado' : 'Activo'}
+                                    {t.ticket_status === 'used' ? 'Usado' : 'Activo'}
                                   </span>
                                 </div>
                               </div>
@@ -778,15 +773,17 @@ function PayoutsSection() {
 }
 
 /* ─────────────────────── QR SECTION WRAPPER ─────────────────────── */
-function QRSection() {
+function QRSection({ ownerId }) {
+  const navigate = useNavigate();
   const [scanKey, setScanKey] = useState(0);
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState('');
 
   useEffect(() => {
-    supabase.from('events').select('id, title').order('date', { ascending: true })
-      .then(({ data }) => setEvents(data || []));
-  }, []);
+    let query = supabase.from('events').select('id, title').order('date', { ascending: true });
+    if (ownerId) query = query.eq('owner_id', ownerId);
+    query.then(({ data }) => setEvents(data || []));
+  }, [ownerId]);
 
   return (
     <div className="space-y-6">
@@ -815,11 +812,19 @@ function QRSection() {
           <RefreshCw className="w-3.5 h-3.5" />
           Reiniciar cámara
         </button>
+        {selectedEvent && (
+          <button type="button" onClick={() => navigate(`/validate?event=${selectedEvent}`)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black"
+            style={{ background: '#22c55e', color: '#052010' }}>
+            <WifiOff className="w-3.5 h-3.5" />
+            Abrir lector offline
+          </button>
+        )}
       </div>
 
       {/* Scanner */}
       <div className="rounded-2xl p-6" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <QRScannerWidget key={scanKey} scanKey={scanKey} />
+        <QRScannerWidget key={`${scanKey}-${selectedEvent}`} scanKey={scanKey} eventId={selectedEvent || null} />
       </div>
 
       {/* Instructions */}
@@ -841,7 +846,7 @@ function QRSection() {
 }
 
 /* ─────────────────────── SIDEBAR ─────────────────────── */
-function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
+function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen, groups = NAV_GROUPS, panelLabel = 'Admin Panel' }) {
   const content = (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -850,7 +855,7 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
           <p className="text-xs font-black text-white tracking-widest uppercase">PolyFauna</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <Shield className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.85)' }} />
-            <p className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>Admin Panel</p>
+            <p className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>{panelLabel}</p>
           </div>
         </div>
         {mobileOpen !== undefined && (
@@ -862,7 +867,7 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-        {NAV_GROUPS.map(group => (
+        {groups.map(group => (
           <div key={group.label}>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/25 px-3 mb-2">{group.label}</p>
             <div className="space-y-0.5">
@@ -918,7 +923,7 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
         {content}
       </aside>
 
-      {/* Mobile overlay */}
+      {/* Mobile navigation: tactile bottom sheet */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -927,19 +932,79 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-40 lg:hidden"
-              style={{ background: 'rgba(0,0,0,0.7)' }}
+              style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)' }}
               onClick={() => setMobileOpen(false)}
             />
-            <motion.aside
-              initial={{ x: -240 }}
-              animate={{ x: 0 }}
-              exit={{ x: -240 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed left-0 top-0 bottom-0 z-50 w-56 flex flex-col lg:hidden"
-              style={{ background: 'rgba(6,10,9,0.99)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 340, damping: 36, mass: 0.9 }}
+              className="fixed left-0 right-0 bottom-0 z-50 lg:hidden flex flex-col overflow-hidden"
+              style={{
+                maxHeight: '88dvh',
+                background: '#0A0D0C',
+                border: '1px solid rgba(255,255,255,0.10)',
+                borderBottom: 0,
+                borderRadius: '24px 24px 0 0',
+                boxShadow: '0 -24px 70px rgba(0,0,0,0.55)',
+              }}
             >
-              {content}
-            </motion.aside>
+              <div className="flex justify-center pt-3 pb-1 shrink-0">
+                <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.16)' }} />
+              </div>
+
+              <div className="flex items-center justify-between px-5 py-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: '#171B19', border: '1px solid #252A27' }}>
+                    <Shield className="w-5 h-5 text-white/80" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-white">{panelLabel}</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-white/30">Polyfauna · Operación</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú"
+                  className="w-11 h-11 rounded-full flex items-center justify-center active:scale-95"
+                  style={{ background: '#171B19', border: '1px solid #252A27' }}>
+                  <X className="w-5 h-5 text-white/55" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+                {groups.map(group => (
+                  <div key={group.label} className="mb-5 last:mb-1">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/30 px-1 mb-2.5">{group.label}</p>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {group.items.map(item => {
+                        const isActive = active === item.id;
+                        return (
+                          <button key={item.id} type="button"
+                            onClick={() => { setActive(item.id); setMobileOpen(false); }}
+                            aria-current={isActive ? 'page' : undefined}
+                            className="relative min-h-[84px] px-2 py-3 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-[0.94] transition-transform"
+                            style={{
+                              background: isActive ? '#ECECEC' : '#141816',
+                              border: `1px solid ${isActive ? '#ECECEC' : '#232825'}`,
+                              color: isActive ? '#090C0B' : '#A5AAA7',
+                            }}>
+                            <item.icon className="w-5 h-5" />
+                            <span className="text-[10px] font-bold leading-tight text-center">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                <button type="button" onClick={onGoHome}
+                  className="w-full min-h-12 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-white/60 active:scale-[0.98]"
+                  style={{ background: '#141816', border: '1px solid #232825' }}>
+                  <Home className="w-4 h-4" /> Ir a la plataforma
+                </button>
+              </div>
+              <div className="shrink-0" style={{ height: 'env(safe-area-inset-bottom, 12px)' }} />
+            </motion.div>
           </>
         )}
       </AnimatePresence>
@@ -947,21 +1012,60 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen }) {
   );
 }
 
+function MobileOperationsDock({ active, setActive, openMenu }) {
+  const quickItems = NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'qr'].includes(item.id));
+  const moreActive = !quickItems.some(item => item.id === active);
+  return (
+    <nav className="fixed left-0 right-0 bottom-0 z-30 lg:hidden" aria-label="Navegación rápida del panel"
+      style={{
+        background: 'rgba(8,11,10,0.96)',
+        borderTop: '1px solid rgba(255,255,255,0.09)',
+        backdropFilter: 'blur(18px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}>
+      <div className="grid grid-cols-5 px-2 pt-1.5">
+        {quickItems.map(item => {
+          const isActive = active === item.id;
+          return (
+            <button key={item.id} type="button" onClick={() => setActive(item.id)} aria-current={isActive ? 'page' : undefined}
+              className="min-h-[58px] rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95"
+              style={{ color: isActive ? '#ECECEC' : '#555C58' }}>
+              <item.icon className="w-5 h-5" />
+              <span className="text-[9px] font-bold">{item.label === 'Dashboard' ? 'Inicio' : item.label}</span>
+            </button>
+          );
+        })}
+        <button type="button" onClick={openMenu} className="min-h-[58px] rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95"
+          style={{ color: moreActive ? '#ECECEC' : '#555C58' }}>
+          <Menu className="w-5 h-5" />
+          <span className="text-[9px] font-bold">Menú</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 /* ─────────────────────── MAIN COMPONENT ─────────────────────── */
 const AdminDashboard = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const activeItem = ALL_ITEMS.find(i => i.id === activeSection);
+  const isAdmin = userRole === 'admin';
+  const visibleGroups = isAdmin ? NAV_GROUPS : [{
+    label: 'Operación',
+    items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'qr'].includes(item.id)),
+  }];
+  const visibleItems = visibleGroups.flatMap(group => group.items);
+  const activeItem = visibleItems.find(i => i.id === activeSection) || visibleItems[0];
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'dashboard':   return <DashboardSection />;
-      case 'events':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos</p></div><EventManager /></div>;
-      case 'tickets':     return <TicketsSection />;
-      case 'qr':          return <QRSection />;
+      case 'dashboard':   return <DashboardSection ownerId={isAdmin ? null : currentUser?.id} />;
+      case 'events':      return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos</p></div><EventManager /></div> : <PromoterDashboard />;
+      case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} />;
+      case 'qr':          return <QRSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'wallet':      return <WalletSection />;
       case 'payouts':     return <PayoutsSection />;
       case 'podcasts':    return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Podcasts</h2><p className="text-sm text-white/40 mt-0.5">Gestionar episodios</p></div><PodcastManager /></div>;
@@ -977,20 +1081,22 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#070C0B', color: 'white' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ height: '100dvh', background: '#070C0B', color: 'white' }}>
       <Helmet>
-        <title>Admin Panel · PolyFauna</title>
+        <title>{isAdmin ? 'Admin Panel' : 'Panel Operativo'} · PolyFauna</title>
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       {/* Top bar */}
       <header
-        className="flex items-center gap-4 px-5 py-3 shrink-0 z-30"
-        style={{ background: 'rgba(6,10,9,0.98)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex items-center gap-3 px-4 sm:px-5 py-3 shrink-0 z-20"
+        style={{ background: 'rgba(6,10,9,0.98)', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingTop: 'max(12px, env(safe-area-inset-top))' }}
       >
         <button
           type="button"
           onClick={() => setMobileNavOpen(true)}
-          className="lg:hidden text-white/40 hover:text-white transition-colors"
+          className="lg:hidden w-11 h-11 -ml-1 rounded-xl flex items-center justify-center text-white/60 active:scale-95"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -1009,13 +1115,13 @@ const AdminDashboard = () => {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+            className="flex items-center gap-2 w-11 sm:w-auto h-11 sm:h-auto sm:px-4 sm:py-2 justify-center rounded-xl text-xs font-bold transition-all"
             style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.12)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(32,199,232,0.15)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
           >
             <Home className="w-3.5 h-3.5" />
-            Inicio
+            <span className="hidden sm:inline">Inicio</span>
           </button>
         </div>
       </header>
@@ -1028,10 +1134,12 @@ const AdminDashboard = () => {
           onGoHome={() => navigate('/')}
           mobileOpen={mobileNavOpen}
           setMobileOpen={setMobileNavOpen}
+          groups={visibleGroups}
+          panelLabel={isAdmin ? 'Admin Panel' : 'Panel Operativo'}
         />
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-4 pt-4 pb-28 sm:p-6 lg:pb-6 overscroll-contain">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection}
@@ -1040,11 +1148,18 @@ const AdminDashboard = () => {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              {renderSection()}
+              <Suspense fallback={
+                <div className="min-h-[40vh] flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-white/40" aria-label="Cargando módulo" />
+                </div>
+              }>
+                {renderSection()}
+              </Suspense>
             </motion.div>
           </AnimatePresence>
         </main>
       </div>
+      <MobileOperationsDock active={activeSection} setActive={setActiveSection} openMenu={() => setMobileNavOpen(true)} />
     </div>
   );
 };

@@ -9,7 +9,7 @@ const ASSETS = {
   'symbol-ui':  '/icons/symbol-ui.svg',        // organismo bold (UI, tamaños pequeños)
 };
 
-const FALLBACK = '/logo-header.png';
+const FALLBACK = '/icons/logo-header.svg';
 
 const HEIGHTS = {
   xs: 'h-8',

@@ -53,19 +53,10 @@ function RequestCard({ req, onAction }) {
         .eq('id', req.user_id);
     }
 
-    // Send decision email (email comes from form_data since profiles has no email column)
-    const userEmail = req.form_data?.email;
-    if (userEmail) {
-      supabase.functions.invoke('send-role-decision', {
-        body: {
-          userEmail,
-          userName: req.profiles?.display_name || req.form_data?.name || 'Usuario',
-          requestedRole: req.requested_role,
-          decision: action === 'approve' ? 'approved' : 'rejected',
-          rejectionReason: action === 'reject' ? reason.trim() : null,
-        },
-      }).catch(() => {});
-    }
+    // La función verifica el rol admin y resuelve el correo desde Auth.
+    supabase.functions.invoke('send-role-decision', {
+      body: { requestId: req.id },
+    }).catch(() => {});
 
     toast({
       title: action === 'approve' ? 'Solicitud aprobada' : 'Solicitud rechazada',

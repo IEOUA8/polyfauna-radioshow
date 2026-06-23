@@ -244,6 +244,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
               <button
                 type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
+                aria-label={isPlaying ? 'Pausar radio' : 'Reproducir radio'}
                 className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
                   background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
