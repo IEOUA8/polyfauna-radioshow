@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Gauge, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -245,7 +245,24 @@ export default function ControlCenter({ setCurrentSection }) {
   const [privacyOpen, setPrivacyOpen]   = useState(false);
   const [showUpload, setShowUpload]     = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [artistProfiles, setArtistProfiles] = useState([]);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
+  const currentRole = profile?.role || 'citizen';
+  const currentIsCreator = CREATOR_ROLES.includes(currentRole);
+
+  useEffect(() => {
+    if (!currentUser || currentRole !== 'admin') {
+      setArtistProfiles([]);
+      return;
+    }
+
+    supabase
+      .from('artists')
+      .select('id, name, slug, image_url, type')
+      .order('name')
+      .limit(4)
+      .then(({ data }) => setArtistProfiles(data || []));
+  }, [currentUser, currentRole]);
 
   if (!currentUser) {
     return <div className="p-5"><LoginRequired message="Inicia sesión para acceder al Control Center." /></div>;
@@ -264,14 +281,14 @@ export default function ControlCenter({ setCurrentSection }) {
     navigate('/login');
   };
 
-  const role = profile?.role || 'citizen';
+  const role = currentRole;
   const roleMeta = ROLE_META[role] || ROLE_META.citizen;
   const RoleIcon = roleMeta.icon || Headphones;
   const isAdmin = role === 'admin';
   const displayName = profile?.display_name || currentUser.email?.split('@')[0] || 'Usuario';
   const avatar = profile?.avatar_url;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const isCreator = CREATOR_ROLES.includes(role);
+  const isCreator = currentIsCreator;
   const hasPromoterHub = role === 'promoter' || role === 'club' || role === 'admin';
 
   return (
@@ -382,12 +399,14 @@ export default function ControlCenter({ setCurrentSection }) {
                   : initials
                 }
               </div>
-              <div
-                className="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(7,12,11,0.95)', border: `1px solid ${roleMeta.color}45`, boxShadow: '0 8px 18px rgba(0,0,0,0.45)' }}
-              >
-                <RoleIcon className="w-4 h-4" style={{ color: roleMeta.color }} />
-              </div>
+              {!isAdmin && (
+                <div
+                  className="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(7,12,11,0.95)', border: `1px solid ${roleMeta.color}45`, boxShadow: '0 8px 18px rgba(0,0,0,0.45)' }}
+                >
+                  <RoleIcon className="w-4 h-4" style={{ color: roleMeta.color }} />
+                </div>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
@@ -399,15 +418,6 @@ export default function ControlCenter({ setCurrentSection }) {
                   <RoleIcon className="w-3 h-3" />
                   {roleMeta.label}
                 </span>
-                {isAdmin && (
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
-                    style={{ background: 'rgba(248,113,113,0.14)', color: '#F87171', border: '1px solid rgba(248,113,113,0.32)' }}
-                  >
-                    <Shield className="w-3 h-3" />
-                    Distintivo Admin
-                  </span>
-                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight truncate">{displayName}</h1>
               {profile?.username && (
@@ -445,6 +455,75 @@ export default function ControlCenter({ setCurrentSection }) {
               onClick={() => setCurrentSection?.('organism')} delay={0.08} />
           </div>
         </div>
+
+        {isCreator && (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Identidad pública</p>
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="p-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.18)' }}>
+                    <Disc3 className="w-4 h-4" style={{ color: '#A78BFA' }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-white">Perfil artístico separado de la cuenta</p>
+                    <p className="text-xs text-white/38 leading-relaxed mt-1">
+                      Tu rol operativo puede ser Admin, promotor o club; tu música y tus eventos viven en perfiles públicos de artista.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {isAdmin && artistProfiles.length > 0 && (
+                <div>
+                  {artistProfiles.map((artist) => (
+                    <button
+                      key={artist.id}
+                      type="button"
+                      onClick={() => artist.slug ? navigate(`/artist/${artist.slug}`) : navigate('/admin')}
+                      className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.035)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center shrink-0 text-xs font-black text-white/45">
+                        {artist.image_url
+                          ? <img src={artist.image_url} alt="" className="w-full h-full object-cover" />
+                          : artist.name?.slice(0, 2).toUpperCase()
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{artist.name}</p>
+                        <p className="text-[11px] text-white/32 truncate">{artist.type || 'Artista'}{artist.slug ? ` · /artist/${artist.slug}` : ''}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-white/18 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => isAdmin ? navigate('/admin') : setShowUpload(true)}
+                className="w-full px-5 py-4 text-left flex items-center gap-3 transition-colors"
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.035)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  <Edit3 className="w-4 h-4 text-white/55" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">{isAdmin ? 'Gestionar perfiles de artista' : 'Gestionar identidad pública'}</p>
+                  <p className="text-xs text-white/35 truncate">{isAdmin ? 'Crear slugs, tags, bio y catálogo visible' : 'Subir contenido asociado a tu perfil'}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/18 shrink-0" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {(isCreator || hasPromoterHub || isAdmin) && (
           <div>

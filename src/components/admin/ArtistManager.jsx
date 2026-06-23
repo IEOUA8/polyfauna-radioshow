@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
+import { slugifyArtist } from '@/lib/artistIdentity';
+
+const ARTIST_TYPES = [
+  'artist',
+  'dj',
+  'live act',
+  'producer',
+  'collective',
+  'label',
+];
+
+function parseGenres(value) {
+  return String(value || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
 
 const ArtistManager = () => {
   const { currentUser } = useAuth();
@@ -19,16 +36,15 @@ const ArtistManager = () => {
   const [editingArtist, setEditingArtist] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
+    slug: '',
+    type: 'artist',
+    genres: '',
     bio: '',
     image_url: '',
     social_links: '',
   });
 
-  useEffect(() => {
-    fetchArtists();
-  }, []);
-
-  const fetchArtists = async () => {
+  const fetchArtists = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('artists')
@@ -46,7 +62,11 @@ const ArtistManager = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchArtists();
+  }, [fetchArtists]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,7 +87,10 @@ const ArtistManager = () => {
       }
 
       const artistData = {
-        name: formData.name,
+        name: formData.name.trim(),
+        slug: slugifyArtist(formData.slug || formData.name),
+        type: formData.type || 'artist',
+        genres: parseGenres(formData.genres),
         bio: formData.bio,
         image_url: formData.image_url,
         social_links: socialLinks,
@@ -106,6 +129,9 @@ const ArtistManager = () => {
     setEditingArtist(artist);
     setFormData({
       name: artist.name,
+      slug: artist.slug || slugifyArtist(artist.name),
+      type: artist.type || 'artist',
+      genres: Array.isArray(artist.genres) ? artist.genres.join(', ') : (artist.genres || ''),
       bio: artist.bio || '',
       image_url: artist.image_url || '',
       social_links: JSON.stringify(artist.social_links || {}),
@@ -139,6 +165,9 @@ const ArtistManager = () => {
     setEditingArtist(null);
     setFormData({
       name: '',
+      slug: '',
+      type: 'artist',
+      genres: '',
       bio: '',
       image_url: '',
       social_links: '',
@@ -176,9 +205,49 @@ const ArtistManager = () => {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    name: e.target.value,
+                    slug: editingArtist ? formData.slug : slugifyArtist(e.target.value),
+                  })}
                   className="bg-background border-border text-foreground"
                   required
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="slug">Slug público *</Label>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: slugifyArtist(e.target.value) })}
+                    className="bg-background border-border text-foreground"
+                    placeholder="nombre-artista"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="type">Tipo</Label>
+                  <select
+                    id="type"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3 text-sm"
+                  >
+                    {ARTIST_TYPES.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="genres">Tags / géneros</Label>
+                <Input
+                  id="genres"
+                  value={formData.genres}
+                  onChange={(e) => setFormData({ ...formData, genres: e.target.value })}
+                  className="bg-background border-border text-foreground"
+                  placeholder="Techno, Ambient, Live act"
                 />
               </div>
               <div>
@@ -232,7 +301,9 @@ const ArtistManager = () => {
                 )}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-foreground font-semibold truncate">{artist.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-1">{artist.bio || 'Sin bio'}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">
+                    {artist.slug ? `/artist/${artist.slug}` : 'Sin slug'} · {Array.isArray(artist.genres) && artist.genres.length > 0 ? artist.genres.join(', ') : (artist.bio || 'Sin tags')}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button

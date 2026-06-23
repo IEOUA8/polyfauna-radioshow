@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle, ChevronLeft, Music, Upload, X, ImageIcon, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -154,13 +154,22 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
   const [step, setStep] = useState('files'); // files | info | uploading | done
   const [audioFile, setAudioFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
-  const [form, setForm]  = useState({ title: '', description: '', genre: '' });
+  const [form, setForm]  = useState({ title: '', description: '', genre: '', artist_id: '' });
   const [audioProgress, setAudioProgress] = useState(0);
   const [coverProgress, setCoverProgress] = useState(0);
   const [error, setError] = useState(null);
   const [resultPod, setResultPod] = useState(null);
+  const [artists, setArtists] = useState([]);
 
   const canGoToInfo = audioFile && coverFile;
+
+  useEffect(() => {
+    supabase
+      .from('artists')
+      .select('id, name, slug, image_url')
+      .order('name')
+      .then(({ data }) => setArtists(data || []));
+  }, []);
 
   const handleUpload = async () => {
     if (!form.title.trim()) { setError('El título es obligatorio.'); return; }
@@ -196,6 +205,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
           title: form.title.trim(),
           description: form.description.trim() || null,
           genre: form.genre || null,
+          artist_id: form.artist_id || null,
           audio_url: audioMeta.publicUrl,
           cover_url: coverMeta.publicUrl,
           duration,
@@ -377,6 +387,29 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 </div>
               </div>
 
+              {/* Artist profile */}
+              {artists.length > 0 && (
+                <div>
+                  <label className="text-[11px] font-bold text-white/50 uppercase tracking-widest">Perfil artístico</label>
+                  <select
+                    value={form.artist_id}
+                    onChange={(e) => setForm(f => ({ ...f, artist_id: e.target.value }))}
+                    className="mt-1.5 w-full h-10 px-3 rounded-xl text-sm text-white focus:outline-none transition-all"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <option value="" style={{ background: '#0b100f' }}>Publicar como POLYFAUNA</option>
+                    {artists.map((artist) => (
+                      <option key={artist.id} value={artist.id} style={{ background: '#0b100f' }}>
+                        {artist.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-white/28 mt-1.5">
+                    El contenido aparecerá en el perfil público del artista seleccionado.
+                  </p>
+                </div>
+              )}
+
               {/* Description */}
               <div>
                 <label className="text-[11px] font-bold text-white/50 uppercase tracking-widest">Descripción</label>
@@ -425,6 +458,11 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                 <div>
                   <p className="text-sm font-bold text-white">{form.title}</p>
                   {form.genre && <p className="text-[11px] mt-0.5" style={{ color: gColor }}>{form.genre}</p>}
+                  {form.artist_id && (
+                    <p className="text-[10px] text-white/30 mt-0.5">
+                      {artists.find(a => a.id === form.artist_id)?.name}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -476,7 +514,7 @@ export default function UploadPodcastModal({ onClose, onSuccess }) {
                   Cerrar
                 </button>
                 <button type="button"
-                  onClick={() => { setStep('files'); setAudioFile(null); setCoverFile(null); setForm({ title: '', description: '', genre: '' }); setAudioProgress(0); setCoverProgress(0); }}
+                  onClick={() => { setStep('files'); setAudioFile(null); setCoverFile(null); setForm({ title: '', description: '', genre: '', artist_id: '' }); setAudioProgress(0); setCoverProgress(0); }}
                   className="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
                   style={{ background: 'linear-gradient(135deg,#20C7E8,#7C5CFF)', color: '#080B14' }}>
                   Subir otro

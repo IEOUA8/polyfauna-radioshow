@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronLeft, ChevronRight, ExternalLink, Loader2, MapPin, Search, Share2, Star, Ticket, Users, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/contexts/AuthContext';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
+import { resolveLineupArtists } from '@/lib/artistIdentity';
 
 // Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
 // Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
@@ -345,11 +346,9 @@ function BuyModal({ event, onClose }) {
 }
 
 /* ── Event detail page ── */
-function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
+function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [] }) {
   const [linkCopied, setLinkCopied] = React.useState(false);
-  const lineup = event.lineup
-    ? (Array.isArray(event.lineup) ? event.lineup : String(event.lineup).split(','))
-    : [];
+  const lineup = resolveLineupArtists(event.lineup, artists);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/e/${event.id}`;
@@ -465,15 +464,25 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav }) {
             Lineup
           </h2>
           <div className="flex flex-wrap gap-2">
-            {lineup.map((artist, i) => (
-              <span
-                key={i}
-                className="text-xs font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                {artist.trim()}
-              </span>
-            ))}
+            {lineup.map(({ name, artist }, i) => {
+              const label = artist?.name || name;
+              const className = "text-xs font-bold px-3 py-1.5 rounded-lg transition-colors";
+              const style = {
+                background: artist ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.06)',
+                color: artist ? 'rgba(125,231,255,0.92)' : 'rgba(255,255,255,0.85)',
+                border: artist ? '1px solid rgba(32,199,232,0.22)' : '1px solid rgba(255,255,255,0.1)',
+              };
+
+              return artist?.slug ? (
+                <Link key={`${artist.id}-${i}`} to={`/artist/${artist.slug}`} className={className} style={style}>
+                  {label}
+                </Link>
+              ) : (
+                <span key={`${name}-${i}`} className={className} style={style}>
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -521,6 +530,10 @@ export default function EventTerminal() {
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('events').select('*').order('date', { ascending: true }),
+    []
+  );
+  const { data: artists } = useSupabaseQuery(
+    () => supabase.from('artists').select('id, name, slug'),
     []
   );
 
@@ -626,6 +639,7 @@ export default function EventTerminal() {
             onBuy={() => setBuyingEvent(selectedEvent)}
             isFav={isFav}
             toggleFav={toggleFav}
+            artists={artists || []}
           />
         ) : (
           <motion.div

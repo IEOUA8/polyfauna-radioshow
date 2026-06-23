@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveLineupArtists } from '@/lib/artistIdentity';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 
@@ -35,6 +36,7 @@ export default function EventPublicPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [ticketNo, setTicketNo] = useState('');
   const [copied,   setCopied]   = useState(false);
+  const [artists,  setArtists]  = useState([]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -49,6 +51,13 @@ export default function EventPublicPage() {
         setLoading(false);
       });
   }, [eventId]);
+
+  useEffect(() => {
+    supabase
+      .from('artists')
+      .select('id, name, slug')
+      .then(({ data }) => setArtists(data || []));
+  }, []);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -121,9 +130,7 @@ export default function EventPublicPage() {
   const isFree    = event && (!event.price || event.price === 0);
   const available = event ? (event.tickets_total || 0) - (event.tickets_sold || 0) : 0;
   const isSoldOut = event && available <= 0;
-  const lineup    = event?.lineup
-    ? (Array.isArray(event.lineup) ? event.lineup : String(event.lineup).split(','))
-    : [];
+  const lineup = resolveLineupArtists(event?.lineup, artists);
   const canonicalUrl = `https://www.polyfauna.com/e/${eventId}`;
   const seoDescription = event?.description || `${event?.venue || 'Evento de música electrónica'} · ${formatDateLong(event?.date)}`;
   const seoImage = event?.image_url || 'https://www.polyfauna.com/icons/og-cover.png';
@@ -199,7 +206,11 @@ export default function EventPublicPage() {
             availability: isSoldOut ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
           },
           organizer: { '@type': 'Organization', name: 'POLYFAUNA', url: 'https://www.polyfauna.com/' },
-          performer: lineup.map(name => ({ '@type': 'MusicGroup', name: String(name).trim() })),
+          performer: lineup.map(item => ({
+            '@type': 'MusicGroup',
+            name: item.artist?.name || item.name,
+            url: item.artist?.slug ? `https://www.polyfauna.com/artist/${item.artist.slug}` : undefined,
+          })),
           url: canonicalUrl,
         })}</script>
       </Helmet>
@@ -295,15 +306,25 @@ export default function EventPublicPage() {
                   Lineup
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {lineup.map((a, i) => (
-                    <span
-                      key={i}
-                      className="text-sm font-bold px-3 py-1.5 rounded-xl"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.10)' }}
-                    >
-                      {a.trim()}
-                    </span>
-                  ))}
+                  {lineup.map(({ name, artist }, i) => {
+                    const label = artist?.name || name;
+                    const className = "text-sm font-bold px-3 py-1.5 rounded-xl transition-colors";
+                    const style = {
+                      background: artist ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.06)',
+                      color: artist ? 'rgba(125,231,255,0.92)' : 'rgba(255,255,255,0.85)',
+                      border: artist ? '1px solid rgba(32,199,232,0.22)' : '1px solid rgba(255,255,255,0.10)',
+                    };
+
+                    return artist?.slug ? (
+                      <Link key={`${artist.id}-${i}`} to={`/artist/${artist.slug}`} className={className} style={style}>
+                        {label}
+                      </Link>
+                    ) : (
+                      <span key={`${name}-${i}`} className={className} style={style}>
+                        {label}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}

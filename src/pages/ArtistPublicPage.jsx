@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Disc3, ExternalLink, Globe, Instagram, Music, Share2, Twitter } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Instagram, Music, Play, Share2, Twitter } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { lineupIncludesArtist } from '@/lib/artistIdentity';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop';
 
@@ -36,6 +37,7 @@ export default function ArtistPublicPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied,   setCopied]   = useState(false);
+  const [content, setContent] = useState({ albums: [], tracks: [], podcasts: [], events: [] });
 
   useEffect(() => {
     if (!slug) return;
@@ -50,6 +52,48 @@ export default function ArtistPublicPage() {
         setLoading(false);
       });
   }, [slug]);
+
+  useEffect(() => {
+    if (!artist?.id) return;
+
+    const loadArtistContent = async () => {
+      const [albumsRes, tracksRes, podcastsRes, eventsRes] = await Promise.all([
+        supabase
+          .from('albums')
+          .select('id, title, cover_url, genre, release_year')
+          .eq('artist_id', artist.id)
+          .order('created_at', { ascending: false })
+          .limit(6),
+        supabase
+          .from('tracks')
+          .select('id, title, duration, genre, audio_url, albums(title, cover_url)')
+          .eq('artist_id', artist.id)
+          .order('created_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('podcasts')
+          .select('id, title, cover_url, duration, genre, created_at')
+          .eq('artist_id', artist.id)
+          .order('created_at', { ascending: false })
+          .limit(6),
+        supabase
+          .from('events')
+          .select('id, title, date, venue, city, image_url, lineup')
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true })
+          .limit(40),
+      ]);
+
+      setContent({
+        albums: albumsRes.data || [],
+        tracks: tracksRes.data || [],
+        podcasts: podcastsRes.data || [],
+        events: (eventsRes.data || []).filter(event => lineupIncludesArtist(event.lineup, artist)).slice(0, 4),
+      });
+    };
+
+    loadArtistContent();
+  }, [artist]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -92,6 +136,7 @@ export default function ArtistPublicPage() {
   const canonicalUrl = `https://www.polyfauna.com/artist/${artist.slug || slug}`;
   const seoDescription = artist.bio || `${artist.name}, artista de música electrónica en POLYFAUNA Radio, podcasts y eventos.`;
   const sameAs = Object.values(links).filter(value => typeof value === 'string' && /^https?:\/\//.test(value));
+  const hasContent = content.albums.length > 0 || content.tracks.length > 0 || content.podcasts.length > 0 || content.events.length > 0;
 
   return (
     <>
@@ -213,6 +258,131 @@ export default function ArtistPublicPage() {
                   ) : null
                 )}
               </div>
+            </motion.div>
+          )}
+
+          {/* Artist content */}
+          {hasContent && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+              className="mb-10 space-y-8">
+              {content.albums.length > 0 && (
+                <section>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3 flex items-center gap-2">
+                    <Disc3 className="w-3.5 h-3.5" />
+                    Música
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {content.albums.map((album) => (
+                      <Link
+                        key={album.id}
+                        to="/"
+                        className="group rounded-xl overflow-hidden transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                      >
+                        <div className="aspect-square bg-white/5 overflow-hidden">
+                          <img src={album.cover_url || img} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        </div>
+                        <div className="p-3">
+                          <p className="text-sm font-bold text-white truncate">{album.title}</p>
+                          <p className="text-[11px] text-white/35 truncate">{[album.genre, album.release_year].filter(Boolean).join(' · ') || artist.name}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {content.tracks.length > 0 && (
+                <section>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3 flex items-center gap-2">
+                    <Play className="w-3.5 h-3.5" />
+                    Tracks
+                  </p>
+                  <div className="space-y-2">
+                    {content.tracks.map((track) => (
+                      <div
+                        key={track.id}
+                        className="flex items-center gap-3 p-3 rounded-xl"
+                        style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                      >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                          <img src={track.albums?.cover_url || img} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                          <p className="text-[11px] text-white/35 truncate">{track.albums?.title || track.genre || artist.name}</p>
+                        </div>
+                        <Link
+                          to="/"
+                          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(32,199,232,0.10)', border: '1px solid rgba(32,199,232,0.20)' }}
+                          title="Escuchar en POLYFAUNA"
+                        >
+                          <Play className="w-4 h-4" style={{ color: 'rgba(125,231,255,0.95)' }} />
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {content.podcasts.length > 0 && (
+                <section>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3 flex items-center gap-2">
+                    <Headphones className="w-3.5 h-3.5" />
+                    Podcasts / Mixes
+                  </p>
+                  <div className="space-y-2">
+                    {content.podcasts.map((podcast) => (
+                      <Link
+                        key={podcast.id}
+                        to="/"
+                        className="flex items-center gap-3 p-3 rounded-xl transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                      >
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                          <img src={podcast.cover_url || img} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{podcast.title}</p>
+                          <p className="text-[11px] text-white/35 truncate">{podcast.genre || 'Mix POLYFAUNA'}</p>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {content.events.length > 0 && (
+                <section>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3 flex items-center gap-2">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Próximos eventos
+                  </p>
+                  <div className="space-y-2">
+                    {content.events.map((event) => (
+                      <Link
+                        key={event.id}
+                        to={`/e/${event.id}`}
+                        className="flex items-center gap-3 p-3 rounded-xl transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                      >
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                          <img src={event.image_url || img} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{event.title}</p>
+                          <p className="text-[11px] text-white/35 truncate">
+                            {[event.venue || event.city, event.date && new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
             </motion.div>
           )}
 
