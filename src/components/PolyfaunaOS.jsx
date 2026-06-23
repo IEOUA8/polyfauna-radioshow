@@ -158,10 +158,6 @@ function PolyfaunaOS() {
       case 'events':        return <EventTerminal setCurrentSection={setCurrentSection} />;
       case 'artists':       return (
                               <ArtistsPage
-                                setCurrentTrack={setCurrentTrack}
-                                setIsPlaying={setIsPlaying}
-                                currentTrack={currentTrack}
-                                isPlaying={isPlaying}
                                 setCurrentSection={setCurrentSection}
                               />
                             );

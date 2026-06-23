@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Heart, Instagram, Link2, Music, Play, Twitter } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -36,7 +36,7 @@ function SocialButton({ href, icon: Icon, label, color }) {
   );
 }
 
-function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIsPlaying, currentTrack, isPlaying, setCurrentSection }) {
+function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
   const { toast } = useToast();
   const links = typeof artist.social_links === 'object' && artist.social_links ? artist.social_links : {};
   const genres = artist.genres
@@ -60,12 +60,38 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIs
   );
 
   const { data: tracks } = useSupabaseQuery(
-    () => supabase
-      .from('tracks')
-      .select('id, title, audio_url, duration, genre, albums(id, title, cover_url), artists(name)')
-      .eq('artist_id', artist.id)
-      .order('created_at', { ascending: false })
-      .limit(8),
+    async () => {
+      const { data, error } = await supabase
+        .from('tracks')
+        .select('id, title, duration, genre, album_id, albums(id, title, cover_url), artists(name)')
+        .eq('artist_id', artist.id)
+        .order('created_at', { ascending: false })
+        .limit(24);
+
+      if (error || !data?.length) return { data: data || [], error };
+
+      const ids = data.map(track => track.id);
+      const favs = ids.length
+        ? await supabase
+            .from('user_favorites')
+            .select('item_id')
+            .eq('item_type', 'track')
+            .in('item_id', ids)
+        : { data: [], error: null };
+
+      const counts = (favs.data || []).reduce((acc, row) => {
+        acc[row.item_id] = (acc[row.item_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      return {
+        data: data
+          .map(track => ({ ...track, favorite_count: counts[track.id] || 0 }))
+          .sort((a, b) => (b.favorite_count - a.favorite_count) || String(a.title).localeCompare(String(b.title)))
+          .slice(0, 5),
+        error: favs.error,
+      };
+    },
     [artist.id]
   );
 
@@ -104,49 +130,19 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIs
     }
   };
 
-  const playTrack = (track) => {
-    if (!track?.audio_url) return;
-    const active = currentTrack?.id === track.id;
-    if (active) {
-      setIsPlaying?.(!isPlaying);
-      return;
-    }
-    setCurrentTrack?.({
-      id: track.id,
-      title: track.title,
-      artist: track.artists?.name || artist.name,
-      album: track.albums?.title || track.genre || 'Música',
-      art: track.albums?.cover_url || img,
-      audio_url: track.audio_url,
-      duration: track.duration,
-    });
-    setIsPlaying?.(true);
-  };
-
-  const playPodcast = (podcast) => {
-    if (!podcast?.audio_url) return;
-    const active = currentTrack?.id === podcast.id;
-    if (active) {
-      setIsPlaying?.(!isPlaying);
-      return;
-    }
-    supabase.rpc('increment_podcast_plays', { p_podcast_id: podcast.id }).then(() => {});
-    setCurrentTrack?.({
-      id: podcast.id,
-      title: podcast.title,
-      artist: podcast.artists?.name || artist.name,
-      album: podcast.genre || 'Podcast / Mix',
-      art: podcast.cover_url || img,
-      audio_url: podcast.audio_url,
-      duration: podcast.duration,
-    });
-    setIsPlaying?.(true);
-  };
-
   const openAlbum = (album) => {
+    if (!album?.id) return;
     setCurrentSection?.('music');
     window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'albums', id: album.id } }));
+    }, 60);
+  };
+
+  const openPodcast = (podcast) => {
+    if (!podcast?.id) return;
+    setCurrentSection?.('podcasts');
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'podcasts', id: podcast.id } }));
     }, 60);
   };
 
@@ -298,36 +294,36 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIs
               <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
                   <Music className="w-3.5 h-3.5" />
-                  Tracks
+                  Top tracks
                 </h2>
                 <div className="space-y-2">
-                  {tracks.map((track) => {
-                    const active = currentTrack?.id === track.id;
-                    return (
-                      <button
-                        key={track.id}
-                        type="button"
-                        onClick={() => playTrack(track)}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
-                        style={{
-                          background: active ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.035)',
-                          border: `1px solid ${active ? 'rgba(32,199,232,0.22)' : 'rgba(255,255,255,0.07)'}`,
-                        }}
-                      >
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center shrink-0">
-                          {track.albums?.cover_url
-                            ? <img src={track.albums.cover_url} alt="" className="w-full h-full object-cover" />
-                            : <Play className="w-4 h-4 text-white/45" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{track.title}</p>
-                          <p className="text-[11px] text-white/35 truncate">{track.albums?.title || track.genre || artist.name}</p>
-                        </div>
-                        <Play className="w-4 h-4 shrink-0" style={{ color: active ? '#20C7E8' : 'rgba(255,255,255,0.35)', fill: active ? '#20C7E8' : 'none' }} />
-                      </button>
-                    );
-                  })}
+                  {tracks.map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => openAlbum(track.albums)}
+                      disabled={!track.albums?.id}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors disabled:opacity-60 disabled:cursor-default"
+                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center shrink-0">
+                        {track.albums?.cover_url
+                          ? <img src={track.albums.cover_url} alt="" className="w-full h-full object-cover" />
+                          : <Music className="w-4 h-4 text-white/45" />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                        <p className="text-[11px] text-white/35 truncate">{track.albums?.title || track.genre || artist.name}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {track.favorite_count > 0 && (
+                          <p className="text-[10px] font-bold text-white/35">{track.favorite_count} like{track.favorite_count === 1 ? '' : 's'}</p>
+                        )}
+                        <p className="text-[10px] text-white/22">Ver álbum</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </section>
             )}
@@ -353,6 +349,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIs
                       <div className="p-3">
                         <p className="text-sm font-bold text-white truncate">{album.title}</p>
                         <p className="text-[11px] text-white/35 truncate">{[album.genre, album.release_year].filter(Boolean).join(' · ') || artist.name}</p>
+                        <p className="text-[10px] text-white/22 mt-1">Ver detalle</p>
                       </div>
                     </button>
                   ))}
@@ -367,30 +364,24 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentTrack, setIs
                   Podcasts / Mixes
                 </h2>
                 <div className="space-y-2">
-                  {podcasts.map((podcast) => {
-                    const active = currentTrack?.id === podcast.id;
-                    return (
-                      <button
-                        key={podcast.id}
-                        type="button"
-                        onClick={() => playPodcast(podcast)}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
-                        style={{
-                          background: active ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.035)',
-                          border: `1px solid ${active ? 'rgba(32,199,232,0.22)' : 'rgba(255,255,255,0.07)'}`,
-                        }}
-                      >
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                          <img src={podcast.cover_url || img} alt="" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{podcast.title}</p>
-                          <p className="text-[11px] text-white/35 truncate">{podcast.genre || 'Mix POLYFAUNA'}</p>
-                        </div>
-                        <Play className="w-4 h-4 shrink-0" style={{ color: active ? '#20C7E8' : 'rgba(255,255,255,0.35)', fill: active ? '#20C7E8' : 'none' }} />
-                      </button>
-                    );
-                  })}
+                  {podcasts.map((podcast) => (
+                    <button
+                      key={podcast.id}
+                      type="button"
+                      onClick={() => openPodcast(podcast)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                        <img src={podcast.cover_url || img} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{podcast.title}</p>
+                        <p className="text-[11px] text-white/35 truncate">{podcast.genre || 'Mix POLYFAUNA'}</p>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
+                    </button>
+                  ))}
                 </div>
               </section>
             )}
@@ -512,7 +503,7 @@ function ArtistCard({ artist, index, isFav, toggleFav, onClick }) {
   );
 }
 
-export default function ArtistsPage({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying, setCurrentSection }) {
+export default function ArtistsPage({ setCurrentSection }) {
   const [search, setSearch] = useState('');
   const [selectedArtist, setSelectedArtist] = useState(null);
   const { isFav, toggle: toggleFav } = useFavorites();
@@ -558,10 +549,6 @@ export default function ArtistsPage({ setCurrentTrack, setIsPlaying, currentTrac
           onBack={() => setSelectedArtist(null)}
           isFav={isFav}
           toggleFav={toggleFav}
-          setCurrentTrack={setCurrentTrack}
-          setIsPlaying={setIsPlaying}
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
           setCurrentSection={setCurrentSection}
         />
       ) : (
