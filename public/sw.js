@@ -1,6 +1,6 @@
 // POLYFAUNA Service Worker — instalación, modo degradado y Web Push
 const APP_URL = self.location.origin;
-const CACHE_VERSION = 'polyfauna-v3';
+const CACHE_VERSION = 'polyfauna-v4';
 const APP_SHELL = `${CACHE_VERSION}-shell`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 const PRECACHE = [
@@ -14,7 +14,6 @@ const PRECACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(APP_SHELL).then(cache => cache.addAll(PRECACHE)));
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

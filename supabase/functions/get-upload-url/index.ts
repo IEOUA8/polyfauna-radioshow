@@ -23,11 +23,44 @@ const ALLOWED_ROLES = ['artist', 'club', 'promoter', 'admin'];
 
 const ALLOWED_AUDIO  = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/ogg'];
 const ALLOWED_IMAGE  = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ALLOWED_FOLDERS = new Set([
+  'podcasts',
+  'podcasts/audio',
+  'podcasts/covers',
+  'tracks',
+  'albums',
+  'artists',
+  'events',
+  'profiles',
+]);
+const EXT_BY_TYPE: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3':  'mp3',
+  'audio/wav':  'wav',
+  'audio/flac': 'flac',
+  'audio/aac':  'aac',
+  'audio/ogg':  'ogg',
+  'image/jpeg': 'jpg',
+  'image/jpg':  'jpg',
+  'image/png':  'png',
+  'image/webp': 'webp',
+};
 const MAX_AUDIO_MB   = 500;
 const MAX_IMAGE_MB   = 10;
+const MAX_BODY_BYTES = 4096;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+  if (Number(req.headers.get('content-length') || 0) > MAX_BODY_BYTES) {
+    return new Response(JSON.stringify({ error: 'Payload too large' }), {
+      status: 413,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
 
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), {
@@ -60,8 +93,11 @@ Deno.serve(async (req) => {
 
     const { filename, contentType, folder = 'podcasts', fileSizeBytes } = await req.json();
 
-    if (!filename || !contentType) {
+    if (typeof filename !== 'string' || !filename.trim() || typeof contentType !== 'string') {
       return json({ error: 'filename y contentType son requeridos' }, 400);
+    }
+    if (typeof folder !== 'string' || !ALLOWED_FOLDERS.has(folder)) {
+      return json({ error: 'Carpeta de carga no permitida' }, 400);
     }
 
     // Validate content type
@@ -72,16 +108,18 @@ Deno.serve(async (req) => {
     }
 
     // Validate size
-    if (fileSizeBytes) {
-      const maxBytes = isAudio ? MAX_AUDIO_MB * 1024 * 1024 : MAX_IMAGE_MB * 1024 * 1024;
-      if (fileSizeBytes > maxBytes) {
-        const limit = isAudio ? `${MAX_AUDIO_MB}MB` : `${MAX_IMAGE_MB}MB`;
-        return json({ error: `Archivo demasiado grande. Límite: ${limit}` }, 400);
-      }
+    const size = Number(fileSizeBytes);
+    if (!Number.isInteger(size) || size <= 0) {
+      return json({ error: 'fileSizeBytes debe ser un entero positivo' }, 400);
+    }
+    const maxBytes = isAudio ? MAX_AUDIO_MB * 1024 * 1024 : MAX_IMAGE_MB * 1024 * 1024;
+    if (size > maxBytes) {
+      const limit = isAudio ? `${MAX_AUDIO_MB}MB` : `${MAX_IMAGE_MB}MB`;
+      return json({ error: `Archivo demasiado grande. Límite: ${limit}` }, 400);
     }
 
-    const ext = filename.split('.').pop()?.toLowerCase() ?? 'bin';
-    const key = `${folder}/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const ext = EXT_BY_TYPE[contentType];
+    const key = `${folder}/${user.id}/${crypto.randomUUID()}.${ext}`;
     const endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET}/${key}`;
 
     // Generate presigned PUT URL (15 min expiry)

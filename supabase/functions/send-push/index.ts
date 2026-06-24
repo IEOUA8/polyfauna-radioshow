@@ -11,6 +11,8 @@ const corsHeaders = {
 const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
 const ADMIN_EMAIL       = Deno.env.get('ADMIN_EMAIL') || 'admin@polyfauna.com';
+const APP_URL           = Deno.env.get('APP_URL') || 'https://www.polyfauna.com';
+const MAX_BODY_BYTES    = 8192;
 
 webpush.setVapidDetails(
   `mailto:${ADMIN_EMAIL}`,
@@ -18,8 +20,37 @@ webpush.setVapidDetails(
   VAPID_PRIVATE_KEY,
 );
 
+function cleanText(value: unknown, max: number) {
+  return String(value ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
+}
+
+function safeNotificationUrl(value: unknown) {
+  try {
+    const app = new URL(APP_URL);
+    const parsed = new URL(String(value || APP_URL), app.origin);
+    if (parsed.origin !== app.origin) return app.origin;
+    parsed.username = '';
+    parsed.password = '';
+    return parsed.toString();
+  } catch (_) {
+    return APP_URL;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  if (Number(req.headers.get('content-length') || 0) > MAX_BODY_BYTES) {
+    return new Response(JSON.stringify({ error: 'Payload too large' }), {
+      status: 413,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
@@ -29,6 +60,14 @@ serve(async (req) => {
     );
 
     const { userId, broadcast, title, body, url, icon, image } = await req.json();
+    const safeTitle = cleanText(title, 90);
+    const safeBody = cleanText(body, 220);
+    if (!safeTitle || (!broadcast && !userId)) {
+      return new Response(JSON.stringify({ error: 'Payload inválido' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const isServiceRole = token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const { data: { user } } = isServiceRole
       ? { data: { user: null } }
@@ -58,7 +97,13 @@ serve(async (req) => {
       });
     }
 
-    const payload = JSON.stringify({ title, body, url, icon, image });
+    const payload = JSON.stringify({
+      title: safeTitle,
+      body: safeBody,
+      url: safeNotificationUrl(url),
+      icon: typeof icon === 'string' ? safeNotificationUrl(icon) : undefined,
+      image: typeof image === 'string' ? safeNotificationUrl(image) : undefined,
+    });
 
     let subscriptions: { endpoint: string; p256dh: string; auth_key: string }[] = [];
 

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ArrowLeft, CheckCircle, CloudUpload, Download, Loader2, QrCode, RefreshCw, ScanLine, Wifi, WifiOff, XCircle } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
 import { downloadEventPack, getOfflineScannerState, syncOfflineScans, validateTicketOffline } from '@/lib/offlineTickets';
@@ -92,6 +91,7 @@ function ScannerView({ onDetected, eventName }) {
     const start = async () => {
       if (!containerRef.current) return;
       try {
+        const { Html5Qrcode } = await import('html5-qrcode');
         scanner = new Html5Qrcode('qr-scanner-region', { verbose: false });
         scannerRef.current = scanner;
 

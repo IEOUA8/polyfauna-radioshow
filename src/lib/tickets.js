@@ -22,7 +22,7 @@ export function readSignedTicketPayload(raw) {
   }
 }
 
-export async function verifySignedTicketQR(raw) {
+export async function verifySignedTicketQR(raw, options = {}) {
   const parsed = readSignedTicketPayload(raw);
   if (!parsed) return { valid: false, error: 'Este QR no tiene firma offline' };
   const { payload, body, signature } = parsed;
@@ -35,7 +35,7 @@ export async function verifySignedTicketQR(raw) {
   }
   try {
     const key = await crypto.subtle.importKey(
-      'jwk', TICKET_SIGNING_PUBLIC_JWK, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'],
+      'jwk', options.publicJwk || TICKET_SIGNING_PUBLIC_JWK, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'],
     );
     const valid = await crypto.subtle.verify(
       { name: 'ECDSA', hash: 'SHA-256' }, key, decodeBase64Url(signature), new TextEncoder().encode(body),

@@ -29,28 +29,20 @@ function RequestCard({ req, onAction }) {
 
   const handle = async (action) => {
     setLoading(action);
-    const updates = {
-      status: action === 'approve' ? 'approved' : 'rejected',
-      reviewed_at: new Date().toISOString(),
-      ...(action === 'reject' && reason.trim() ? { rejection_reason: reason.trim() } : {}),
-    };
+    const { error: actionErr } = await supabase.rpc('process_role_request_admin', {
+      p_request_id: req.id,
+      p_action: action,
+      p_rejection_reason: action === 'reject' ? reason.trim() || null : null,
+    });
 
-    const { error: reqErr } = await supabase
-      .from('role_requests')
-      .update(updates)
-      .eq('id', req.id);
-
-    if (reqErr) {
-      toast({ title: 'Error', description: reqErr.message, variant: 'destructive' });
+    if (actionErr) {
+      toast({
+        title: 'Error',
+        description: actionErr.code === '42883' ? 'Aplica la migración de gobernanza antes de revisar solicitudes.' : actionErr.message,
+        variant: 'destructive',
+      });
       setLoading(null);
       return;
-    }
-
-    if (action === 'approve') {
-      await supabase
-        .from('profiles')
-        .update({ role: req.requested_role })
-        .eq('id', req.user_id);
     }
 
     // La función verifica el rol admin y resuelve el correo desde Auth.

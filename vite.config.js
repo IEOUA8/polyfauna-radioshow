@@ -24,10 +24,10 @@ export default defineConfig({
 				manualChunks(id) {
 					if (id.includes('vite/preload-helper')) return 'vendor';
 					if (!id.includes('node_modules')) return undefined;
+					if (id.includes('/jspdf/')) return 'vendor-pdf';
+					if (id.includes('/html2canvas/')) return 'vendor-html2canvas';
 					if (
-						id.includes('/jspdf/')
-						|| id.includes('/html2canvas/')
-						|| id.includes('/canvg/')
+						id.includes('/canvg/')
 						|| id.includes('/dompurify/')
 						|| id.includes('/pako/')
 						|| id.includes('/fflate/')
@@ -37,7 +37,7 @@ export default defineConfig({
 						|| id.includes('/stackblur-canvas/')
 						|| id.includes('/svg-pathdata/')
 					) {
-						return 'vendor-pdf';
+						return 'vendor-pdf-renderers';
 					}
 					if (id.includes('/@vercel/')) return 'vendor-vercel';
 					if (id.includes('/framer-motion/')) return 'vendor-motion';

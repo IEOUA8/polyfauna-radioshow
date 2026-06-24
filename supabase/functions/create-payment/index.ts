@@ -7,6 +7,7 @@ const CORS = {
 
 const PLATFORM_FEE_PCT = 10;
 const MAX_TICKETS = 4;
+const MAX_BODY_BYTES = 4096;
 
 async function sha256hex(message: string): Promise<string> {
   const data = new TextEncoder().encode(message);
@@ -20,6 +21,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST')
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: CORS });
+  if (Number(req.headers.get('content-length') || 0) > MAX_BODY_BYTES)
+    return new Response(JSON.stringify({ error: 'Payload too large' }), { status: 413, headers: CORS });
 
   try {
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -133,8 +136,10 @@ Deno.serve(async (req) => {
       assigned_emails: emails,
     });
 
-    if (txErr)
-      return new Response(JSON.stringify({ error: 'Error creando transacción', detail: txErr.message }), { status: 500, headers: CORS });
+    if (txErr) {
+      console.error('create-payment tx insert:', txErr.message);
+      return new Response(JSON.stringify({ error: 'Error creando transacción' }), { status: 500, headers: CORS });
+    }
 
     const signature = await sha256hex(`${reference}${amount_in_cents}COP${INTEGRITY_KEY}`);
 

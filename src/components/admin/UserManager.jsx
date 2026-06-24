@@ -5,10 +5,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Trash2, Loader2, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const ROLES = ['citizen', 'artist', 'promoter', 'club', 'admin'];
+const ROLES = ['citizen', 'artist', 'promoter', 'club', 'sello', 'admin'];
 const ROLE_COLOR = {
   citizen: '#20C7E8', artist: '#A78BFA', promoter: '#F59E0B',
-  club: '#34D399', admin: '#F87171',
+  club: '#34D399', sello: '#10B981', admin: '#F87171',
 };
 
 const UserManager = () => {
@@ -35,27 +35,39 @@ const UserManager = () => {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
+      const { error } = await supabase.rpc('set_user_role', {
+        p_user_id: userId,
+        p_role: newRole,
+        p_reason: 'Cambio manual desde panel admin',
+      });
       if (error) throw error;
       toast({ title: 'Rol actualizado' });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error al actualizar rol', description: error.message });
+      toast({
+        variant: 'destructive',
+        title: 'Error al actualizar rol',
+        description: error.code === '42883' ? 'Aplica la migración de gobernanza antes de cambiar roles.' : error.message,
+      });
     }
   };
 
   const handleDelete = async (userId) => {
     if (!confirm('¿Seguro que quieres eliminar este perfil? El usuario perderá acceso.')) return;
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      const { error } = await supabase.rpc('delete_profile_admin', {
+        p_user_id: userId,
+        p_reason: 'Eliminado desde panel admin',
+      });
       if (error) throw error;
       toast({ title: 'Perfil eliminado' });
       setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
+      toast({
+        variant: 'destructive',
+        title: 'Error al eliminar',
+        description: error.code === '42883' ? 'Aplica la migración de gobernanza antes de eliminar perfiles.' : error.message,
+      });
     }
   };
 

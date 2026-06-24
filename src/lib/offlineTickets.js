@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { verifySignedTicketQR } from '@/lib/tickets';
+import { evaluateOfflineTicket } from '@/lib/offlineTicketRules';
 
 const DB_NAME = 'polyfauna-entry-control';
 const DB_VERSION = 1;
@@ -65,32 +66,20 @@ export async function getOfflineScannerState(eventId) {
 }
 
 export async function validateTicketOffline(raw, eventId) {
-  if (!eventId) return { code: 'OFFLINE_NO_EVENT', error: 'Selecciona un evento antes de trabajar sin conexión' };
   const verified = await verifySignedTicketQR(raw);
-  if (!verified.valid) return { code: 'OFFLINE_UNSIGNED', error: verified.error };
-  if (verified.payload.eid !== eventId) return { code: 'WRONG_EVENT', error: 'El ticket pertenece a otro evento' };
-
-  const pack = await getEventPack(eventId);
-  if (!pack) return { code: 'OFFLINE_NOT_READY', error: 'Este evento no fue descargado para uso offline' };
-  const ticket = pack.tickets?.find(item => item.id === verified.payload.tid);
-  if (!ticket) return { code: 'NOT_FOUND', error: 'El ticket no aparece en el paquete descargado' };
-  if (ticket.status === 'used') return { code: 'ALREADY_USED', error: 'El ticket ya estaba usado al descargar el paquete', ...ticket };
-  if (ticket.status !== 'valid') return { code: 'INVALID_STATUS', error: `Ticket no vigente: ${ticket.status}`, ...ticket };
-
-  const usedKey = `${eventId}:${ticket.id}`;
-  const locallyUsed = await request('used', 'readonly', store => store.get(usedKey));
-  if (locallyUsed) return { code: 'ALREADY_USED', error: 'Ticket ya escaneado en este dispositivo', ...ticket };
+  const pack = eventId ? await getEventPack(eventId) : null;
+  const ticketId = verified?.payload?.tid;
+  const locallyUsed = ticketId ? await request('used', 'readonly', store => store.get(`${eventId}:${ticketId}`)) : null;
+  const result = evaluateOfflineTicket({ verified, eventId, pack, locallyUsed });
+  if (result.code !== 'VALID') return result;
 
   const scan = {
-    scanId: crypto.randomUUID(), ticketId: ticket.id, eventId,
+    scanId: crypto.randomUUID(), ticketId, eventId,
     deviceId: getScannerDeviceId(), scannedAt: new Date().toISOString(),
   };
-  await request('used', 'readwrite', store => store.put({ key: usedKey, ...scan }));
+  await request('used', 'readwrite', store => store.put({ key: `${eventId}:${ticketId}`, ...scan }));
   await request('queue', 'readwrite', store => store.put(scan));
-  return {
-    code: 'VALID', success: true, offline: true, pendingSync: true,
-    event_title: pack.eventTitle, ticket_type: ticket.type, ticket_number: ticket.number,
-  };
+  return result;
 }
 
 export async function syncOfflineScans() {
@@ -103,4 +92,3 @@ export async function syncOfflineScans() {
   ));
   return data || [];
 }
-

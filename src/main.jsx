@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from '@/App';
 import '@/index.css';
 import { installGlobalErrorMonitoring, reportClientError } from '@/lib/telemetry';
+import AppUpdateBanner from '@/components/AppUpdateBanner';
 
 // La portada siempre necesita estos dos módulos; iniciar ambas descargas evita
 // una cascada main → shell → radio en conexiones móviles.
@@ -52,6 +53,7 @@ window.__polyfaunaReactRoot = reactRoot;
 reactRoot.render(
   <ErrorBoundary>
     <App />
+    <AppUpdateBanner />
   </ErrorBoundary>
 );
 
@@ -61,6 +63,24 @@ installGlobalErrorMonitoring();
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((registration) => {
+      let refreshing = false;
+      const notifyUpdate = () => {
+        window.dispatchEvent(new CustomEvent('polyfauna-sw-update', { detail: { registration } }));
+      };
+
+      if (registration.waiting && navigator.serviceWorker.controller) notifyUpdate();
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        worker?.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) notifyUpdate();
+        });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+
       registration.update();
       window.setInterval(() => registration.update(), 60 * 60 * 1000);
     }).catch((error) => {

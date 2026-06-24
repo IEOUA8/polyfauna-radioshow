@@ -5,10 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, Disc3, FileText, Headphones, Home, Loader2, Menu,
-  Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
+  MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
   Ticket, TrendingUp, Users, WifiOff, X, XCircle, ListMusic,
 } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +31,8 @@ const NAV_GROUPS = [
     label: 'Gestión',
     items: [
       { id: 'dashboard', label: 'Dashboard',   icon: BarChart2,   color: 'rgba(255,255,255,0.85)' },
+      { id: 'operations', label: 'Operación',   icon: AlertTriangle, color: '#f59e0b' },
+      { id: 'support',   label: 'Soporte',      icon: MessageCircle, color: '#93c5fd' },
       { id: 'events',    label: 'Eventos',      icon: CalendarDays,color: 'rgba(255,255,255,0.85)' },
       { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: 'rgba(255,255,255,0.85)' },
       { id: 'refunds',   label: 'Devoluciones', icon: RefreshCw,   color: 'rgba(255,255,255,0.85)' },
@@ -128,6 +129,7 @@ function QRScannerWidget({ scanKey, eventId }) {
     const start = async () => {
       if (!containerRef.current) return;
       try {
+        const { Html5Qrcode } = await import('html5-qrcode');
         scanner = new Html5Qrcode('admin-qr-region', { verbose: false });
         scannerRef.current = scanner;
         await scanner.start(
@@ -355,6 +357,342 @@ function DashboardSection({ ownerId }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function OperationalSection() {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    const { data, error: alertError } = await supabase.rpc('get_operational_alerts');
+    if (alertError) {
+      setError(alertError.code === '42883'
+        ? 'La migración de alertas operativas aún no está aplicada en Supabase.'
+        : alertError.message);
+      setAlerts([]);
+    } else {
+      const severityOrder = { critical: 0, warning: 1, info: 2 };
+      setAlerts((data || []).sort((a, b) =>
+        (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3)
+        || new Date(b.latest_at || 0) - new Date(a.latest_at || 0)
+      ));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const criticalCount = alerts.filter(alert => alert.severity === 'critical').length;
+  const warningCount = alerts.filter(alert => alert.severity === 'warning').length;
+
+  const colorFor = (severity) => {
+    if (severity === 'critical') return { fg: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.22)' };
+    if (severity === 'warning') return { fg: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.22)' };
+    return { fg: '#93c5fd', bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.22)' };
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-black text-white">Operación</h2>
+          <p className="text-sm text-white/40 mt-0.5">Alertas vivas de pagos, tickets, soporte y estabilidad</p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold disabled:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)' }}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatTile label="Críticas" value={criticalCount} icon={AlertTriangle} loading={loading} sub="Atención inmediata" />
+        <StatTile label="Advertencias" value={warningCount} icon={Shield} loading={loading} sub="Revisar hoy" />
+        <StatTile label="Total alertas" value={alerts.length} icon={BarChart2} loading={loading} sub="Estado actual" />
+      </div>
+
+      {error ? (
+        <div className="p-5 rounded-2xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+          <p className="text-sm font-bold text-red-300">No se pudieron cargar alertas</p>
+          <p className="text-xs text-red-200/55 mt-1">{error}</p>
+        </div>
+      ) : loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />
+          ))}
+        </div>
+      ) : alerts.length === 0 ? (
+        <div className="p-8 rounded-2xl text-center" style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.16)' }}>
+          <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: '#22c55e' }} />
+          <p className="text-sm font-black text-white">Sin alertas operativas</p>
+          <p className="text-xs text-white/35 mt-1">Pagos, tickets, soporte y errores no tienen señales activas.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {alerts.map((alert) => {
+            const colors = colorFor(alert.severity);
+            return (
+              <div
+                key={alert.code}
+                className="p-4 rounded-2xl"
+                style={{ background: 'rgba(11,16,15,0.90)', border: `1px solid ${colors.border}` }}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: colors.bg }}>
+                      <AlertTriangle className="w-5 h-5" style={{ color: colors.fg }} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-black text-white">{alert.title}</p>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase"
+                          style={{ background: colors.bg, color: colors.fg, border: `1px solid ${colors.border}` }}>
+                          {alert.severity}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/45 mt-1">{alert.detail}</p>
+                      <p className="text-xs text-white/30 mt-2 leading-relaxed">{alert.action}</p>
+                    </div>
+                  </div>
+                  <div className="sm:text-right shrink-0">
+                    <p className="text-2xl font-black" style={{ color: colors.fg }}>{Number(alert.affected_count || 0).toLocaleString('es-CO')}</p>
+                    <p className="text-[10px] text-white/30">
+                      {alert.latest_at
+                        ? new Date(alert.latest_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                        : 'Sin fecha'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupportCasesSection() {
+  const { toast } = useToast();
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('active');
+  const [saving, setSaving] = useState(null);
+
+  const statuses = ['open', 'triage', 'waiting_user', 'waiting_internal', 'resolved', 'closed'];
+  const priorities = ['low', 'normal', 'high', 'urgent'];
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    const { data, error: casesError } = await supabase
+      .from('support_cases')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (casesError) {
+      setError(casesError.code === '42P01'
+        ? 'La migración de soporte aún no está aplicada en Supabase.'
+        : casesError.message);
+      setCases([]);
+    } else {
+      setCases(data || []);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateCase = async (supportCase, patch) => {
+    setSaving(supportCase.id);
+    const { data, error: updateError } = await supabase.rpc('update_support_case', {
+      p_case_id: supportCase.id,
+      p_status: patch.status ?? null,
+      p_priority: patch.priority ?? null,
+      p_assigned_to: patch.assigned_to ?? null,
+      p_internal_notes: patch.internal_notes ?? null,
+    });
+
+    if (updateError) {
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo actualizar el caso',
+        description: updateError.code === '42883' ? 'Aplica la migración de gobernanza antes de gestionar soporte.' : updateError.message,
+      });
+    } else {
+      setCases(prev => prev.map(item => item.id === supportCase.id ? data : item));
+      toast({ title: 'Caso actualizado', description: `Estado: ${data.status}` });
+    }
+    setSaving(null);
+  };
+
+  const visibleCases = cases.filter(item => {
+    if (filter === 'active') return !['resolved', 'closed'].includes(item.status);
+    if (filter === 'urgent') return item.priority === 'urgent' && !['resolved', 'closed'].includes(item.status);
+    if (filter === 'closed') return ['resolved', 'closed'].includes(item.status);
+    return true;
+  });
+
+  const activeCount = cases.filter(item => !['resolved', 'closed'].includes(item.status)).length;
+  const urgentCount = cases.filter(item => item.priority === 'urgent' && !['resolved', 'closed'].includes(item.status)).length;
+
+  const priorityColor = (priority) => {
+    if (priority === 'urgent') return '#ef4444';
+    if (priority === 'high') return '#f59e0b';
+    if (priority === 'low') return '#93c5fd';
+    return '#d1d5db';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-black text-white">Soporte</h2>
+          <p className="text-sm text-white/40 mt-0.5">Casos de usuarios, prioridad operativa y notas internas</p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold disabled:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)' }}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatTile label="Activos" value={activeCount} icon={MessageCircle} loading={loading} sub="Abiertos o en espera" />
+        <StatTile label="Urgentes" value={urgentCount} icon={AlertTriangle} loading={loading} sub="Sin resolver" />
+        <StatTile label="Total" value={cases.length} icon={FileText} loading={loading} sub="Ultimos 100 casos" />
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap">
+        {[
+          { id: 'active', label: 'Activos' },
+          { id: 'urgent', label: 'Urgentes' },
+          { id: 'closed', label: 'Resueltos' },
+          { id: 'all', label: 'Todos' },
+        ].map(item => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setFilter(item.id)}
+            className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+            style={{
+              background: filter === item.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
+              color: filter === item.id ? 'white' : 'rgba(255,255,255,0.40)',
+              border: `1px solid ${filter === item.id ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)'}`,
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {error ? (
+        <div className="p-5 rounded-2xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+          <p className="text-sm font-bold text-red-300">No se pudieron cargar casos</p>
+          <p className="text-xs text-red-200/55 mt-1">{error}</p>
+        </div>
+      ) : loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-36 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />
+          ))}
+        </div>
+      ) : visibleCases.length === 0 ? (
+        <div className="p-8 rounded-2xl text-center" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <MessageCircle className="w-9 h-9 mx-auto mb-3 text-white/18" />
+          <p className="text-sm font-bold text-white/60">Sin casos en este filtro</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {visibleCases.map((supportCase) => (
+            <div key={supportCase.id} className="p-4 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-black text-white truncate">{supportCase.subject}</p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(255,255,255,0.06)', color: priorityColor(supportCase.priority), border: '1px solid rgba(255,255,255,0.09)' }}>
+                      {supportCase.priority}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white/45"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      {supportCase.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/35 mt-1">
+                    {supportCase.category}
+                    {supportCase.created_at ? ` · ${new Date(supportCase.created_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </p>
+                  {supportCase.description && (
+                    <p className="text-xs text-white/45 mt-3 leading-relaxed">{supportCase.description}</p>
+                  )}
+                  <p className="text-[10px] font-mono text-white/22 mt-3">#{supportCase.id}</p>
+                </div>
+
+                <div className="w-full lg:w-72 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={supportCase.status}
+                      onChange={e => updateCase(supportCase, { status: e.target.value })}
+                      disabled={saving === supportCase.id}
+                      className="h-10 px-3 rounded-xl text-xs font-bold text-white outline-none disabled:opacity-50"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    >
+                      {statuses.map(status => <option key={status} value={status} style={{ background: '#0b100f' }}>{status}</option>)}
+                    </select>
+                    <select
+                      value={supportCase.priority}
+                      onChange={e => updateCase(supportCase, { priority: e.target.value })}
+                      disabled={saving === supportCase.id}
+                      className="h-10 px-3 rounded-xl text-xs font-bold text-white outline-none disabled:opacity-50"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    >
+                      {priorities.map(priority => <option key={priority} value={priority} style={{ background: '#0b100f' }}>{priority}</option>)}
+                    </select>
+                  </div>
+                  <textarea
+                    defaultValue={supportCase.internal_notes || ''}
+                    placeholder="Notas internas"
+                    rows={3}
+                    disabled={saving === supportCase.id}
+                    onBlur={e => {
+                      if (e.target.value !== (supportCase.internal_notes || '')) {
+                        updateCase(supportCase, { internal_notes: e.target.value });
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-xs text-white placeholder:text-white/25 outline-none resize-none disabled:opacity-50"
+                    style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  />
+                  {saving === supportCase.id && (
+                    <div className="flex items-center gap-2 text-[10px] text-white/30">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Guardando
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1201,6 +1539,8 @@ const AdminDashboard = () => {
   const renderSection = () => {
     switch (activeSection) {
       case 'dashboard':   return <DashboardSection ownerId={isAdmin ? null : currentUser?.id} />;
+      case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
+      case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'events':      return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos</p></div><EventManager /></div> : <PromoterDashboard />;
       case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'refunds':     return <RefundRequestsSection ownerId={isAdmin ? null : currentUser?.id} />;

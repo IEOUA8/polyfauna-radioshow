@@ -15,6 +15,8 @@ Fecha de revisión: 2026-06-22
 - [x] Telemetría de errores del cliente sin datos personales ni parámetros de URL.
 - [x] Integración de Web Analytics y Speed Insights con rutas privadas excluidas.
 - [x] Ajustes de safe area, altura y capas modales para iOS.
+- [x] Presupuesto automatizado de performance para JS/CSS inicial y chunks lazy.
+- [x] Aviso PWA de nueva versión disponible sin actualización silenciosa forzada.
 - [x] Lint, pruebas automatizadas y build de producción aprobados.
 
 ## Prueba controlada antes de abrir ventas
@@ -32,10 +34,13 @@ Fecha de revisión: 2026-06-22
 
 - [ ] Definir correo y responsable de soporte durante las primeras 48 horas.
 - [ ] Definir política pública de privacidad, términos, reembolsos y tratamiento de datos.
-- [ ] Configurar alertas para errores de cliente, fallos de webhook y pagos sin ticket.
+- [x] Configurar alertas internas para errores de cliente, pagos sin ticket, inconsistencias de tickets, devoluciones, retiros y conflictos offline.
+- [ ] Configurar alertas externas para incidentes críticos fuera del panel admin.
 - [ ] Preparar respaldo diario y verificar una restauración de prueba.
+- [x] Documentar playbooks internos para incidentes de pagos, tickets, reembolsos, errores y validación offline.
 - [ ] Publicar un canal de reporte de incidencias para usuarios beta.
 - [ ] Revisar métricas a las 2, 8, 24 y 48 horas del lanzamiento.
+- [ ] Ejecutar Lighthouse/Web Vitals móvil antes de ventas públicas.
 
 ## Criterio de salida
 
