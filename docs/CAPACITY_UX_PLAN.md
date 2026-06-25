@@ -135,6 +135,40 @@ Resultado medido con advisors desde el inicio de la fase RLS:
 - `auth_rls_initplan`: 79 -> 0.
 - `multiple_permissive_policies`: 360 -> 39.
 
+### Fase 7.4 tecnica - Consolidacion RLS final
+
+Estado: implementada.
+
+- Migracion aplicada al proyecto Supabase enlazado:
+  - `20260625020755_phase_7_4_rls_policy_consolidation.sql`.
+- Se reemplazaron politicas `admin_write FOR ALL` por politicas separadas de insert/update/delete.
+- Se combinaron politicas owner/admin/promoter en una sola politica por accion para:
+  - eventos.
+  - perfiles.
+  - cuentas de promotor.
+  - wallets.
+  - transacciones.
+  - retiros.
+  - mensajes.
+  - tickets.
+  - soporte.
+  - devoluciones.
+  - solicitudes de rol.
+  - preguntas de shows.
+  - comentarios de podcasts.
+  - playlists.
+
+Resultado medido con advisors:
+
+- Total warnings: 58 -> 19.
+- Performance warnings: 39 -> 0.
+- `multiple_permissive_policies`: 39 -> 0.
+
+Quedan solo warnings de seguridad:
+
+- 18 funciones `SECURITY DEFINER` ejecutables por `authenticated`, actualmente usadas por la app y protegidas con validaciones internas.
+- 1 ajuste manual de Auth: leaked password protection.
+
 ### Fase 7.4 - Experiencia de musica y perfiles reales
 
 Estado: pendiente.

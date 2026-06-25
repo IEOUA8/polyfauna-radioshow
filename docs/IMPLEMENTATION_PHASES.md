@@ -461,3 +461,59 @@ Resultado:
 - Revisar las 18 funciones `SECURITY DEFINER` disponibles para `authenticated` y decidir cuales deben moverse a Edge Functions o RPCs mas especificas.
 - Activar leaked password protection desde el dashboard de Supabase Auth.
 - Empezar medicion de usuarios activos y embudo de escucha/eventos/checkout.
+
+## Fase 7.4 - Consolidacion RLS final
+
+Fecha: 2026-06-25
+
+### Objetivo
+
+Eliminar los warnings de performance restantes de Supabase Advisors, consolidando politicas permisivas duplicadas sin cerrar accesos publicos intencionales ni romper flujos owner/admin/promoter.
+
+### Implementacion
+
+- Se agrego y aplico en Supabase la migracion `20260625020755_phase_7_4_rls_policy_consolidation.sql`.
+- Se reemplazaron politicas `*_admin_write FOR ALL` por politicas separadas:
+  - `*_admin_insert`.
+  - `*_admin_update`.
+  - `*_admin_delete`.
+- Se consolidaron politicas por accion en:
+  - `events`.
+  - `profiles`.
+  - `promoter_accounts`.
+  - `wallets`.
+  - `transactions`.
+  - `payouts`.
+  - `messages`.
+  - `user_tickets`.
+  - `role_requests`.
+  - `support_cases`.
+  - `ticket_refund_requests`.
+  - `show_questions`.
+  - `podcast_comments`.
+  - `playlists`, mediante bloque condicional porque parte de su SQL vive fuera de `supabase/migrations`.
+- Se agrego `tests/rls-consolidation-contracts.test.js`.
+
+### Verificacion
+
+```bash
+npm test
+supabase db push --linked
+supabase db advisors --linked --output json
+```
+
+Resultado:
+
+- Migracion aplicada correctamente al Supabase enlazado.
+- Suite automatizada: 38 pruebas OK.
+- Advisors antes de la fase: 58 warnings totales, 39 de performance, 19 de seguridad.
+- Advisors despues de la fase: 19 warnings totales, 0 de performance, 19 de seguridad.
+- `multiple_permissive_policies`: 39 -> 0.
+
+### Pendientes para Fase 7.5
+
+- Revisar las 18 funciones `SECURITY DEFINER` disponibles para `authenticated`:
+  - decidir cuales se mantienen como RPC con validacion interna.
+  - mover a Edge Function o servicio admin las que no deban ser invocables desde cliente.
+- Activar leaked password protection en Supabase Auth.
+- Empezar medicion de usuarios activos y embudo de escucha/eventos/checkout.
