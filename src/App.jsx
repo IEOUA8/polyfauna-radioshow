@@ -5,6 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { NowPlayingProvider } from '@/hooks/useNowPlaying';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import UsageTelemetry from '@/components/UsageTelemetry';
 
 const PolyfaunaOS     = lazy(() => import('@/components/PolyfaunaOS'));
 const LoginPage       = lazy(() => import('@/pages/LoginPage'));
@@ -81,6 +82,7 @@ function App() {
   return (
     <>
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <UsageTelemetry />
       <AuthProvider>
         <NowPlayingProvider>
           <TooltipProvider delayDuration={400}>

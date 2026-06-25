@@ -583,3 +583,85 @@ Resultado:
   - mover a Edge Function o flujo server-side si requieren secreto, rate limit adicional o contexto admin.
 - Implementar telemetria anonima de usuarios activos y embudo de escucha/eventos/checkout.
 - Ejecutar pruebas de carga controladas por flujo antes de abrir contenido real y ventas con alto trafico.
+
+## Fase 7.6 - Telemetria anonima de capacidad y embudo
+
+Fecha: 2026-06-25
+
+### Objetivo
+
+Medir usuarios activos, reproduccion, vista de eventos y conversion de checkout sin sobrecargar Supabase ni capturar datos personales innecesarios.
+
+### Implementacion
+
+- Se agrego y aplico en Supabase la migracion `20260625120400_usage_telemetry.sql`.
+- Se creo la tabla `usage_events` con:
+  - `session_id`.
+  - `user_id` opcional.
+  - `event_name`.
+  - `route`.
+  - `referrer`.
+  - `release`.
+  - `properties` JSONB limitado.
+  - `created_at`.
+- Se habilito RLS en `usage_events`.
+- Se revoco acceso directo a `PUBLIC`, `anon` y `authenticated`.
+- Se concedio solo `SELECT` a `authenticated`, condicionado por politica admin.
+- Se concedio escritura completa solo a `service_role`.
+- Se creo y desplego la Edge Function `collect-usage-event`.
+- La funcion aplica:
+  - allowlist de eventos.
+  - allowlist de propiedades.
+  - sanitizacion de rutas sin querystring.
+  - limite de 24 eventos por minuto por sesion.
+  - rechazo de payloads mayores a 8 KB.
+- Se extendio `src/lib/telemetry.js` con `trackUsageEvent`.
+- Se agrego `src/components/UsageTelemetry.jsx` para:
+  - `route_view`.
+  - `session_heartbeat` cada 60 segundos cuando la pestana esta visible.
+- Se instrumento `GlobalPlayer` para:
+  - `stream_start` en radio live.
+  - `media_start` en contenido on-demand.
+- Se instrumento `EventPublicPage` y `EventTerminal` para:
+  - `event_view`.
+  - `checkout_start`.
+  - `checkout_ready`.
+  - `ticket_claimed`.
+  - `checkout_error`.
+- Se agrego `tests/usage-telemetry-contracts.test.js`.
+
+### Verificacion
+
+```bash
+npm run verify
+npm run audit:ci
+supabase db push --linked
+supabase functions deploy collect-usage-event
+supabase db advisors --linked --output json
+```
+
+Resultado:
+
+- Migracion aplicada correctamente al Supabase enlazado.
+- Edge Function desplegada en el proyecto Supabase enlazado.
+- Suite automatizada: 43 pruebas OK.
+- `npm run verify`: OK.
+- `npm run audit:ci`: 0 vulnerabilidades altas.
+- Performance budget:
+  - JS inicial gzip: 160.1 KiB / 190 KiB.
+  - CSS inicial gzip: 18.5 KiB / 30 KiB.
+  - Chunk lazy mayor gzip: 125.7 KiB / 260 KiB.
+  - JS total gzip: 682.9 KiB / 720 KiB.
+- Advisors despues de la fase: 17 warnings totales, 0 de performance, 17 de seguridad.
+
+### Pendientes para Fase 7.7
+
+- Crear tablero admin sobre `usage_events` con:
+  - usuarios activos por ventana.
+  - reproducciones live/on-demand.
+  - vistas de eventos.
+  - conversion `event_view -> checkout_start -> checkout_ready -> ticket_claimed`.
+  - errores de checkout por evento/release.
+- Agregar medicion especifica de Ticket Vault y validador cuando se prepare operacion de puertas.
+- Definir umbrales de alerta para detener campanas o ventas si suben errores de checkout o caen conversiones.
+- Activar leaked password protection desde Supabase Auth.

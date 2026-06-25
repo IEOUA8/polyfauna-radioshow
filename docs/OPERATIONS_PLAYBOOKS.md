@@ -87,6 +87,71 @@ Cierre:
 - Se verifica en produccion/staging.
 - Baja la tasa de errores posteriores.
 
+## Medicion de usuarios activos y embudo
+
+Senal:
+
+- Se va a publicar contenido real, abrir venta de tickets o subir trafico.
+- Se necesita confirmar que escucha, navegacion y checkout se sostienen sin caidas.
+
+Consultas utiles:
+
+Usuarios activos ultimos 15 minutos:
+
+```sql
+SELECT COUNT(DISTINCT session_id) AS active_sessions
+FROM public.usage_events
+WHERE created_at >= NOW() - INTERVAL '15 minutes'
+  AND event_name = 'session_heartbeat';
+```
+
+Embudo de eventos ultimas 24 horas:
+
+```sql
+SELECT
+  event_name,
+  COUNT(*) AS total,
+  COUNT(DISTINCT session_id) AS unique_sessions
+FROM public.usage_events
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+  AND event_name IN ('event_view', 'checkout_start', 'checkout_ready', 'ticket_claimed', 'checkout_error')
+GROUP BY event_name
+ORDER BY CASE event_name
+  WHEN 'event_view' THEN 1
+  WHEN 'checkout_start' THEN 2
+  WHEN 'checkout_ready' THEN 3
+  WHEN 'ticket_claimed' THEN 4
+  WHEN 'checkout_error' THEN 5
+END;
+```
+
+Errores de checkout por evento:
+
+```sql
+SELECT
+  properties->>'event_id' AS event_id,
+  properties->>'error_code' AS error_code,
+  COUNT(*) AS total
+FROM public.usage_events
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+  AND event_name = 'checkout_error'
+GROUP BY 1, 2
+ORDER BY total DESC;
+```
+
+Pasos:
+
+1. Revisar activos, reproducciones y embudo antes de activar campanas.
+2. Si `checkout_error` sube durante una venta, pausar pauta y revisar `client_errors`, `transactions` y logs de `create-payment`.
+3. Comparar caidas entre `event_view`, `checkout_start` y `checkout_ready` para saber si el problema es UX, login, inventario o pasarela.
+4. Si hay alto trafico de escucha, revisar que `stream_start` crezca sin aumento paralelo de `client_errors`.
+
+Cierre:
+
+- Hay datos suficientes para estimar carga real.
+- No hay errores de checkout o reproduccion por encima del umbral acordado.
+- Si se abre venta masiva, queda responsable monitoreando durante la ventana.
+
 ## Devolucion sin respuesta
 
 Senal:

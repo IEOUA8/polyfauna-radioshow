@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
+import { trackUsageEvent } from '@/lib/telemetry';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import HoloSpectrum from '@/components/HoloSpectrum';
 
@@ -258,6 +259,15 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     : streamError ? 'Error de conexión'
     : song?.artist || (isPlaying ? 'Transmisión en vivo · 24/7' : 'En pausa');
   const progressPct  = isOnDemand && audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    trackUsageEvent(isOnDemand ? 'media_start' : 'stream_start', {
+      mode: isOnDemand ? 'on_demand' : 'live',
+      media_type: currentTrack?.kind || (isOnDemand ? 'track' : 'radio'),
+      content_id: currentTrack?.id || null,
+    });
+  }, [isPlaying, isOnDemand, currentTrack?.id, currentTrack?.kind, currentTrack?.album]);
 
   // Media Session API — metadata for lock screen
   useEffect(() => {

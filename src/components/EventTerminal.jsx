@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
+import { trackUsageEvent } from '@/lib/telemetry';
 
 // Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
 // Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
@@ -53,7 +54,22 @@ function BuyModal({ event, onClose }) {
   const isBusy = status === 'buying' || status === 'processing';
   const totalPrice = (event.price || 0) * quantity;
 
+  useEffect(() => {
+    trackUsageEvent('event_view', {
+      event_id: event.id,
+      status: event.status || null,
+      price_tier: isFree ? 'free' : 'paid',
+    });
+  }, [event.id, event.status, isFree]);
+
   const handleConfirm = async () => {
+    trackUsageEvent('checkout_start', {
+      event_id: event.id,
+      price_tier: isFree ? 'free' : 'paid',
+      quantity,
+      status: currentUser ? 'started' : 'auth_required',
+    });
+
     if (!currentUser) {
       onClose();
       navigate('/login');
@@ -70,9 +86,19 @@ function BuyModal({ event, onClose }) {
       if (error || !data?.success) {
         setStatus('error');
         setErrorMsg(data?.error || error?.message || 'Error al procesar la compra');
+        trackUsageEvent('checkout_error', {
+          event_id: event.id,
+          price_tier: 'free',
+          error_code: error?.code || 'purchase_ticket_failed',
+        });
       } else {
         setTicketNumber(data.ticket_number);
         setStatus('success');
+        trackUsageEvent('ticket_claimed', {
+          event_id: event.id,
+          price_tier: 'free',
+          quantity: 1,
+        });
         toast({ title: '¡Entrada confirmada!', description: `#${data.ticket_number} · ${event.title}` });
       }
     } else {
@@ -101,9 +127,20 @@ function BuyModal({ event, onClose }) {
 
         setWompiRef(checkoutUrl);
         setStatus('pending');
+        trackUsageEvent('checkout_ready', {
+          event_id: event.id,
+          price_tier: 'paid',
+          quantity,
+        });
       } catch (err) {
         setStatus('error');
         setErrorMsg(err.message || 'Error al iniciar el pago');
+        trackUsageEvent('checkout_error', {
+          event_id: event.id,
+          price_tier: 'paid',
+          quantity,
+          error_code: err?.name || 'create_payment_failed',
+        });
       }
     }
   };

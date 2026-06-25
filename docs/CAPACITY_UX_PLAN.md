@@ -103,18 +103,36 @@ Resultado medido con advisors:
 
 ### Fase 7.3 - Medicion real de usuarios activos
 
-Estado: pendiente.
+Estado: implementada como base tecnica.
 
-- Agregar eventos de telemetria controlada para:
+- Se agrego telemetria controlada para:
   - inicio de reproduccion.
   - cambio de seccion musical.
   - apertura de evento.
   - inicio de checkout.
-  - compra aprobada.
-  - descarga o visualizacion de ticket.
-  - uso del validador.
-- Separar metricas anonimas de datos personales.
-- Definir tablero operativo con usuarios activos, reproducciones, conversion de compra y errores.
+  - checkout listo.
+  - ticket gratuito emitido.
+  - error de checkout.
+- Se separaron metricas anonimas de datos personales.
+- Se agrego rate limit local y server-side para no sobrecargar Supabase.
+- La escritura cliente no va directo a tabla: pasa por la Edge Function `collect-usage-event`.
+
+Eventos disponibles:
+
+- `session_heartbeat`.
+- `route_view`.
+- `stream_start`.
+- `media_start`.
+- `event_view`.
+- `checkout_start`.
+- `checkout_ready`.
+- `ticket_claimed`.
+- `checkout_error`.
+
+Queda pendiente:
+
+- Crear tablero visual admin sobre `usage_events`.
+- Agregar metricas del validador y Ticket Vault cuando se trabaje la fase de puertas/eventos reales.
 
 ### Fase 7.3 tecnica - Optimizacion RLS para carga
 
@@ -197,6 +215,31 @@ Queda pendiente fuera de SQL:
 
 - Activar leaked password protection desde Supabase Auth.
 - Evaluar una por una las 16 RPCs `SECURITY DEFINER` que la app si invoca desde cliente y mantenerlas solo si su validacion interna sigue siendo suficiente.
+
+### Fase 7.6 tecnica - Telemetria de capacidad y embudo
+
+Estado: implementada.
+
+- Migracion aplicada al proyecto Supabase enlazado:
+  - `20260625120400_usage_telemetry.sql`.
+- Edge Function desplegada:
+  - `collect-usage-event`.
+- Frontend instrumentado:
+  - `UsageTelemetry` registra vistas de ruta y heartbeat de sesion visible cada 60 segundos.
+  - `GlobalPlayer` registra inicio de stream live y reproduccion on-demand.
+  - `EventPublicPage` y `EventTerminal` registran vista de evento, inicio de checkout, checkout listo, ticket gratuito emitido y error de checkout.
+- Privacidad/carga:
+  - no se guardan emails, nombres, titulos ni texto libre de usuario.
+  - solo se permiten propiedades tecnicas acotadas: ids, tipo de media, estado, cantidad, seccion y codigo de error.
+  - el cliente limita a 18 eventos/minuto por sesion.
+  - la Edge Function limita a 24 eventos/minuto por sesion.
+  - la tabla `usage_events` no concede `INSERT` a `anon` ni `authenticated`.
+
+Resultado medido:
+
+- Supabase Advisors se mantiene en 17 warnings.
+- Performance warnings se mantiene en 0.
+- La tabla nueva no reintroduce warnings RLS de performance.
 
 ### Fase 7.4 - Experiencia de musica y perfiles reales
 

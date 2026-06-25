@@ -9,6 +9,7 @@ import {
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
+import { trackUsageEvent } from '@/lib/telemetry';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 
@@ -59,6 +60,15 @@ export default function EventPublicPage() {
       .then(({ data }) => setArtists(data || []));
   }, []);
 
+  useEffect(() => {
+    if (!event?.id) return;
+    trackUsageEvent('event_view', {
+      event_id: event.id,
+      status: event.status || null,
+      price_tier: (!event.price || event.price === 0) ? 'free' : 'paid',
+    });
+  }, [event?.id, event?.status, event?.price]);
+
   const handleShare = async () => {
     const url = window.location.href;
     try {
@@ -77,6 +87,13 @@ export default function EventPublicPage() {
   };
 
   const handleBuy = async () => {
+    trackUsageEvent('checkout_start', {
+      event_id: event?.id || eventId,
+      price_tier: (!event?.price || event?.price === 0) ? 'free' : 'paid',
+      quantity: 1,
+      status: currentUser ? 'started' : 'auth_required',
+    });
+
     if (!currentUser) {
       navigate(`/login?next=/e/${eventId}`);
       return;
@@ -94,9 +111,19 @@ export default function EventPublicPage() {
       if (error || !data?.success) {
         setStatus('error');
         setErrorMsg(data?.error || error?.message || 'Error al procesar la compra');
+        trackUsageEvent('checkout_error', {
+          event_id: event.id,
+          price_tier: 'free',
+          error_code: error?.code || 'purchase_ticket_failed',
+        });
       } else {
         setTicketNo(data.ticket_number);
         setStatus('success');
+        trackUsageEvent('ticket_claimed', {
+          event_id: event.id,
+          price_tier: 'free',
+          quantity: 1,
+        });
       }
     } else {
       try {
@@ -119,10 +146,20 @@ export default function EventPublicPage() {
           `&signature:integrity=${data.signature}` +
           redirectParam;
 
+        trackUsageEvent('checkout_ready', {
+          event_id: event.id,
+          price_tier: 'paid',
+          quantity: 1,
+        });
         window.location.href = checkoutUrl;
       } catch (err) {
         setStatus('error');
         setErrorMsg(err.message);
+        trackUsageEvent('checkout_error', {
+          event_id: event.id,
+          price_tier: 'paid',
+          error_code: err?.name || 'create_payment_failed',
+        });
       }
     }
   };
