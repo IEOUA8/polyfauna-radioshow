@@ -69,7 +69,7 @@ Estado: implementada.
 
 ### Fase 7.2 - Endurecer Supabase antes de subir carga
 
-Estado: pendiente.
+Estado: implementada parcialmente.
 
 - Corregir warnings de RLS con mayor impacto:
   - consolidar politicas permisivas duplicadas.
@@ -78,6 +78,26 @@ Estado: pendiente.
   - fijar `search_path` en funciones.
 - Mantener pruebas de contrato para que las RPCs criticas no pierdan locks, idempotencia o permisos.
 - Ejecutar `supabase db advisors --linked` despues de cada bloque.
+
+Implementado en esta subfase:
+
+- Migracion `20260625015236_phase_7_2_supabase_hardening.sql` aplicada al proyecto Supabase enlazado.
+- Se fijo `search_path` de funciones marcadas por advisors.
+- Se revoco ejecucion anonima/publica de RPCs `SECURITY DEFINER` sensibles.
+- `create_notification` quedo reservado para `service_role`.
+- Se eliminaron politicas de storage que permitian listar buckets publicos completos.
+- Se reemplazo la politica `solo_admin_puede_featured` que tenia `USING (true)` por una politica restrictiva.
+
+Resultado medido con advisors:
+
+- Total warnings: 485 -> 458.
+- Security warnings: 45 -> 19.
+- Performance warnings: 440 -> 439.
+- Eliminados completamente:
+  - `function_search_path_mutable`: 9 -> 0.
+  - `anon_security_definer_function_executable`: 7 -> 0.
+  - `public_bucket_allows_listing`: 5 -> 0.
+  - `rls_policy_always_true`: 1 -> 0.
 
 ### Fase 7.3 - Medicion real de usuarios activos
 

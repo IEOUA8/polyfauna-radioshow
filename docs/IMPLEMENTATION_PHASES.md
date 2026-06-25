@@ -339,3 +339,70 @@ Resultado: ambas compuertas pasaron. La suite automatizada queda en 25 pruebas, 
 - Agregar telemetria de usuarios activos y embudo de escucha/eventos/checkout.
 - Preparar pruebas de carga controladas por flujo.
 - Continuar carga de contenido real sin reintroducir datos genericos.
+
+## Fase 7.2 - Endurecimiento Supabase previo a carga
+
+Fecha: 2026-06-25
+
+### Objetivo
+
+Reducir riesgo de seguridad y costo por consulta antes de subir usuarios activos, sin alterar flujos criticos de compra, tickets, validacion, soporte y operacion.
+
+### Implementacion
+
+- Se agrego y aplico en Supabase la migracion `20260625015236_phase_7_2_supabase_hardening.sql`.
+- Se fijo `search_path = public` para funciones marcadas por advisors:
+  - `update_likes_count`.
+  - `get_user_id_by_email`.
+  - `count_user_event_tickets`.
+  - `increment_podcast_plays`.
+  - `create_notification`.
+  - `set_updated_at`.
+  - `touch_ticket_refund_request`.
+  - `apply_ticket_refund_status`.
+  - `touch_support_case_updated_at`.
+- Se revoco ejecucion publica/anonima de funciones `SECURITY DEFINER` que no deben exponerse como RPC abierta.
+- Se mantuvo `authenticated` en funciones que la app usa desde cliente y que ya tienen validacion interna:
+  - compra y validacion de tickets.
+  - offline pack y sincronizacion offline.
+  - alertas operativas.
+  - wallets/retiros.
+  - asistentes de eventos.
+  - soporte/gobernanza.
+- Se reservo `create_notification` para `service_role`, porque no tenia chequeo interno de rol.
+- Se eliminaron politicas broad `SELECT` sobre `storage.objects` para buckets publicos:
+  - `album-covers`.
+  - `avatars`.
+  - `podcast-audio`.
+  - `podcast-covers`.
+  - `track-audio`.
+- Se elimino la politica `solo_admin_puede_featured` con `USING (true)`.
+- Se agrego `events_featured_admin_guard` como politica restrictiva para impedir que usuarios no admin dejen eventos como destacados.
+- Se agrego `tests/supabase-hardening-contracts.test.js`.
+
+### Verificacion
+
+```bash
+npm test
+supabase db push --linked
+supabase db advisors --linked --output json
+```
+
+Resultado:
+
+- Migracion aplicada correctamente al Supabase enlazado.
+- Suite automatizada: 29 pruebas OK.
+- Advisors antes: 485 warnings totales, 45 de seguridad, 440 de performance.
+- Advisors despues: 458 warnings totales, 19 de seguridad, 439 de performance.
+- Eliminados completamente:
+  - `function_search_path_mutable`: 9 -> 0.
+  - `anon_security_definer_function_executable`: 7 -> 0.
+  - `public_bucket_allows_listing`: 5 -> 0.
+  - `rls_policy_always_true`: 1 -> 0.
+
+### Pendientes para Fase 7.3
+
+- Consolidar politicas RLS duplicadas por tabla para reducir `multiple_permissive_policies`.
+- Reescribir politicas con `(SELECT auth.uid())` y `(SELECT auth.role())` donde aplique para reducir `auth_rls_initplan`.
+- Revisar las 18 funciones `SECURITY DEFINER` disponibles para `authenticated` y decidir cuales deben moverse a Edge Functions o roles mas especificos.
+- Activar leaked password protection desde el dashboard de Supabase Auth.
