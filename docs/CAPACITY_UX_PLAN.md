@@ -114,6 +114,27 @@ Estado: pendiente.
 - Separar metricas anonimas de datos personales.
 - Definir tablero operativo con usuarios activos, reproducciones, conversion de compra y errores.
 
+### Fase 7.3 tecnica - Optimizacion RLS para carga
+
+Estado: implementada.
+
+- Migraciones aplicadas al proyecto Supabase enlazado:
+  - `20260625015951_phase_7_3_rls_initplan_optimization.sql`.
+  - `20260625020218_phase_7_3b_rls_auth_literal_rewrite.sql`.
+  - `20260625020339_phase_7_3c_rls_policy_roles.sql`.
+- Se reescribieron politicas RLS existentes para usar `(SELECT auth.uid())` y `(SELECT auth.role())`.
+- Se eliminaron politicas `service_role` redundantes que se evaluaban para roles de cliente.
+- Se retiro `events_public_read`; la lectura publica de eventos queda limitada a `events_visible_read`.
+- Se limitaron politicas privadas owner/admin/promoter/user a `authenticated`, manteniendo publicas las lecturas intencionales.
+
+Resultado medido con advisors desde el inicio de la fase RLS:
+
+- Total warnings: 458 -> 58.
+- Performance warnings: 439 -> 39.
+- Security warnings: 19 -> 19.
+- `auth_rls_initplan`: 79 -> 0.
+- `multiple_permissive_policies`: 360 -> 39.
+
 ### Fase 7.4 - Experiencia de musica y perfiles reales
 
 Estado: pendiente.

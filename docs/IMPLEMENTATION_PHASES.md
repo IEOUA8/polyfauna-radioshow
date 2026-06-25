@@ -406,3 +406,58 @@ Resultado:
 - Reescribir politicas con `(SELECT auth.uid())` y `(SELECT auth.role())` donde aplique para reducir `auth_rls_initplan`.
 - Revisar las 18 funciones `SECURITY DEFINER` disponibles para `authenticated` y decidir cuales deben moverse a Edge Functions o roles mas especificos.
 - Activar leaked password protection desde el dashboard de Supabase Auth.
+
+## Fase 7.3 - Optimizacion RLS para carga
+
+Fecha: 2026-06-25
+
+### Objetivo
+
+Reducir el costo de evaluacion de RLS por fila y eliminar politicas redundantes antes de aumentar usuarios activos, escucha, catalogo real y checkout.
+
+### Implementacion
+
+- Se agregaron y aplicaron en Supabase tres migraciones:
+  - `20260625015951_phase_7_3_rls_initplan_optimization.sql`.
+  - `20260625020218_phase_7_3b_rls_auth_literal_rewrite.sql`.
+  - `20260625020339_phase_7_3c_rls_policy_roles.sql`.
+- Se reescribieron politicas existentes desde `pg_policy` para convertir:
+  - `auth.uid()` en `(SELECT auth.uid())`.
+  - `auth.role()` en `(SELECT auth.role())`.
+- Se agrego una segunda reescritura literal para cubrir expresiones que no coincidieron con el primer regex.
+- Se eliminaron politicas `service_role` redundantes en tablas publicas; `service_role` ya bypassa RLS en Supabase.
+- Se elimino `events_public_read`, que habia sido reintroducida por una migracion posterior.
+- Se recreo `events_visible_read` como la politica publica correcta por estado de evento.
+- Se limitaron politicas privadas owner/admin/promoter/user a `TO authenticated`.
+- Se mantuvieron publicas las politicas intencionales de lectura abierta, como eventos visibles y notificaciones globales.
+- Se amplio `tests/rls-optimization-contracts.test.js` para fijar el comportamiento.
+
+### Verificacion
+
+```bash
+npm test
+supabase db push --linked
+supabase db advisors --linked --output json
+```
+
+Resultado:
+
+- Migraciones aplicadas correctamente al Supabase enlazado.
+- Suite automatizada: 34 pruebas OK.
+- Advisors al inicio de la fase RLS: 458 warnings totales, 439 de performance, 19 de seguridad.
+- Advisors despues de 7.3c: 58 warnings totales, 39 de performance, 19 de seguridad.
+- `auth_rls_initplan`: 79 -> 0.
+- `multiple_permissive_policies`: 360 -> 39.
+
+### Pendientes para Fase 7.4
+
+- Consolidar manualmente las 39 politicas permisivas restantes por tabla, especialmente:
+  - `profiles`.
+  - `events`.
+  - `promoter_accounts`.
+  - `messages`.
+  - `support_cases`.
+  - `ticket_refund_requests`.
+- Revisar las 18 funciones `SECURITY DEFINER` disponibles para `authenticated` y decidir cuales deben moverse a Edge Functions o RPCs mas especificas.
+- Activar leaked password protection desde el dashboard de Supabase Auth.
+- Empezar medicion de usuarios activos y embudo de escucha/eventos/checkout.
