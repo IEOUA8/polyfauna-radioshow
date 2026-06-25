@@ -62,6 +62,8 @@ El presupuesto de performance esta en `docs/PERFORMANCE_BUDGET.md` y corre dentr
 
 El modelo de gobernanza, auditoria administrativa y soporte esta en `docs/GOVERNANCE_MODEL.md`. Cambios de rol, eliminacion de perfiles y gestion de soporte deben pasar por RPCs auditadas.
 
+El plan de capacidad y experiencia esta en `docs/CAPACITY_UX_PLAN.md`. Centraliza decisiones sobre escucha, usuarios activos, contenido real, checkout, medicion y pruebas de carga.
+
 ## Seguridad operativa
 
 - No comitear `.env`, service role keys, llaves Wompi, VAPID privadas ni JWK privada de tickets.

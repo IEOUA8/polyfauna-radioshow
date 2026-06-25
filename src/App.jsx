@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { NowPlayingProvider } from '@/hooks/useNowPlaying';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -81,32 +82,34 @@ function App() {
     <>
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
-      <TooltipProvider delayDuration={400}>
-        <Suspense fallback={<RouteLoader />}>
-          <Routes>
-            <Route path="/login"    element={<LoginPage />} />
-            <Route path="/signup"   element={<SignupPage />} />
-            <Route path="/validate" element={<ValidatePage />} />
-            <Route path="/artist/:slug" element={<ArtistRouteRedirect />} />
-            <Route path="/profiles/:slug" element={<ArtistRouteRedirect />} />
-            <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
-            <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
-            <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
-            <Route path="/e/:eventId"   element={<EventPublicPage />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <UserDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin" element={
-              <ProtectedRoute allowedRoles={['admin', 'promoter', 'club']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/*" element={<PolyfaunaOS />} />
-          </Routes>
-        </Suspense>
-      </TooltipProvider>
+        <NowPlayingProvider>
+          <TooltipProvider delayDuration={400}>
+            <Suspense fallback={<RouteLoader />}>
+              <Routes>
+                <Route path="/login"    element={<LoginPage />} />
+                <Route path="/signup"   element={<SignupPage />} />
+                <Route path="/validate" element={<ValidatePage />} />
+                <Route path="/artist/:slug" element={<ArtistRouteRedirect />} />
+                <Route path="/profiles/:slug" element={<ArtistRouteRedirect />} />
+                <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
+                <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
+                <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
+                <Route path="/e/:eventId"   element={<EventPublicPage />} />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <UserDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute allowedRoles={['admin', 'promoter', 'club']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/*" element={<PolyfaunaOS />} />
+              </Routes>
+            </Suspense>
+          </TooltipProvider>
+        </NowPlayingProvider>
       </AuthProvider>
     </Router>
     <DeferredTelemetry beforeSend={redactTelemetry} />

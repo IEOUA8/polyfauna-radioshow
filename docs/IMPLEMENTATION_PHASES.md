@@ -285,3 +285,57 @@ Resultado: ambas compuertas pasaron. La suite automatizada queda en 21 pruebas y
 - Automatizar alertas externas por email/push/Slack para casos urgentes y alertas criticas.
 - Agregar E2E de navegador para admin > Soporte y admin > Usuarios.
 - Evaluar Edge Function con service role para baja completa en `auth.users` con doble confirmacion.
+
+## Fase 7.1 - Capacidad y experiencia de escucha
+
+Fecha: 2026-06-24
+
+### Objetivo
+
+Reducir carga repetida generada por la experiencia de radio y dejar una ruta documentada para escalar usuarios activos, escucha, musica, eventos y compra de tickets sin sobrecargar la plataforma.
+
+### Implementacion
+
+- Se creo `docs/CAPACITY_UX_PLAN.md` con:
+  - baseline tecnico actual.
+  - mediciones iniciales de base de datos, conexiones, bundle y advisors Supabase.
+  - explicacion de centralizar `NowPlaying` en un provider unico.
+  - fases siguientes para RLS, medicion real, contenido real, checkout y pruebas de carga.
+  - reglas para evitar sobrecarga.
+  - senales operativas a vigilar.
+- Se refactorizo `src/hooks/useNowPlaying.js`:
+  - ahora exporta `NowPlayingProvider`.
+  - `useNowPlaying()` consume un contexto unico.
+  - se prioriza `/nowplaying_static/{station}.json`.
+  - se conserva fallback a `/nowplaying/{station}`.
+  - se reemplazo `setInterval` por `setTimeout` encadenado para evitar peticiones solapadas.
+  - el polling normal queda en 15 segundos y el reintento tras error en 30 segundos.
+  - se exponen metricas ligeras en `window.__polyfaunaNowPlayingMetrics`.
+- Se actualizo `src/App.jsx` para montar `NowPlayingProvider` alrededor de las rutas.
+- Se agrego `tests/now-playing-provider-contract.test.js` para fijar:
+  - provider centralizado.
+  - endpoint estatico cacheable.
+  - polling sin `setInterval`.
+  - consumidores sin `fetch()` directo.
+  - metricas de diagnostico.
+
+### Verificacion
+
+```bash
+npm run verify
+npm run audit:ci
+```
+
+Resultado: ambas compuertas pasaron. La suite automatizada queda en 25 pruebas, `npm audit --audit-level=high` queda en cero vulnerabilidades conocidas y el presupuesto de performance queda aprobado:
+
+- JS inicial gzip: 159.4 KiB / 190 KiB.
+- CSS inicial gzip: 18.5 KiB / 30 KiB.
+- Chunk lazy mayor gzip: 125.7 KiB / 260 KiB.
+- JS total gzip: 681.9 KiB / 720 KiB.
+
+### Pendientes para Fase 7.2
+
+- Corregir advisors Supabase de mayor impacto antes de aumentar trafico.
+- Agregar telemetria de usuarios activos y embudo de escucha/eventos/checkout.
+- Preparar pruebas de carga controladas por flujo.
+- Continuar carga de contenido real sin reintroducir datos genericos.
