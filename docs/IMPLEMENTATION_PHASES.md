@@ -512,8 +512,74 @@ Resultado:
 
 ### Pendientes para Fase 7.5
 
-- Revisar las 18 funciones `SECURITY DEFINER` disponibles para `authenticated`:
+- Revisar las funciones `SECURITY DEFINER` disponibles para `authenticated`:
   - decidir cuales se mantienen como RPC con validacion interna.
   - mover a Edge Function o servicio admin las que no deban ser invocables desde cliente.
 - Activar leaked password protection en Supabase Auth.
 - Empezar medicion de usuarios activos y embudo de escucha/eventos/checkout.
+
+## Fase 7.5 - Reduccion de superficie SECURITY DEFINER
+
+Fecha: 2026-06-25
+
+### Objetivo
+
+Reducir la superficie RPC expuesta a usuarios autenticados sin romper los flujos activos de admin, compra, tickets, soporte, wallets, validacion y operacion.
+
+### Implementacion
+
+- Se auditaron las funciones `SECURITY DEFINER` marcadas por Supabase Advisors.
+- Se compararon las RPCs expuestas contra llamadas reales en frontend.
+- Se identificaron dos helpers internos sin uso directo desde cliente:
+  - `is_current_user_admin()`.
+  - `log_admin_action(TEXT, TEXT, UUID, UUID, JSONB)`.
+- Se agrego y aplico en Supabase la migracion `20260625022121_phase_7_5_security_definer_surface.sql`.
+- Se revoco ejecucion de esos helpers para:
+  - `PUBLIC`.
+  - `anon`.
+  - `authenticated`.
+- Se mantuvo ejecucion solo para `service_role`.
+- Las RPCs administrativas que dependen de esos helpers mantienen acceso interno porque ejecutan como `SECURITY DEFINER`.
+- Se mantuvieron disponibles para `authenticated` las RPCs que la aplicacion si invoca desde cliente y que tienen validaciones internas:
+  - `approve_payout`.
+  - `delete_profile_admin`.
+  - `get_event_attendees`.
+  - `get_event_offline_pack`.
+  - `get_operational_alerts`.
+  - `get_or_create_wallet`.
+  - `increment_podcast_plays`.
+  - `process_role_request_admin`.
+  - `purchase_ticket`.
+  - `request_payout`.
+  - `set_user_role`.
+  - `sync_offline_ticket_scans`.
+  - `update_attendee_profile`.
+  - `update_support_case`.
+  - `validate_ticket`.
+  - `validate_ticket_for_event`.
+- Se agrego `tests/security-definer-surface-contracts.test.js`.
+
+### Verificacion
+
+```bash
+npm test
+supabase db push --linked
+supabase db advisors --linked --output json
+```
+
+Resultado:
+
+- Migracion aplicada correctamente al Supabase enlazado.
+- Suite automatizada: 40 pruebas OK.
+- Advisors antes de la fase: 19 warnings totales, 0 de performance, 19 de seguridad.
+- Advisors despues de la fase: 17 warnings totales, 0 de performance, 17 de seguridad.
+- `authenticated_security_definer_function_executable`: 18 -> 16.
+
+### Pendientes para Fase 7.6
+
+- Activar leaked password protection desde el dashboard de Supabase Auth.
+- Revisar las 16 RPCs `SECURITY DEFINER` restantes por criticidad:
+  - mantener como RPC cliente si tienen validacion interna suficiente.
+  - mover a Edge Function o flujo server-side si requieren secreto, rate limit adicional o contexto admin.
+- Implementar telemetria anonima de usuarios activos y embudo de escucha/eventos/checkout.
+- Ejecutar pruebas de carga controladas por flujo antes de abrir contenido real y ventas con alto trafico.

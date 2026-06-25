@@ -24,8 +24,10 @@ Este plan define como mejorar la experiencia del usuario sin sobrecargar la plat
   - chunk lazy mayor gzip: 125.7 KiB / 260 KiB.
   - JS total gzip: 681.9 KiB / 720 KiB.
 - Advisors Supabase:
-  - 485 advertencias totales.
-  - principales focos: politicas RLS permisivas duplicadas, `auth.uid()` sin initplan, funciones SECURITY DEFINER ejecutables por roles amplios y `search_path` mutable.
+  - baseline inicial: 485 advertencias totales.
+  - estado despues de fases tecnicas 7.2 a 7.5: 17 advertencias de seguridad, 0 advertencias de performance.
+  - focos ya cerrados: politicas RLS permisivas duplicadas, `auth.uid()` sin initplan, `search_path` mutable, funciones `SECURITY DEFINER` anonimas y helpers internos expuestos como RPC directa.
+  - focos restantes: 16 RPCs `SECURITY DEFINER` usadas por la app con validacion interna y 1 ajuste manual de Auth para leaked password protection.
 
 ## Punto 1 - Centralizar NowPlaying en un provider unico
 
@@ -168,6 +170,33 @@ Quedan solo warnings de seguridad:
 
 - 18 funciones `SECURITY DEFINER` ejecutables por `authenticated`, actualmente usadas por la app y protegidas con validaciones internas.
 - 1 ajuste manual de Auth: leaked password protection.
+
+### Fase 7.5 tecnica - Reduccion de superficie SECURITY DEFINER
+
+Estado: implementada.
+
+- Migracion aplicada al proyecto Supabase enlazado:
+  - `20260625022121_phase_7_5_security_definer_surface.sql`.
+- Se cerraron como RPC directas para `PUBLIC`, `anon` y `authenticated` dos helpers internos:
+  - `is_current_user_admin()`.
+  - `log_admin_action(TEXT, TEXT, UUID, UUID, JSONB)`.
+- Ambos helpers quedan disponibles para `service_role`.
+- Las RPCs administrativas que los usan internamente conservan su funcionamiento porque ejecutan como `SECURITY DEFINER`.
+- Se agrego `tests/security-definer-surface-contracts.test.js` para proteger:
+  - revocacion de ejecucion cliente sobre helpers internos.
+  - ausencia de llamadas directas desde frontend a esos helpers.
+
+Resultado medido con advisors:
+
+- Total warnings: 19 -> 17.
+- Security warnings: 19 -> 17.
+- Performance warnings: 0 -> 0.
+- `authenticated_security_definer_function_executable`: 18 -> 16.
+
+Queda pendiente fuera de SQL:
+
+- Activar leaked password protection desde Supabase Auth.
+- Evaluar una por una las 16 RPCs `SECURITY DEFINER` que la app si invoca desde cliente y mantenerlas solo si su validacion interna sigue siendo suficiente.
 
 ### Fase 7.4 - Experiencia de musica y perfiles reales
 
