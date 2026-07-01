@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { sendEmail, emailWrapper } from '../_shared/resend.ts';
+import { SUPPORT_EMAIL, sendEmail, emailWrapper } from '../_shared/resend.ts';
 import { renderEmailTemplate } from '../_shared/email-templates.ts';
 import { CORS_HEADERS, escapeHtml, json, requireUser } from '../_shared/auth.ts';
 
@@ -13,9 +13,10 @@ serve(async (req) => {
     if (!user) return json({ error: 'Unauthorized' }, 401);
     const { requestId } = await req.json();
     const { data: roleRequest } = await admin.from('role_requests')
-      .select('id, user_id, requested_role, form_data, status')
+      .select('id, user_id, requested_role, form_data, status, notification_sent_at')
       .eq('id', requestId).eq('user_id', user.id).single();
     if (!roleRequest || roleRequest.status !== 'pending') return json({ error: 'Solicitud no encontrada' }, 404);
+    if (roleRequest.notification_sent_at) return json({ ok: true, alreadySent: true });
 
     const roleLabel = ROLE_LABELS[roleRequest.requested_role];
     if (!roleLabel || !user.email) return json({ error: 'Solicitud inválida' }, 400);
@@ -48,8 +49,13 @@ serve(async (req) => {
     `);
     await Promise.all([
       sendEmail({ to: user.email, subject: 'Tu solicitud está en revisión', html: userHtml }),
-      sendEmail({ to: Deno.env.get('ADMIN_EMAIL') || 'admin@polyfauna.com', subject: `Nueva solicitud: ${roleLabel}`, html: adminHtml }),
+      sendEmail({ to: SUPPORT_EMAIL, subject: `Nueva solicitud: ${roleLabel}`, html: adminHtml }),
     ]);
+    await admin
+      .from('role_requests')
+      .update({ notification_sent_at: new Date().toISOString() })
+      .eq('id', roleRequest.id)
+      .is('notification_sent_at', null);
     return json({ ok: true });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : 'Error interno' }, 500);

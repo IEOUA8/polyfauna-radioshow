@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, ChevronUp, Clock, Loader2, X } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -162,7 +162,7 @@ function RequestCard({ req, onAction }) {
 export default function RoleRequestsPanel() {
   const [filter, setFilter] = useState('pending');
 
-  const { data: requests, loading, refetch } = useSupabaseQuery(
+  const { data: requests, loading, error, refetch } = useSupabaseQuery(
     () => supabase
       .from('role_requests')
       .select('*, profiles(display_name, avatar_url)')
@@ -176,6 +176,14 @@ export default function RoleRequestsPanel() {
     { id: 'approved', label: 'Aprobados'  },
     { id: 'rejected', label: 'Rechazados' },
   ];
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-role-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'role_requests' }, refetch)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [refetch]);
 
   return (
     <div className="space-y-4">
@@ -209,7 +217,14 @@ export default function RoleRequestsPanel() {
         </div>
       )}
 
-      {!loading && (requests || []).length === 0 && (
+      {!loading && error && (
+        <div className="rounded-xl px-4 py-3 text-xs text-red-200"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          No fue posible cargar las solicitudes: {error}
+        </div>
+      )}
+
+      {!loading && !error && (requests || []).length === 0 && (
         <div className="text-center py-10">
           <Clock className="w-8 h-8 text-white/15 mx-auto mb-3" />
           <p className="text-sm text-white/30">No hay solicitudes {filter === 'pending' ? 'pendientes' : filter === 'approved' ? 'aprobadas' : 'rechazadas'}</p>

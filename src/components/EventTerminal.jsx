@@ -35,6 +35,24 @@ function formatDateLong(str) {
   return new Date(str).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function getTicketTypes(event) {
+  if (Array.isArray(event?.ticket_types) && event.ticket_types.length > 0) {
+    const configured = event.ticket_types
+      .filter(ticket => ticket?.name && Number(ticket?.capacity) > 0)
+      .map(ticket => ({
+        name: String(ticket.name),
+        price: Math.max(0, Number(ticket.price) || 0),
+        capacity: Math.max(1, Number(ticket.capacity) || 1),
+      }));
+    if (configured.length > 0) return configured;
+  }
+  return [{
+    name: 'General',
+    price: Math.max(0, Number(event?.price) || 0),
+    capacity: Math.max(1, Number(event?.tickets_total) || 1),
+  }];
+}
+
 /* ── Modal de compra ── */
 function BuyModal({ event, onClose }) {
   const { currentUser } = useAuth();
@@ -47,12 +65,16 @@ function BuyModal({ event, onClose }) {
   const [wompiRef, setWompiRef] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [assignedEmails, setAssignedEmails] = useState({ 2: '', 3: '', 4: '' });
+  const ticketTypes = useMemo(() => getTicketTypes(event), [event]);
+  const [selectedType, setSelectedType] = useState(() => ticketTypes[0]?.name || 'General');
+  const selectedTicket = ticketTypes.find(ticket => ticket.name === selectedType) || ticketTypes[0];
 
-  const isFree = !event.price || event.price === 0;
-  const availableLeft = (event.tickets_total || 0) - (event.tickets_sold || 0);
+  const isFree = selectedTicket.price === 0;
+  const eventAvailable = (event.tickets_total || 0) - (event.tickets_sold || 0);
+  const availableLeft = Math.min(eventAvailable, selectedTicket.capacity);
   const isSoldOut = availableLeft <= 0;
   const isBusy = status === 'buying' || status === 'processing';
-  const totalPrice = (event.price || 0) * quantity;
+  const totalPrice = selectedTicket.price * quantity;
 
   useEffect(() => {
     trackUsageEvent('event_view', {
@@ -81,7 +103,7 @@ function BuyModal({ event, onClose }) {
       setStatus('buying');
       const { data, error } = await supabase.rpc('purchase_ticket', {
         p_event_id: event.id,
-        p_ticket_type: 'GA',
+        p_ticket_type: selectedTicket.name,
       });
       if (error || !data?.success) {
         setStatus('error');
@@ -107,7 +129,7 @@ function BuyModal({ event, onClose }) {
       try {
         const emails = Array.from({ length: quantity - 1 }, (_, i) => assignedEmails[i + 2] || null);
         const { data, error } = await supabase.functions.invoke('create-payment', {
-          body: { event_id: event.id, ticket_type: 'GA', quantity, assigned_emails: emails },
+          body: { event_id: event.id, ticket_type: selectedTicket.name, quantity, assigned_emails: emails },
         });
         if (error) throw new Error(error.message || 'Error al crear el pago');
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
@@ -251,14 +273,35 @@ function BuyModal({ event, onClose }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div>
-                  <p className="text-[11px] text-white/35 uppercase tracking-wider">Tipo</p>
-                  <p className="text-sm font-bold text-white mt-0.5">General Admission</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] text-white/35 uppercase tracking-wider">Precio</p>
-                  <p className="text-lg font-black mt-0.5" style={{ color: 'rgba(255,255,255,0.85)' }}>{formatPrice(event.price)}</p>
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.42)' }}>
+                  Elige tu entrada
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {ticketTypes.map(ticket => {
+                    const selected = ticket.name === selectedTicket.name;
+                    return (
+                      <button
+                        key={ticket.name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedType(ticket.name);
+                          setQuantity(1);
+                          setErrorMsg('');
+                        }}
+                        disabled={isBusy}
+                        className="rounded-xl p-3 text-left transition-all"
+                        style={{
+                          background: selected ? 'rgba(255,138,31,0.14)' : 'rgba(255,255,255,0.045)',
+                          border: selected ? '1px solid rgba(255,138,31,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                          color: selected ? '#FFD4A8' : 'rgba(255,255,255,0.72)',
+                        }}
+                      >
+                        <span className="block text-xs font-black">{ticket.name}</span>
+                        <span className="block text-sm font-black mt-1">{formatPrice(ticket.price)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -336,7 +379,7 @@ function BuyModal({ event, onClose }) {
               {quantity > 1 && !isFree && (
                 <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
                   style={{ background: 'rgba(255,138,31,0.06)', border: '1px solid rgba(255,138,31,0.14)' }}>
-                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{quantity} tickets × {formatPrice(event.price)}</span>
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{quantity} tickets {selectedTicket.name} × {formatPrice(selectedTicket.price)}</span>
                   <span className="text-base font-black" style={{ color: 'rgba(255,255,255,0.90)' }}>{formatPrice(totalPrice)}</span>
                 </div>
               )}

@@ -25,6 +25,24 @@ function formatDateLong(str) {
   });
 }
 
+function getTicketTypes(event) {
+  const configured = Array.isArray(event?.ticket_types)
+    ? event.ticket_types
+      .filter(ticket => ticket?.name && Number(ticket?.capacity) > 0)
+      .map(ticket => ({
+        name: String(ticket.name),
+        price: Math.max(0, Number(ticket.price) || 0),
+        capacity: Math.max(1, Number(ticket.capacity) || 1),
+      }))
+    : [];
+  if (configured.length > 0) return configured;
+  return [{
+    name: 'General',
+    price: Math.max(0, Number(event?.price) || 0),
+    capacity: Math.max(1, Number(event?.tickets_total) || 1),
+  }];
+}
+
 export default function EventPublicPage() {
   const { eventId } = useParams();
   const { currentUser } = useAuth();
@@ -38,6 +56,9 @@ export default function EventPublicPage() {
   const [ticketNo, setTicketNo] = useState('');
   const [copied,   setCopied]   = useState(false);
   const [artists,  setArtists]  = useState([]);
+  const [selectedType, setSelectedType] = useState('');
+  const ticketTypes = getTicketTypes(event);
+  const selectedTicket = ticketTypes.find(ticket => ticket.name === selectedType) || ticketTypes[0];
 
   useEffect(() => {
     if (!eventId) return;
@@ -48,7 +69,10 @@ export default function EventPublicPage() {
       .maybeSingle()
       .then(({ data, error }) => {
         if (error || !data) setNotFound(true);
-        else setEvent(data);
+        else {
+          setEvent(data);
+          setSelectedType(getTicketTypes(data)[0].name);
+        }
         setLoading(false);
       });
   }, [eventId]);
@@ -65,9 +89,9 @@ export default function EventPublicPage() {
     trackUsageEvent('event_view', {
       event_id: event.id,
       status: event.status || null,
-      price_tier: (!event.price || event.price === 0) ? 'free' : 'paid',
+      price_tier: selectedTicket.price === 0 ? 'free' : 'paid',
     });
-  }, [event?.id, event?.status, event?.price]);
+  }, [event?.id, event?.status, selectedTicket.price]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -89,7 +113,7 @@ export default function EventPublicPage() {
   const handleBuy = async () => {
     trackUsageEvent('checkout_start', {
       event_id: event?.id || eventId,
-      price_tier: (!event?.price || event?.price === 0) ? 'free' : 'paid',
+      price_tier: selectedTicket.price === 0 ? 'free' : 'paid',
       quantity: 1,
       status: currentUser ? 'started' : 'auth_required',
     });
@@ -99,14 +123,14 @@ export default function EventPublicPage() {
       return;
     }
 
-    const isFree = !event.price || event.price === 0;
+    const isFree = selectedTicket.price === 0;
     setStatus('buying');
     setErrorMsg('');
 
     if (isFree) {
       const { data, error } = await supabase.rpc('purchase_ticket', {
         p_event_id: event.id,
-        p_ticket_type: 'GA',
+        p_ticket_type: selectedTicket.name,
       });
       if (error || !data?.success) {
         setStatus('error');
@@ -128,7 +152,7 @@ export default function EventPublicPage() {
     } else {
       try {
         const { data, error } = await supabase.functions.invoke('create-payment', {
-          body: { event_id: event.id, ticket_type: 'GA', quantity: 1, assigned_emails: [] },
+          body: { event_id: event.id, ticket_type: selectedTicket.name, quantity: 1, assigned_emails: [] },
         });
         if (error) throw new Error(error.message || 'Error al crear el pago');
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
@@ -164,8 +188,9 @@ export default function EventPublicPage() {
     }
   };
 
-  const isFree    = event && (!event.price || event.price === 0);
-  const available = event ? (event.tickets_total || 0) - (event.tickets_sold || 0) : 0;
+  const isFree    = event && selectedTicket.price === 0;
+  const eventAvailable = event ? (event.tickets_total || 0) - (event.tickets_sold || 0) : 0;
+  const available = event ? Math.min(eventAvailable, selectedTicket.capacity) : 0;
   const isSoldOut = event && available <= 0;
   const lineup = resolveLineupArtists(event?.lineup, artists);
   const canonicalUrl = `https://www.polyfauna.com/e/${eventId}`;
@@ -377,17 +402,32 @@ export default function EventPublicPage() {
             {/* Buy CTA */}
             <div className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(11,16,15,0.95)', border: '1px solid rgba(255,255,255,0.09)' }}>
 
-              {/* Price row */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-white/40 uppercase tracking-wider">Precio por entrada</p>
-                  <p className="text-2xl font-black mt-0.5" style={{ color: 'rgba(255,255,255,0.90)' }}>
-                    {formatPrice(event.price)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] text-white/40 uppercase tracking-wider">Tipo</p>
-                  <p className="text-sm font-bold text-white mt-0.5">General Admission</p>
+              <div className="space-y-2">
+                <p className="text-[11px] text-white/40 uppercase tracking-wider">Elige tu entrada</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {ticketTypes.map(ticket => {
+                    const selected = ticket.name === selectedTicket.name;
+                    return (
+                      <button
+                        key={ticket.name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedType(ticket.name);
+                          setErrorMsg('');
+                        }}
+                        disabled={status === 'buying'}
+                        className="rounded-xl p-3 text-left transition-all"
+                        style={{
+                          background: selected ? 'rgba(32,199,232,0.13)' : 'rgba(255,255,255,0.045)',
+                          border: selected ? '1px solid rgba(32,199,232,0.48)' : '1px solid rgba(255,255,255,0.1)',
+                          color: selected ? '#A5F1FF' : 'rgba(255,255,255,0.72)',
+                        }}
+                      >
+                        <span className="block text-xs font-black">{ticket.name}</span>
+                        <span className="block text-base font-black mt-1">{formatPrice(ticket.price)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

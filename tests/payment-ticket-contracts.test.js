@@ -11,6 +11,10 @@ const governance = readFileSync('supabase/migrations/20260624000002_governance_a
 const userManager = readFileSync('src/components/admin/UserManager.jsx', 'utf8');
 const roleRequestsPanel = readFileSync('src/components/RoleRequestsPanel.jsx', 'utf8');
 const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
+const roleAndTicketTiers = readFileSync('supabase/migrations/20260701000001_role_requests_and_ticket_tiers.sql', 'utf8');
+const promoterDashboard = readFileSync('src/components/PromoterDashboard.jsx', 'utf8');
+const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
+const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -48,6 +52,28 @@ test('checkout de pago conserva límites y referencias firmadas', () => {
   assert.match(createPayment, /checkout pendiente/);
   assert.match(createPayment, /sha256hex\(`\$\{reference\}\$\{amount_in_cents\}COP\$\{INTEGRITY_KEY\}`\)/);
   assert.doesNotMatch(createPayment, /detail: txErr\.message/);
+});
+
+test('tipos de entrada conservan precio, cupo e inventario independientes', () => {
+  assert.match(roleAndTicketTiers, /ADD COLUMN IF NOT EXISTS ticket_types JSONB/);
+  assert.match(roleAndTicketTiers, /ADD COLUMN IF NOT EXISTS ticket_type TEXT NOT NULL DEFAULT 'General'/);
+  assert.match(roleAndTicketTiers, /v_tier_sold \+ v_tx\.quantity > v_tier_capacity/);
+  assert.match(roleAndTicketTiers, /v_tx\.ticket_type, 'valid'/);
+  assert.match(createPayment, /ticket_types, owner_id/);
+  assert.match(createPayment, /Math\.round\(tierPrice \* qty\)/);
+  assert.match(createPayment, /ticket_type:\s+tierName/);
+  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime'\]/);
+  assert.match(promoterDashboard, /ticket_types: normalizedTicketTypes/);
+  assert.match(eventTerminal, /ticket_type: selectedTicket\.name/);
+});
+
+test('solicitudes profesionales llegan al Control Center del admin', () => {
+  assert.match(roleAndTicketTiers, /requested_role IN \('artist', 'promoter', 'club', 'sello'\)/);
+  assert.match(roleAndTicketTiers, /INSERT INTO public\.role_requests/);
+  assert.match(roleAndTicketTiers, /source', 'migration_recovery'/);
+  assert.match(roleRequestsPanel, /admin-role-requests/);
+  assert.match(roleRequestsPanel, /postgres_changes/);
+  assert.match(controlCenter, /<RoleRequestsPanel \/>/);
 });
 
 test('sincronización offline conserva autorización, idempotencia y auditoría', () => {

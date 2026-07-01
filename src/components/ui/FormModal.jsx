@@ -102,7 +102,7 @@ export function FSelect({ value, onChange, children, placeholder }) {
     <select
       value={value}
       onChange={onChange}
-      className="w-full text-sm px-3 py-2.5 rounded-xl appearance-none"
+      className="w-full text-sm px-3 py-2.5 rounded-xl appearance-none [color-scheme:dark]"
       style={{
         ...glass.input,
         borderColor: focused ? 'rgba(32,199,232,0.6)' : 'rgba(255,255,255,0.1)',
@@ -113,7 +113,7 @@ export function FSelect({ value, onChange, children, placeholder }) {
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
     >
-      {placeholder && <option value="">{placeholder}</option>}
+      {placeholder && <option value="" className="bg-[#101615] text-white">{placeholder}</option>}
       {children}
     </select>
   );

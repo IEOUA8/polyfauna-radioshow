@@ -61,7 +61,12 @@ const Contact = () => {
               <Mail className="w-10 h-10 text-primary" />
             </div>
             <h3 className="text-2xl font-bold text-white mb-3">Email</h3>
-            <p className="text-muted-foreground font-medium">info@polyfauna.com</p>
+            <a
+              href="mailto:info@polyfauna.com"
+              className="text-muted-foreground font-medium hover:text-primary transition-colors"
+            >
+              info@polyfauna.com
+            </a>
           </motion.div>
 
           <motion.div

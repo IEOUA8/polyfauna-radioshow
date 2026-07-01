@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
     const {
       event_id,
-      ticket_type = 'GA',
+      ticket_type = 'General',
       quantity = 1,
       assigned_emails = [],
     } = await req.json();
@@ -60,10 +60,14 @@ Deno.serve(async (req) => {
       .slice(0, qty - 1)
       .map(e => (typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())) ? e.trim().toLowerCase() : null);
 
-    // Obtener evento
+    const requestedType = typeof ticket_type === 'string' ? ticket_type.trim().slice(0, 60) : '';
+    if (!requestedType)
+      return new Response(JSON.stringify({ error: 'ticket_type requerido' }), { status: 400, headers: CORS });
+
+    // Obtener evento y sus tipos de entrada
     const { data: event, error: evErr } = await supabase
       .from('events')
-      .select('id, title, price, tickets_total, tickets_sold, owner_id, date, status')
+      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, date, status')
       .eq('id', event_id)
       .single();
 
@@ -73,11 +77,34 @@ Deno.serve(async (req) => {
     if (!['upcoming', 'live', 'published'].includes(event.status))
       return new Response(JSON.stringify({ error: 'El evento no está disponible' }), { status: 400, headers: CORS });
 
+    const tiers = Array.isArray(event.ticket_types) ? event.ticket_types : [];
+    const tier = tiers.find((item: Record<string, unknown>) =>
+      typeof item?.name === 'string' && item.name.toLowerCase() === requestedType.toLowerCase()
+    );
+    if (!tier)
+      return new Response(JSON.stringify({ error: 'Tipo de entrada no disponible' }), { status: 400, headers: CORS });
+
+    const tierName = String(tier.name).slice(0, 60);
+    const tierPrice = Number(tier.price);
+    const tierCapacity = Number(tier.capacity);
+    if (!Number.isFinite(tierPrice) || tierPrice < 0 || !Number.isInteger(tierCapacity) || tierCapacity < 1)
+      return new Response(JSON.stringify({ error: 'Configuración de entrada inválida' }), { status: 500, headers: CORS });
+
     const sold  = event.tickets_sold ?? 0;
     const total = event.tickets_total ?? 0;
 
     if (total > 0 && sold + qty > total)
       return new Response(JSON.stringify({ error: `Solo quedan ${total - sold} entradas disponibles` }), { status: 400, headers: CORS });
+
+    const { count: tierSold, error: tierSoldErr } = await supabase
+      .from('user_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', event_id)
+      .ilike('ticket_type', tierName);
+    if (tierSoldErr)
+      return new Response(JSON.stringify({ error: 'No fue posible validar el inventario' }), { status: 500, headers: CORS });
+    if ((tierSold ?? 0) + qty > tierCapacity)
+      return new Response(JSON.stringify({ error: `Solo quedan ${Math.max(0, tierCapacity - (tierSold ?? 0))} entradas ${tierName}` }), { status: 400, headers: CORS });
 
     // Verificar límite de 4 tickets por comprador en este evento
     const { data: existingCount } = await supabase.rpc('count_user_event_tickets', {
@@ -108,7 +135,7 @@ Deno.serve(async (req) => {
         { status: 409, headers: CORS },
       );
 
-    const amount_cop = Math.round((event.price || 0) * qty);
+    const amount_cop = Math.round(tierPrice * qty);
     if (amount_cop <= 0)
       return new Response(JSON.stringify({ error: 'Este evento es gratuito — usa purchase_ticket RPC' }), { status: 400, headers: CORS });
 
@@ -134,6 +161,7 @@ Deno.serve(async (req) => {
       status:          'pending',
       quantity:        qty,
       assigned_emails: emails,
+      ticket_type:     tierName,
     });
 
     if (txErr) {
@@ -151,6 +179,7 @@ Deno.serve(async (req) => {
         signature,
         public_key:  PUBLIC_KEY,
         event_title: event.title,
+        ticket_type: tierName,
         quantity:    qty,
       }),
       { headers: { 'Content-Type': 'application/json', ...CORS } },
