@@ -24,6 +24,9 @@ function usePlayerOffset() {
 }
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
+const useFallbackImage = (event) => {
+  if (event.currentTarget.src !== FALLBACK_IMG) event.currentTarget.src = FALLBACK_IMG;
+};
 
 function formatPrice(price) {
   if (!price && price !== 0) return 'Gratis';
@@ -189,7 +192,7 @@ function BuyModal({ event, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="relative h-36 shrink-0 overflow-hidden">
-          <img src={event.image_url || FALLBACK_IMG} alt={event.title} className="w-full h-full object-cover" />
+          <img src={event.image_url || FALLBACK_IMG} onError={useFallbackImage} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
           <button
             type="button" onClick={onClose}
@@ -472,6 +475,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
       <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 280 }}>
         <img
           src={event.image_url || FALLBACK_IMG}
+          onError={useFallbackImage}
           alt={event.title}
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -755,6 +759,7 @@ export default function EventTerminal({ setCurrentSection }) {
                 <motion.img
                   key={featured.id}
                   src={featured.image_url || FALLBACK_IMG}
+                  onError={useFallbackImage}
                   alt={featured.title}
                   initial={{ opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -932,6 +937,7 @@ export default function EventTerminal({ setCurrentSection }) {
                     <div className="relative aspect-video overflow-hidden">
                       <img
                         src={event.image_url || FALLBACK_IMG}
+                        onError={useFallbackImage}
                         alt={event.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />

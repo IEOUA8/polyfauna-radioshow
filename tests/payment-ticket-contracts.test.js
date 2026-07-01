@@ -15,6 +15,9 @@ const roleAndTicketTiers = readFileSync('supabase/migrations/20260701000001_role
 const promoterDashboard = readFileSync('src/components/PromoterDashboard.jsx', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
 const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
+const organizerOperations = readFileSync('supabase/migrations/20260701000002_organizer_operations_and_manual_tickets.sql', 'utf8');
+const manualTicketFunction = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
+const ticketVault = readFileSync('src/components/TicketVault.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -74,6 +77,27 @@ test('solicitudes profesionales llegan al Control Center del admin', () => {
   assert.match(roleRequestsPanel, /admin-role-requests/);
   assert.match(roleRequestsPanel, /postgres_changes/);
   assert.match(controlCenter, /<RoleRequestsPanel \/>/);
+});
+
+test('organizadores administran asistentes y emiten transferencias manuales auditadas', () => {
+  assert.match(organizerOperations, /CREATE OR REPLACE FUNCTION public\.get_event_attendees/);
+  assert.match(organizerOperations, /v_role IN \('promoter', 'club'\)/);
+  assert.match(organizerOperations, /CREATE OR REPLACE FUNCTION public\.issue_manual_transfer_ticket/);
+  assert.match(organizerOperations, /payment_method,[\s\S]*'bank_transfer'/);
+  assert.match(organizerOperations, /ticket\.manual_bank_transfer/);
+  assert.match(organizerOperations, /TO service_role/);
+  assert.match(manualTicketFunction, /issue_manual_transfer_ticket/);
+  assert.match(manualTicketFunction, /signTicketToken/);
+  assert.match(manualTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
+  assert.match(adminDashboard, /Generar ticket manual/);
+});
+
+test('portadas de eventos y pagos pendientes tienen estados recuperables', () => {
+  assert.match(organizerOperations, /event_covers_organizer_insert/);
+  assert.match(organizerOperations, /storage\.foldername\(name\)/);
+  assert.match(promoterDashboard, /events\/\$\{currentUser\.id\}\/\$\{crypto\.randomUUID\(\)\}/);
+  assert.match(promoterDashboard, /No se pudo subir la portada/);
+  assert.match(ticketVault, /Wompi aún no confirma el pago/);
 });
 
 test('sincronización offline conserva autorización, idempotencia y auditoría', () => {

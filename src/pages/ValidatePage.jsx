@@ -115,9 +115,15 @@ function ScannerView({ onDetected, eventName }) {
 
     return () => {
       mounted = false;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
+      const activeScanner = scannerRef.current;
+      scannerRef.current = null;
+      if (activeScanner) {
+        try {
+          const stopped = activeScanner.stop();
+          if (stopped?.catch) stopped.catch(() => {});
+        } catch (_) {
+          // The scanner may already be stopped during route transitions.
+        }
       }
     };
   }, [onDetected]);

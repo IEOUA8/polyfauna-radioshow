@@ -513,6 +513,17 @@ export default function TicketVault() {
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );
+  const { data: pendingPayments, loading: pendingLoading } = useSupabaseQuery(
+    () => currentUser
+      ? supabase
+          .from('transactions')
+          .select('id, status, created_at, amount_total, quantity, events(title, date)')
+          .eq('buyer_id', currentUser.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    [currentUser?.id]
+  );
 
   useEffect(() => {
     if (!tickets?.length) return;
@@ -551,7 +562,27 @@ export default function TicketVault() {
 
         {loading && <CardSkeleton count={3} />}
         {error && <ErrorState message={error} onRetry={refetch} />}
-        {!loading && !error && (!tickets || tickets.length === 0) && (
+        {!pendingLoading && pendingPayments?.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300/65">Pagos pendientes</p>
+            {pendingPayments.map(payment => (
+              <div key={payment.id} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-4"
+                style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)' }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{payment.events?.title || 'Evento PolyFauna'}</p>
+                  <p className="text-[11px] text-white/38 mt-1">
+                    Wompi aún no confirma el pago. El ticket y el correo se generan únicamente después de la aprobación.
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-black text-amber-300">Pendiente</p>
+                  <p className="text-[10px] text-white/30 mt-1">${Number(payment.amount_total || 0).toLocaleString('es-CO')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {!loading && !error && (!tickets || tickets.length === 0) && (!pendingPayments || pendingPayments.length === 0) && (
           <EmptyState label="No tienes entradas aún" icon={Ticket} />
         )}
         {!loading && !error && tickets && tickets.length > 0 && (

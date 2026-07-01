@@ -504,11 +504,11 @@ export default function ControlCenter({ setCurrentSection }) {
                   delay={0.15}
                 />
               )}
-              {isAdmin && (
+              {hasPromoterHub && (
                 <SettingsTile
                   icon={Shield}
-                  label="Panel Operativo"
-                  description="Usuarios, contenido, eventos y administración"
+                  label={isAdmin ? 'Panel Administrativo' : 'Panel Operativo'}
+                  description={isAdmin ? 'Usuarios, contenido, eventos y administración' : 'Administra tus eventos, tickets, asistentes y accesos'}
                   onClick={() => navigate('/admin')}
                   delay={0.18}
                 />

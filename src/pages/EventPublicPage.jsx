@@ -12,6 +12,9 @@ import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
+const useFallbackImage = (event) => {
+  if (event.currentTarget.src !== FALLBACK) event.currentTarget.src = FALLBACK;
+};
 
 function formatPrice(price) {
   if (!price && price !== 0) return 'Gratis';
@@ -283,6 +286,7 @@ export default function EventPublicPage() {
         <div className="relative w-full overflow-hidden" style={{ height: 'clamp(260px, 50vw, 420px)' }}>
           <img
             src={event.image_url || FALLBACK}
+            onError={useFallbackImage}
             alt={event.title}
             className="absolute inset-0 w-full h-full object-cover"
           />

@@ -65,14 +65,21 @@ function CreateEventModal({ onClose, onCreated }) {
     let image_url = null;
     if (coverFile) {
       const ext = coverFile.name.split('.').pop();
-      const path = `events/${Date.now()}.${ext}`;
+      const path = `events/${currentUser.id}/${crypto.randomUUID()}.${ext}`;
       const { data: up, error: upErr } = await supabase.storage
         .from('album-covers')
-        .upload(path, coverFile, { upsert: true });
-      if (!upErr && up) {
-        const { data: { publicUrl } } = supabase.storage.from('album-covers').getPublicUrl(up.path);
-        image_url = publicUrl;
+        .upload(path, coverFile, { upsert: false });
+      if (upErr || !up) {
+        toast({
+          title: 'No se pudo subir la portada',
+          description: upErr?.message || 'Intenta nuevamente con otra imagen.',
+          variant: 'destructive',
+        });
+        setSaving(false);
+        return;
       }
+      const { data: { publicUrl } } = supabase.storage.from('album-covers').getPublicUrl(up.path);
+      image_url = publicUrl;
     }
 
     const ticketsTotal = normalizedTicketTypes.reduce((sum, ticket) => sum + ticket.capacity, 0);

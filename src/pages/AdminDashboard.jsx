@@ -6,7 +6,7 @@ import {
   AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, Disc3, FileText, Headphones, Home, Loader2, Menu,
   MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
-  Ticket, TrendingUp, Users, WifiOff, X, XCircle, ListMusic,
+  Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle, ListMusic,
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
@@ -146,7 +146,16 @@ function QRScannerWidget({ scanKey, eventId }) {
     start();
     return () => {
       mounted = false;
-      if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
+      const activeScanner = scannerRef.current;
+      scannerRef.current = null;
+      if (activeScanner) {
+        try {
+          const stopped = activeScanner.stop();
+          if (stopped?.catch) stopped.catch(() => {});
+        } catch (_) {
+          // The scanner may already be stopped during route transitions.
+        }
+      }
     };
   }, [onDetected, scanKey]);
 
@@ -698,17 +707,120 @@ function SupportCasesSection() {
 }
 
 /* ─────────────────────── TICKETS SECTION ─────────────────────── */
+function ManualTicketModal({ event, onClose, onIssued }) {
+  const { toast } = useToast();
+  const ticketTypes = Array.isArray(event.ticket_types) && event.ticket_types.length > 0
+    ? event.ticket_types
+    : [{ name: 'General', price: event.price || 0, capacity: event.tickets_total || 1 }];
+  const [email, setEmail] = useState('');
+  const [ticketType, setTicketType] = useState(ticketTypes[0]?.name || 'General');
+  const [reference, setReference] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const issueTicket = async (submitEvent) => {
+    submitEvent.preventDefault();
+    if (!email.trim() || !reference.trim() || !ticketType) return;
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke('issue-manual-ticket', {
+      body: {
+        eventId: event.id,
+        userEmail: email.trim(),
+        ticketType,
+        paymentReference: reference.trim(),
+      },
+    });
+    setSaving(false);
+
+    if (error || !data?.ok) {
+      toast({
+        title: 'No se pudo generar el ticket',
+        description: data?.error || error?.message || 'Verifica los datos e intenta nuevamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: data.alreadyProcessed ? 'Ticket ya registrado' : 'Ticket generado',
+      description: data.emailSent
+        ? `#${data.ticketNumber} · correo enviado`
+        : `#${data.ticketNumber} · ${data.emailWarning || 'correo pendiente'}`,
+      variant: data.emailSent ? undefined : 'destructive',
+    });
+    onIssued(data);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      style={{ background: 'rgba(2,5,5,0.84)', backdropFilter: 'blur(14px)' }}
+      onClick={onClose}>
+      <form onSubmit={issueTicket} onClick={eventClick => eventClick.stopPropagation()}
+        className="w-full max-w-md rounded-3xl p-6 space-y-5"
+        style={{ background: '#0B1110', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 28px 90px rgba(0,0,0,0.65)' }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-base font-black text-white">Generar ticket manual</p>
+            <p className="text-xs text-white/40 mt-1">{event.title} · transferencia bancaria verificada</p>
+          </div>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <X className="w-4 h-4 text-white/55" />
+          </button>
+        </div>
+
+        <label className="block space-y-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Correo del usuario</span>
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="usuario@correo.com"
+            className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.11)' }} />
+          <span className="block text-[10px] text-white/28">El correo debe pertenecer a una cuenta registrada en PolyFauna.</span>
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Tipo de entrada</span>
+          <select value={ticketType} onChange={e => setTicketType(e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none [color-scheme:dark]"
+            style={{ background: '#111817', border: '1px solid rgba(255,255,255,0.11)' }}>
+            {ticketTypes.map(type => (
+              <option key={type.name} value={type.name} className="bg-[#111817] text-white">
+                {type.name} · ${Number(type.price || 0).toLocaleString('es-CO')}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Referencia bancaria</span>
+          <input required value={reference} onChange={e => setReference(e.target.value)}
+            placeholder="Ej. TRX-458921"
+            className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.11)' }} />
+        </label>
+
+        <button type="submit" disabled={saving || !email.trim() || !reference.trim()}
+          className="w-full rounded-xl py-3 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
+          style={{ background: '#EAF0ED', color: '#07100D' }}>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+          {saving ? 'Generando…' : 'Generar y enviar ticket'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function TicketsSection({ ownerId }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [buyers, setBuyers] = useState({});
   const [loadingBuyers, setLoadingBuyers] = useState(false);
+  const [manualEvent, setManualEvent] = useState(null);
 
   useEffect(() => {
     let query = supabase
       .from('events')
-      .select('id, title, date, venue, price, tickets_total, tickets_sold')
+      .select('id, title, date, venue, price, tickets_total, tickets_sold, ticket_types')
       .order('date', { ascending: true });
     if (ownerId) query = query.eq('owner_id', ownerId);
     query.then(({ data }) => { setEvents(data || []); setLoading(false); });
@@ -724,6 +836,18 @@ function TicketsSection({ ownerId }) {
   };
 
   const toggle = (id) => expanded === id ? setExpanded(null) : loadBuyers(id);
+  const handleManualIssued = (result) => {
+    setEvents(current => current.map(item => item.id === manualEvent?.id
+      ? { ...item, tickets_sold: (item.tickets_sold || 0) + (result?.alreadyProcessed ? 0 : 1) }
+      : item));
+    setBuyers(current => {
+      const next = { ...current };
+      if (manualEvent?.id) delete next[manualEvent.id];
+      return next;
+    });
+    setExpanded(null);
+    setManualEvent(null);
+  };
 
   if (loading) return (
     <div className="space-y-3">
@@ -733,6 +857,15 @@ function TicketsSection({ ownerId }) {
 
   return (
     <div className="space-y-6">
+      <AnimatePresence>
+        {manualEvent && (
+          <ManualTicketModal
+            event={manualEvent}
+            onClose={() => setManualEvent(null)}
+            onIssued={handleManualIssued}
+          />
+        )}
+      </AnimatePresence>
       <div>
         <h2 className="text-lg font-black text-white">Gestión de Tickets</h2>
         <p className="text-sm text-white/40 mt-0.5">Ventas y asistentes por evento</p>
@@ -802,6 +935,18 @@ function TicketsSection({ ownerId }) {
                       className="overflow-hidden"
                     >
                       <div className="border-t px-5 py-4" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                          <div>
+                            <p className="text-xs font-bold text-white/75">Emisión manual</p>
+                            <p className="text-[10px] text-white/30">Para pagos confirmados por transferencia bancaria</p>
+                          </div>
+                          <button type="button" onClick={() => setManualEvent(ev)}
+                            className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black"
+                            style={{ background: 'rgba(32,199,232,0.12)', color: '#8BEAFF', border: '1px solid rgba(32,199,232,0.25)' }}>
+                            <UserPlus className="w-3.5 h-3.5" />
+                            Generar ticket
+                          </button>
+                        </div>
                         {loadingBuyers ? (
                           <div className="flex justify-center py-4">
                             <Loader2 className="w-5 h-5 animate-spin text-white/30" />
