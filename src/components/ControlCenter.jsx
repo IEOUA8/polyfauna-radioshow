@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Gauge, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -495,15 +495,6 @@ export default function ControlCenter({ setCurrentSection }) {
                   description="Publica contenido sonoro desde tu rol de creador"
                   onClick={() => setShowUpload(true)}
                   delay={0.12}
-                />
-              )}
-              {hasPromoterHub && (
-                <SettingsTile
-                  icon={Gauge}
-                  label="Gestor de Eventos"
-                  description="Administra eventos, cupos y operación"
-                  onClick={() => setCurrentSection?.('promoter')}
-                  delay={0.15}
                 />
               )}
               {hasPromoterHub && (

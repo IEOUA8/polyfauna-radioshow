@@ -26,10 +26,9 @@ const BlogInterviewsSection = lazy(lazyImport(() => import('@/components/BlogInt
 const SignalInbox           = lazy(lazyImport(() => import('@/components/SignalInbox')));
 const TicketVault           = lazy(lazyImport(() => import('@/components/TicketVault')));
 const ControlCenter         = lazy(lazyImport(() => import('@/components/ControlCenter')));
-const EventManagerPanel     = lazy(lazyImport(() => import('@/components/EventManagerPanel')));
 
 const PUBLIC_SECTIONS  = ['radio-console', 'podcasts'];
-const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'blog', 'inbox', 'tickets', 'settings', 'promoter']);
+const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'blog', 'inbox', 'tickets', 'settings']);
 
 function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
@@ -108,7 +107,6 @@ function GuestGate({ section, onClose }) {
     music: 'Música', organism: 'Organismo', events: 'Event Terminal', artists: 'Artists & Labels',
     inbox: 'Signal Inbox', blog: 'Blog & Entrevistas',
     tickets: 'Ticket Vault', settings: 'Control Center',
-    promoter: 'Gestor de Eventos',
   };
   return createPortal(
     <motion.div
@@ -154,7 +152,7 @@ function GuestGate({ section, onClose }) {
 }
 
 function PolyfaunaOS() {
-  const { currentUser, userRole } = useAuth();
+  const { currentUser } = useAuth();
   const [currentSection, setCurrentSection] = useState(() => {
     const requested = new URLSearchParams(window.location.search).get('section');
     return VALID_SECTIONS.has(requested) ? requested : 'radio-console';
@@ -222,9 +220,6 @@ function PolyfaunaOS() {
       case 'inbox':         return <SignalInbox />;
       case 'tickets':       return <TicketVault />;
       case 'settings':      return <ControlCenter setCurrentSection={setCurrentSection} />;
-      case 'promoter':      return (userRole === 'promoter' || userRole === 'club' || userRole === 'admin')
-                              ? <EventManagerPanel />
-                              : <GuestGate section="promoter" onClose={() => setCurrentSection('radio-console')} />;
       default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
     }
   };

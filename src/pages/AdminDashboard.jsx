@@ -3,8 +3,8 @@ import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
-  ChevronRight, Disc3, FileText, Headphones, Home, Loader2, Menu,
+  AlertCircle, AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
+  ChevronRight, CreditCard, Disc3, FileText, Headphones, Home, Loader2, Menu,
   Gift, MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
   Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle, ListMusic,
 } from 'lucide-react';
@@ -1337,103 +1337,355 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
 }
 
 /* ─────────────────────── WALLET SECTION ─────────────────────── */
+const BANKS = [
+  'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA', 'Banco Popular',
+  'Banco de Occidente', 'Nequi', 'Daviplata', 'Otro',
+];
+
 function WalletSection() {
-  const [data, setData] = useState([]);
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
+  const userId = currentUser?.id;
+
+  const [wallet, setWallet] = useState(null);
+  const [txs, setTxs] = useState([]);
+  const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+  const [requestAmount, setRequestAmount] = useState('');
+  const [showRequest, setShowRequest] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      // Get all tickets with event info
-      const { data: tickets } = await supabase
-        .from('tickets')
-        .select('event_id, events(id, title, date, price)')
-        .neq('status', 'cancelled');
+  const [account, setAccount] = useState(null);
+  const [accountForm, setAccountForm] = useState({
+    account_holder: '', document_type: 'CC', document_number: '',
+    bank_name: 'Bancolombia', account_type: 'ahorros', account_number: '',
+  });
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(false);
 
-      // Aggregate by event
-      const byEvent = {};
-      (tickets || []).forEach(t => {
-        const ev = t.events;
-        if (!ev) return;
-        if (!byEvent[ev.id]) byEvent[ev.id] = { title: ev.title, date: ev.date, price: ev.price || 0, count: 0 };
-        byEvent[ev.id].count += 1;
+  const load = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    const [walletRes, acctRes, txRes, payoutRes] = await Promise.all([
+      supabase.rpc('get_or_create_wallet', { p_user_id: userId }),
+      supabase.from('promoter_accounts').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('transactions')
+        .select('id, amount_total, promoter_amount, payment_method, status, paid_at, events(title)')
+        .eq('promoter_id', userId)
+        .eq('status', 'approved')
+        .order('paid_at', { ascending: false })
+        .limit(50),
+      supabase.from('payouts')
+        .select('id, amount, status, requested_at, processed_at, transfer_reference')
+        .eq('user_id', userId)
+        .order('requested_at', { ascending: false })
+        .limit(5),
+    ]);
+    const payoutRows = payoutRes.data || [];
+    const reserved = payoutRows
+      .filter(p => p.status === 'pending' || p.status === 'processing')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    setWallet(walletRes.data ? {
+      ...walletRes.data,
+      balance_available: Math.max(0, Number(walletRes.data.balance_available || 0) - reserved),
+    } : null);
+    if (acctRes.data) {
+      setAccount(acctRes.data);
+      setAccountForm({
+        account_holder: acctRes.data.account_holder || '',
+        document_type: acctRes.data.document_type || 'CC',
+        document_number: acctRes.data.document_number || '',
+        bank_name: acctRes.data.bank_name || 'Bancolombia',
+        account_type: acctRes.data.account_type || 'ahorros',
+        account_number: acctRes.data.account_number || '',
       });
+    }
+    setTxs(txRes.data || []);
+    setPayouts(payoutRows);
+    setLoading(false);
+  }, [userId]);
 
-      setData(Object.values(byEvent).sort((a, b) => (b.count * b.price) - (a.count * a.price)));
-      setLoading(false);
-    };
-    load();
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const total = data.reduce((s, e) => s + e.count * e.price, 0);
-  const totalTickets = data.reduce((s, e) => s + e.count, 0);
+  const handleRequestPayout = async () => {
+    const amount = parseInt(requestAmount.replace(/\D/g, ''), 10);
+    if (!amount || amount <= 0) return;
+    if (amount > (wallet?.balance_available || 0)) {
+      toast({ title: 'Monto inválido', description: 'El monto supera tu saldo disponible.', variant: 'destructive' });
+      return;
+    }
+    setRequesting(true);
+    const { data: payoutId, error } = await supabase.rpc('request_payout', { p_amount: amount });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitud enviada', description: 'El equipo procesará tu retiro en 1-2 días hábiles.' });
+      setShowRequest(false);
+      setRequestAmount('');
+      setWallet(w => ({ ...w, balance_available: (w?.balance_available || 0) - amount }));
+      setPayouts(p => [{ id: payoutId, amount, status: 'pending', requested_at: new Date().toISOString() }, ...p]);
+    }
+    setRequesting(false);
+  };
+
+  const setAccountField = (k, v) => setAccountForm(p => ({ ...p, [k]: v }));
+
+  const handleSaveAccount = async (e) => {
+    e.preventDefault();
+    if (!accountForm.account_holder || !accountForm.account_number || !accountForm.document_number) return;
+    setSavingAccount(true);
+    const payload = { ...accountForm, user_id: userId, updated_at: new Date().toISOString() };
+    const { error } = account
+      ? await supabase.from('promoter_accounts').update(payload).eq('user_id', userId)
+      : await supabase.from('promoter_accounts').insert(payload);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: account ? 'Cuenta actualizada' : 'Cuenta registrada', description: 'Tus datos bancarios han sido guardados.' });
+      setAccount({ ...account, ...payload });
+      setEditingAccount(false);
+    }
+    setSavingAccount(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />
+        ))}
+      </div>
+    );
+  }
+
+  const available = wallet?.balance_available || 0;
+  const pending    = wallet?.balance_pending   || 0;
+  const total      = wallet?.total_earned      || 0;
+  const inputStyle = { borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)' };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-black text-white">Wallet</h2>
-        <p className="text-sm text-white/40 mt-0.5">Ingresos por ventas de tickets</p>
+        <p className="text-sm text-white/40 mt-0.5">Tu saldo por ventas de tickets y solicitudes de retiro</p>
       </div>
 
-      {/* Total balance hero */}
-      <div
-        className="relative rounded-2xl overflow-hidden p-6"
-        style={{ background: 'linear-gradient(135deg, rgba(93,224,163,0.15), rgba(10,15,14,0.95))', border: '1px solid rgba(93,224,163,0.2)' }}
-      >
+      {/* Balance hero */}
+      <div className="relative rounded-2xl overflow-hidden p-6"
+        style={{ background: 'linear-gradient(135deg, rgba(93,224,163,0.15), rgba(10,15,14,0.95))', border: '1px solid rgba(93,224,163,0.2)' }}>
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(93,224,163,0.15), transparent 70%)', transform: 'translate(30%, -30%)' }} />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Total generado</p>
-        {loading
-          ? <div className="h-12 w-48 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
-          : <p className="text-4xl font-black text-white">${total.toLocaleString('es-CO')} <span className="text-base text-white/30 font-medium">COP</span></p>
-        }
-        <p className="text-sm text-white/40 mt-2">{totalTickets} ticket{totalTickets !== 1 ? 's' : ''} vendido{totalTickets !== 1 ? 's' : ''}</p>
-
-        <div className="mt-6 flex gap-3 flex-wrap">
-          <div className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' }}>
-            💳 Retiro: próximamente
+        <div className="grid grid-cols-3 gap-4 relative z-10">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Disponible</p>
+            <p className="text-2xl font-black text-white">${available.toLocaleString('es-CO')}</p>
           </div>
-          <div className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' }}>
-            📊 Reportes: próximamente
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">En espera</p>
+            <p className="text-2xl font-black text-white/60">${pending.toLocaleString('es-CO')}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Total ganado</p>
+            <p className="text-2xl font-black text-white/40">${total.toLocaleString('es-CO')}</p>
           </div>
         </div>
-      </div>
-
-      {/* Per event breakdown */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="px-5 pt-5 pb-3">
-          <h3 className="text-sm font-black text-white">Ingresos por evento</h3>
-        </div>
-        {loading ? (
-          <div className="px-5 pb-5 space-y-2">
-            {[1,2,3].map(i => <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)}
-          </div>
-        ) : data.length === 0 ? (
-          <p className="px-5 pb-5 text-sm text-white/30">Sin ventas registradas</p>
-        ) : (
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-            {data.map((ev, i) => {
-              const evRevenue = ev.count * ev.price;
-              const pct = total > 0 ? (evRevenue / total) * 100 : 0;
-              return (
-                <div key={i} className="px-5 py-4 flex items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{ev.title}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'rgba(255,255,255,0.5)' }} />
-                      </div>
-                      <span className="text-[10px] text-white/30 shrink-0">{ev.count} tickets</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>${evRevenue.toLocaleString('es-CO')}</p>
-                    <p className="text-[10px] text-white/30">{Math.round(pct)}% del total</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {pending > 0 && (
+          <p className="text-[11px] text-white/30 mt-3 relative z-10">El saldo en espera se libera 48h después de cada evento.</p>
         )}
       </div>
+
+      {/* Solicitar retiro */}
+      {available > 0 && (
+        <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(93,224,163,0.15)' }}>
+          {!account ? (
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 shrink-0" style={{ color: '#F59E0B' }} />
+              <p className="text-xs text-white/50">Registra tu cuenta bancaria abajo para poder solicitar retiros.</p>
+            </div>
+          ) : showRequest ? (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-white">Solicitar retiro</p>
+              <div>
+                <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Monto (COP)</label>
+                <input type="number" value={requestAmount} onChange={e => setRequestAmount(e.target.value)}
+                  placeholder="0" max={available}
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={inputStyle} />
+                <p className="text-[10px] text-white/30 mt-1">Disponible: ${available.toLocaleString('es-CO')} COP</p>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowRequest(false)}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleRequestPayout} disabled={requesting}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  style={{ background: 'rgba(255,255,255,0.85)', color: '#080B14' }}>
+                  {requesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                  Solicitar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setShowRequest(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(93,224,163,0.1)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(93,224,163,0.2)' }}>
+              <ArrowUpRight className="w-4 h-4" />
+              Solicitar Retiro · ${available.toLocaleString('es-CO')} disponibles
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Retiros solicitados */}
+      {payouts.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-widest px-5 pt-5 pb-2">Retiros solicitados</p>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {payouts.map(p => (
+              <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-white">${p.amount.toLocaleString('es-CO')} COP</p>
+                  <p className="text-[11px] text-white/30 mt-0.5">
+                    {new Date(p.requested_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                    {p.transfer_reference && ` · Ref: ${p.transfer_reference}`}
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{
+                  background: p.status === 'completed' ? 'rgba(34,197,94,0.1)' : p.status === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                  color: p.status === 'completed' ? '#22c55e' : p.status === 'rejected' ? '#ef4444' : '#F59E0B',
+                }}>
+                  {p.status === 'completed' ? 'Completado' : p.status === 'rejected' ? 'Rechazado' : p.status === 'processing' ? 'En proceso' : 'Pendiente'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cuenta bancaria */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <h3 className="text-sm font-black text-white">Cuenta bancaria</h3>
+          {account && !editingAccount && (
+            <button type="button" onClick={() => setEditingAccount(true)} className="text-xs font-bold text-white/50 hover:text-white/80">
+              Editar
+            </button>
+          )}
+        </div>
+
+        <div className="px-5 pb-5 space-y-4">
+          {account && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={
+              account.verified
+                ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }
+                : { background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }
+            }>
+              {account.verified
+                ? <CheckCircle className="w-4 h-4 shrink-0" style={{ color: '#22c55e' }} />
+                : <AlertCircle className="w-4 h-4 shrink-0" style={{ color: '#F59E0B' }} />}
+              <p className="text-xs text-white/60">
+                {account.verified ? 'Cuenta bancaria verificada por el equipo PolyFauna.' : 'Tu cuenta está pendiente de verificación. El equipo la revisará en 1-2 días hábiles.'}
+              </p>
+            </div>
+          )}
+
+          {account && !editingAccount ? (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-[11px] text-white/30">Titular</p><p className="text-white/80">{account.account_holder}</p></div>
+              <div><p className="text-[11px] text-white/30">Documento</p><p className="text-white/80">{account.document_type} {account.document_number}</p></div>
+              <div><p className="text-[11px] text-white/30">Banco</p><p className="text-white/80">{account.bank_name}</p></div>
+              <div><p className="text-[11px] text-white/30">Cuenta</p><p className="text-white/80">{account.account_type} · {account.account_number}</p></div>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveAccount} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Nombre completo del titular *</label>
+                  <input type="text" value={accountForm.account_holder} onChange={e => setAccountField('account_holder', e.target.value)}
+                    placeholder="Nombre Apellido" className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Tipo de documento</label>
+                  <select value={accountForm.document_type} onChange={e => setAccountField('document_type', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(11,16,15,0.95)' }}>
+                    {['CC', 'NIT', 'CE', 'Pasaporte'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Número de documento *</label>
+                  <input type="text" value={accountForm.document_number} onChange={e => setAccountField('document_number', e.target.value)}
+                    placeholder="1234567890" className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={inputStyle} />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Banco</label>
+                  <select value={accountForm.bank_name} onChange={e => setAccountField('bank_name', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(11,16,15,0.95)' }}>
+                    {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Tipo de cuenta</label>
+                  <select value={accountForm.account_type} onChange={e => setAccountField('account_type', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(11,16,15,0.95)' }}>
+                    <option value="ahorros">Ahorros</option>
+                    <option value="corriente">Corriente</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1">Número de cuenta *</label>
+                  <input type="text" value={accountForm.account_number} onChange={e => setAccountField('account_number', e.target.value)}
+                    placeholder="0000000000" className="w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent border outline-none" style={inputStyle} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {account && (
+                  <button type="button" onClick={() => setEditingAccount(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
+                    Cancelar
+                  </button>
+                )}
+                <button type="submit" disabled={savingAccount || !accountForm.account_holder || !accountForm.account_number || !accountForm.document_number}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
+                  style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
+                  {savingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                  {savingAccount ? 'Guardando…' : account ? 'Actualizar cuenta' : 'Registrar cuenta'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* Pagos recibidos */}
+      {txs.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-xs font-bold text-white/40 uppercase tracking-widest px-5 pt-5 pb-2">Pagos recibidos</p>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {txs.map(tx => (
+              <div key={tx.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{tx.events?.title || 'Evento'}</p>
+                  <p className="text-[11px] text-white/30 mt-0.5">
+                    {tx.payment_method || 'Pago'}
+                    {tx.paid_at && ` · ${new Date(tx.paid_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}`}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>+${tx.promoter_amount.toLocaleString('es-CO')}</p>
+                  <p className="text-[10px] text-white/30">de ${tx.amount_total.toLocaleString('es-CO')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {txs.length === 0 && payouts.length === 0 && available === 0 && pending === 0 && (
+        <div className="p-8 rounded-2xl text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <Banknote className="w-8 h-8 mx-auto mb-3 text-white/20" />
+          <p className="text-sm font-black text-white">Aún no hay pagos registrados</p>
+          <p className="text-xs text-white/35 mt-1">Cuando vendas tickets, tu saldo aparecerá aquí.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -2022,7 +2274,7 @@ const AdminDashboard = () => {
   const isAdmin = userRole === 'admin';
   const visibleGroups = isAdmin ? NAV_GROUPS : [{
     label: 'Operación',
-    items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'refunds', 'qr'].includes(item.id)),
+    items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'refunds', 'qr', 'wallet'].includes(item.id)),
   }];
 
   const renderSection = () => {
