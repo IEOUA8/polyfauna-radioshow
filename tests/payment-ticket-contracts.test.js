@@ -125,6 +125,10 @@ test('colectivos, cortesías e identidad usan permisos y superficies restringida
   assert.match(courtesyFunction, /Cortesía confirmada/);
   assert.match(courtesyFunction, /sendPush/);
   assert.match(promoterDashboard, /functions\.invoke\('issue-courtesy-ticket'/);
+  assert.match(adminDashboard, /function CourtesyTicketModal/);
+  assert.match(adminDashboard, /functions\.invoke\('issue-courtesy-ticket'/);
+  assert.match(adminDashboard, /courtesy_limit, courtesies_issued/);
+  assert.match(adminDashboard, /Configurar cupos en Eventos/);
   assert.match(editProfile, /from\('user_identity'\)/);
 });
 

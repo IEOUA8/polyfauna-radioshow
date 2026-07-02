@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, Disc3, FileText, Headphones, Home, Loader2, Menu,
-  MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
+  Gift, MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
   Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle, ListMusic,
 } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
@@ -1009,18 +1009,117 @@ function ManualTicketModal({ event, onClose, onIssued }) {
   );
 }
 
-function TicketsSection({ ownerId }) {
+function CourtesyTicketModal({ event, onClose, onIssued, onConfigure }) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const remaining = Math.max(0, (event.courtesy_limit || 0) - (event.courtesies_issued || 0));
+
+  const issueCourtesy = async (submitEvent) => {
+    submitEvent.preventDefault();
+    if (!email.trim() || remaining <= 0) return;
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke('issue-courtesy-ticket', {
+      body: { eventId: event.id, userEmail: email.trim() },
+    });
+    setSaving(false);
+
+    if (error || !data?.ok) {
+      toast({
+        title: 'No se pudo emitir la cortesía',
+        description: data?.error || error?.message || 'Verifica el correo y los cupos disponibles.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: data.alreadyProcessed ? 'El usuario ya tenía entrada' : 'Cortesía enviada',
+      description: data.emailSent
+        ? `#${data.ticketNumber} · correo y Ticket Vault actualizados`
+        : `#${data.ticketNumber} · ${data.notificationWarning || 'notificación pendiente'}`,
+      variant: data.emailSent ? undefined : 'destructive',
+    });
+    onIssued(data);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      style={{ background: 'rgba(2,5,5,0.84)', backdropFilter: 'blur(14px)' }}
+      onClick={onClose}>
+      <div onClick={eventClick => eventClick.stopPropagation()}
+        className="w-full max-w-md rounded-3xl p-6 space-y-5"
+        style={{ background: '#0B1110', border: '1px solid rgba(167,139,250,0.24)', boxShadow: '0 28px 90px rgba(0,0,0,0.65)' }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-base font-black text-white">Crear cortesía</p>
+            <p className="text-xs text-white/40 mt-1">{event.title}</p>
+          </div>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <X className="w-4 h-4 text-white/55" />
+          </button>
+        </div>
+
+        <div className="rounded-2xl p-4 flex items-center justify-between gap-3"
+          style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.16)' }}>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-white/35">Cupos disponibles</p>
+            <p className="text-xl font-black text-violet-200 mt-1">{remaining}</p>
+          </div>
+          <Gift className="w-7 h-7 text-violet-300/70" />
+        </div>
+
+        {remaining > 0 ? (
+          <form onSubmit={issueCourtesy} className="space-y-4">
+            <label className="block space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Correo del usuario</span>
+              <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="usuario@correo.com"
+                className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.11)' }} />
+              <span className="block text-[10px] text-white/28">
+                Debe ser una cuenta PolyFauna con nombre y documento completos.
+              </span>
+            </label>
+            <button type="submit" disabled={saving || !email.trim()}
+              className="w-full rounded-xl py-3 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
+              style={{ background: '#DDD6FE', color: '#21143F' }}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
+              {saving ? 'Enviando…' : 'Crear y enviar cortesía'}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-white/45 leading-relaxed">
+              Este evento no tiene cupos disponibles. Configura o aumenta los cupos de cortesía desde la edición del evento.
+            </p>
+            <button type="button" onClick={onConfigure}
+              className="w-full rounded-xl py-3 text-sm font-black flex items-center justify-center gap-2"
+              style={{ background: '#DDD6FE', color: '#21143F' }}>
+              <CalendarDays className="w-4 h-4" />
+              Configurar cupos en Eventos
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [buyers, setBuyers] = useState({});
   const [loadingBuyers, setLoadingBuyers] = useState(false);
   const [manualEvent, setManualEvent] = useState(null);
+  const [courtesyEvent, setCourtesyEvent] = useState(null);
 
   useEffect(() => {
     let query = supabase
       .from('events')
-      .select('id, title, date, venue, price, tickets_total, tickets_sold, ticket_types')
+      .select('id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued')
       .order('date', { ascending: true });
     if (ownerId) query = query.eq('owner_id', ownerId);
     query.then(({ data }) => { setEvents(data || []); setLoading(false); });
@@ -1048,6 +1147,22 @@ function TicketsSection({ ownerId }) {
     setExpanded(null);
     setManualEvent(null);
   };
+  const handleCourtesyIssued = (result) => {
+    setEvents(current => current.map(item => item.id === courtesyEvent?.id
+      ? {
+          ...item,
+          tickets_sold: (item.tickets_sold || 0) + (result?.alreadyProcessed ? 0 : 1),
+          courtesies_issued: (item.courtesies_issued || 0) + (result?.alreadyProcessed ? 0 : 1),
+        }
+      : item));
+    setBuyers(current => {
+      const next = { ...current };
+      if (courtesyEvent?.id) delete next[courtesyEvent.id];
+      return next;
+    });
+    setExpanded(null);
+    setCourtesyEvent(null);
+  };
 
   if (loading) return (
     <div className="space-y-3">
@@ -1065,10 +1180,21 @@ function TicketsSection({ ownerId }) {
             onIssued={handleManualIssued}
           />
         )}
+        {courtesyEvent && (
+          <CourtesyTicketModal
+            event={courtesyEvent}
+            onClose={() => setCourtesyEvent(null)}
+            onIssued={handleCourtesyIssued}
+            onConfigure={() => {
+              setCourtesyEvent(null);
+              onConfigureCourtesy?.();
+            }}
+          />
+        )}
       </AnimatePresence>
       <div>
         <h2 className="text-lg font-black text-white">Gestión de Tickets</h2>
-        <p className="text-sm text-white/40 mt-0.5">Ventas y asistentes por evento</p>
+        <p className="text-sm text-white/40 mt-0.5">Ventas, cortesías y asistentes por evento</p>
       </div>
 
       {events.length === 0 ? (
@@ -1135,17 +1261,35 @@ function TicketsSection({ ownerId }) {
                       className="overflow-hidden"
                     >
                       <div className="border-t px-5 py-4" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                          <div>
-                            <p className="text-xs font-bold text-white/75">Emisión manual</p>
-                            <p className="text-[10px] text-white/30">Para pagos confirmados por transferencia bancaria</p>
+                        <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                          <div className="rounded-xl p-3 flex items-center justify-between gap-3"
+                            style={{ background: 'rgba(32,199,232,0.05)', border: '1px solid rgba(32,199,232,0.12)' }}>
+                            <div>
+                              <p className="text-xs font-bold text-white/75">Emisión manual</p>
+                              <p className="text-[10px] text-white/30">Transferencia bancaria verificada</p>
+                            </div>
+                            <button type="button" onClick={() => setManualEvent(ev)}
+                              className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black"
+                              style={{ background: 'rgba(32,199,232,0.12)', color: '#8BEAFF', border: '1px solid rgba(32,199,232,0.25)' }}>
+                              <UserPlus className="w-3.5 h-3.5" />
+                              Generar
+                            </button>
                           </div>
-                          <button type="button" onClick={() => setManualEvent(ev)}
-                            className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black"
-                            style={{ background: 'rgba(32,199,232,0.12)', color: '#8BEAFF', border: '1px solid rgba(32,199,232,0.25)' }}>
-                            <UserPlus className="w-3.5 h-3.5" />
-                            Generar ticket
-                          </button>
+                          <div className="rounded-xl p-3 flex items-center justify-between gap-3"
+                            style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.14)' }}>
+                            <div>
+                              <p className="text-xs font-bold text-white/75">Cortesías</p>
+                              <p className="text-[10px] text-white/30">
+                                {ev.courtesies_issued || 0}/{ev.courtesy_limit || 0} emitidas
+                              </p>
+                            </div>
+                            <button type="button" onClick={() => setCourtesyEvent(ev)}
+                              className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black"
+                              style={{ background: 'rgba(167,139,250,0.12)', color: '#C4B5FD', border: '1px solid rgba(167,139,250,0.25)' }}>
+                              <Gift className="w-3.5 h-3.5" />
+                              Crear
+                            </button>
+                          </div>
                         </div>
                         {loadingBuyers ? (
                           <div className="flex justify-center py-4">
@@ -1888,7 +2032,7 @@ const AdminDashboard = () => {
       case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'events':      return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos</p></div><EventManager /></div> : <PromoterDashboard />;
-      case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} />;
+      case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} onConfigureCourtesy={() => setActiveSection('events')} />;
       case 'refunds':     return <RefundRequestsSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'qr':          return <QRSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'wallet':      return <WalletSection />;
