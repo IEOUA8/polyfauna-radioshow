@@ -7,11 +7,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en el entorno');
 }
 
-const customSupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const customSupabaseClient = supabase;
 
 export default customSupabaseClient;
 
 export { 
     customSupabaseClient,
-    customSupabaseClient as supabase,
+    supabase,
 };
