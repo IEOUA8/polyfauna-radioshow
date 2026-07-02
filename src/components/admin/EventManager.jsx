@@ -13,12 +13,13 @@ import ArtistMentionInput from '@/components/ArtistMentionInput';
 
 const EMPTY = {
   title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
-  image_url: '', price: '', description: '',
-  tickets_total: '100', ticket_type: 'General', courtesy_limit: '0',
+  image_url: '', description: '', courtesy_limit: '0',
   featured: false, featured_order: '',
 };
 
 const TICKET_TYPES = ['General', 'VIP', 'Early', 'Anytime', 'Gratis'];
+const FREE_TICKET_TYPES = new Set(['Gratis']);
+const DEFAULT_TICKET_TYPES = [{ name: 'General', price: '', capacity: '100' }];
 
 /* ── Attendees Modal ─────────────────────────────────────── */
 function AttendeesModal({ event, onClose }) {
@@ -226,7 +227,7 @@ function AttendeesModal({ event, onClose }) {
 }
 
 /* ── Event Manager ───────────────────────────────────────── */
-const EventManager = () => {
+const EventManager = ({ ownerId = null }) => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [events, setEvents] = useState([]);
@@ -234,16 +235,20 @@ const EventManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [formData, setFormData] = useState(EMPTY);
+  const [ticketTypes, setTicketTypes] = useState(DEFAULT_TICKET_TYPES);
+  const [ticketSales, setTicketSales] = useState({});
+  const [loadingTicketSales, setLoadingTicketSales] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [attendeesEvent, setAttendeesEvent] = useState(null);
 
-  useEffect(() => { fetchEvents(); }, []);
+  useEffect(() => { fetchEvents(); }, [ownerId]);
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('events').select('*').order('date', { ascending: false });
+      let query = supabase.from('events').select('*').order('date', { ascending: false });
+      if (ownerId) query = query.eq('owner_id', ownerId);
+      const { data, error } = await query;
       if (error) throw error;
       setEvents(data || []);
     } catch (error) {
@@ -258,23 +263,41 @@ const EventManager = () => {
     setSaving(true);
     setFormError('');
     try {
-      const { ticket_type, featured_order: fo, ...rest } = formData;
+      const normalizedTicketTypes = ticketTypes.map(ticket => ({
+        name: ticket.name,
+        price: FREE_TICKET_TYPES.has(ticket.name) ? 0 : Math.max(0, Number(ticket.price) || 0),
+        capacity: Math.max(0, parseInt(ticket.capacity, 10) || 0),
+      }));
+      const invalidTicket = normalizedTicketTypes.find((ticket, index) =>
+        ticket.capacity < Math.max(1, ticketSales[ticket.name] || 0)
+        || (!FREE_TICKET_TYPES.has(ticket.name) && (
+          ticketTypes[index].price === '' || Number(ticketTypes[index].price) < 0
+        ))
+      );
+      if (!normalizedTicketTypes.length || invalidTicket) {
+        throw new Error('Revisa el precio y el cupo de cada tipo de entrada. El cupo no puede ser menor a los tickets ya emitidos.');
+      }
+
+      const courtesyLimit = Math.max(0, parseInt(formData.courtesy_limit, 10) || 0);
+      if (courtesyLimit < (editingEvent?.courtesies_issued || 0)) {
+        throw new Error(`El evento ya tiene ${editingEvent.courtesies_issued} cortesías emitidas.`);
+      }
+      const publicCapacity = normalizedTicketTypes.reduce((sum, ticket) => sum + ticket.capacity, 0);
+      const ticketsTotal = publicCapacity + courtesyLimit;
+      if (ticketsTotal < (editingEvent?.tickets_sold || 0)) {
+        throw new Error(`La capacidad no puede ser menor a ${editingEvent.tickets_sold} tickets ya emitidos.`);
+      }
+
+      const { featured_order: fo, ...rest } = formData;
       const payload = {
         ...rest,
-        price:          formData.price         ? parseFloat(formData.price)         : null,
-        tickets_total:  (formData.tickets_total ? parseInt(formData.tickets_total) : 100)
-          + (parseInt(formData.courtesy_limit, 10) || 0),
-        courtesy_limit: parseInt(formData.courtesy_limit, 10) || 0,
-        ticket_types: Array.isArray(editingEvent?.ticket_types) && editingEvent.ticket_types.length > 1
-          ? editingEvent.ticket_types
-          : [{
-              name: ticket_type,
-              price: formData.price ? parseFloat(formData.price) : 0,
-              capacity: formData.tickets_total ? parseInt(formData.tickets_total) : 100,
-            }],
+        price: Math.min(...normalizedTicketTypes.map(ticket => ticket.price)),
+        tickets_total: ticketsTotal,
+        courtesy_limit: courtesyLimit,
+        ticket_types: normalizedTicketTypes,
         featured_order: formData.featured && fo ? parseInt(fo) : null,
-        owner_id:       currentUser.id,
-        status:         'upcoming',
+        owner_id: editingEvent?.owner_id || currentUser.id,
+        status: editingEvent?.status || 'upcoming',
         lineup:         formData.lineup || [],
       };
 
@@ -310,8 +333,18 @@ const EventManager = () => {
     }
   };
 
-  const handleEdit = (event) => {
+  const handleEdit = async (event) => {
+    const publicCapacity = Math.max(1, (event.tickets_total || 100) - (event.courtesy_limit || 0));
+    const existingTicketTypes = Array.isArray(event.ticket_types) && event.ticket_types.length > 0
+      ? event.ticket_types
+      : [{ name: 'General', price: event.price || 0, capacity: publicCapacity }];
     setEditingEvent(event);
+    setTicketTypes(existingTicketTypes.map(ticket => ({
+      name: ticket.name || 'General',
+      price: String(FREE_TICKET_TYPES.has(ticket.name) ? 0 : (ticket.price ?? event.price ?? '')),
+      capacity: String(ticket.capacity || publicCapacity),
+    })));
+    setTicketSales({});
     setFormData({
       title:          event.title || '',
       date:           event.date ? event.date.slice(0, 16) : '',
@@ -320,15 +353,28 @@ const EventManager = () => {
       city:           event.city || '',
       lineup:         event.lineup || [],
       image_url:      event.image_url || '',
-      price:          event.price || '',
       description:    event.description || '',
-      tickets_total:  Math.max(1, (event.tickets_total || 100) - (event.courtesy_limit || 0)),
-      ticket_type:    event.ticket_types?.[0]?.name || 'General',
       courtesy_limit: String(event.courtesy_limit || 0),
       featured:       event.featured || false,
       featured_order: event.featured_order != null ? String(event.featured_order) : '',
     });
     setIsDialogOpen(true);
+    setLoadingTicketSales(true);
+    const { data, error } = await supabase
+      .from('user_tickets')
+      .select('ticket_type')
+      .eq('event_id', event.id)
+      .neq('status', 'refunded');
+    if (error) {
+      toast({ variant: 'destructive', title: 'No se pudo cargar el inventario vendido', description: error.message });
+    } else {
+      setTicketSales((data || []).reduce((counts, ticket) => {
+        const type = ticket.ticket_type || 'General';
+        counts[type] = (counts[type] || 0) + 1;
+        return counts;
+      }, {}));
+    }
+    setLoadingTicketSales(false);
   };
 
   const handleDelete = async (id) => {
@@ -343,8 +389,40 @@ const EventManager = () => {
     }
   };
 
-  const resetForm = () => { setEditingEvent(null); setFormData(EMPTY); setFormError(''); };
+  const resetForm = () => {
+    setEditingEvent(null);
+    setFormData(EMPTY);
+    setTicketTypes(DEFAULT_TICKET_TYPES);
+    setTicketSales({});
+    setLoadingTicketSales(false);
+    setFormError('');
+  };
   const set = (k, v) => setFormData(p => ({ ...p, [k]: v }));
+  const updateTicketType = (index, key, value) => {
+    setTicketTypes(current => current.map((ticket, i) => i === index ? { ...ticket, [key]: value } : ticket));
+  };
+  const addTicketType = (name) => {
+    setTicketTypes(current => current.some(ticket => ticket.name === name)
+      ? current
+      : [...current, { name, price: FREE_TICKET_TYPES.has(name) ? '0' : '', capacity: '50' }]);
+  };
+  const removeTicketType = (name) => {
+    if (ticketSales[name]) return;
+    setTicketTypes(current => current.length === 1 ? current : current.filter(ticket => ticket.name !== name));
+  };
+
+  const normalizedTicketTypes = ticketTypes.map(ticket => ({
+    name: ticket.name,
+    price: FREE_TICKET_TYPES.has(ticket.name) ? 0 : Math.max(0, Number(ticket.price) || 0),
+    capacity: Math.max(0, parseInt(ticket.capacity, 10) || 0),
+  }));
+  const ticketTypesValid = normalizedTicketTypes.length > 0
+    && normalizedTicketTypes.every((ticket, index) =>
+      ticket.capacity >= Math.max(1, ticketSales[ticket.name] || 0)
+      && (FREE_TICKET_TYPES.has(ticket.name) || (
+        ticketTypes[index].price !== '' && Number(ticketTypes[index].price) >= 0
+      ))
+    );
 
   return (
     <>
@@ -358,7 +436,7 @@ const EventManager = () => {
                 Nuevo Evento
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card border-border text-foreground max-w-2xl">
+            <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[90dvh] overflow-y-auto pb-28">
               <DialogHeader>
                 <DialogTitle>{editingEvent ? 'Editar Evento' : 'Crear Evento'}</DialogTitle>
               </DialogHeader>
@@ -408,32 +486,87 @@ const EventManager = () => {
                   </div>
                 </div>
 
-                {/* Tickets total + Tipo */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Total entradas</Label>
-                    <Input type="number" value={formData.tickets_total} onChange={(e) => set('tickets_total', e.target.value)}
-                      className="bg-background border-border text-foreground" placeholder="100" min="1" />
+                {/* Tipos de entrada */}
+                <div className="space-y-3 rounded-xl p-4 border border-border bg-background/40">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label>Tipos de entrada</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Agrega, edita precios y ajusta cupos sin bajar del inventario ya emitido.
+                      </p>
+                    </div>
+                    <div className="w-36 shrink-0">
+                      <Label>Cupos de cortesía</Label>
+                      <Input type="number" value={formData.courtesy_limit} onChange={(e) => set('courtesy_limit', e.target.value)}
+                        className="bg-background border-border text-foreground mt-1" placeholder="0"
+                        min={editingEvent?.courtesies_issued || 0} />
+                      {(editingEvent?.courtesies_issued || 0) > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {editingEvent.courtesies_issued} emitidas
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <Label>Tipo de entrada</Label>
-                    <select value={formData.ticket_type} onChange={(e) => set('ticket_type', e.target.value)}
-                      className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3 [color-scheme:dark]">
-                      {TICKET_TYPES.map(t => <option className="bg-[#101615] text-white" key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Precio (COP)</Label>
-                    <Input type="number" value={formData.price} onChange={(e) => set('price', e.target.value)}
-                      className="bg-background border-border text-foreground" placeholder="35000" min="0" />
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {TICKET_TYPES.map(name => {
+                      const active = ticketTypes.some(ticket => ticket.name === name);
+                      const hasSales = (ticketSales[name] || 0) > 0;
+                      return (
+                        <button key={name} type="button"
+                          onClick={() => active ? removeTicketType(name) : addTicketType(name)}
+                          disabled={active && (ticketTypes.length === 1 || hasSales)}
+                          className="rounded-lg px-3 py-2 text-xs font-bold transition-colors disabled:opacity-45"
+                          style={{
+                            background: active ? 'rgba(32,199,232,0.13)' : 'rgba(255,255,255,0.04)',
+                            color: active ? '#8BEAFF' : 'rgba(255,255,255,0.55)',
+                            border: active ? '1px solid rgba(32,199,232,0.32)' : '1px solid rgba(255,255,255,0.09)',
+                          }}>
+                          {active ? '✓ ' : '+ '}{name}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div>
-                    <Label>Cupos de cortesía</Label>
-                    <Input type="number" value={formData.courtesy_limit} onChange={(e) => set('courtesy_limit', e.target.value)}
-                      className="bg-background border-border text-foreground" placeholder="0" min="0" />
+
+                  <div className="space-y-2">
+                    {ticketTypes.map((ticket, index) => {
+                      const sold = ticketSales[ticket.name] || 0;
+                      const isFree = FREE_TICKET_TYPES.has(ticket.name);
+                      return (
+                        <div key={ticket.name} className="grid grid-cols-1 sm:grid-cols-[minmax(100px,1fr)_1fr_1fr_auto] gap-3 items-end rounded-xl p-3"
+                          style={{ background: 'rgba(4,10,10,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                          <div className="self-center">
+                            <p className="text-sm font-bold text-foreground">{ticket.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {sold > 0 ? `${sold} emitidos` : isFree ? 'Sin costo' : 'Sin ventas'}
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Precio COP</Label>
+                            <Input type="number" value={ticket.price}
+                              onChange={(e) => updateTicketType(index, 'price', e.target.value)}
+                              className="bg-background border-border text-foreground mt-1"
+                              placeholder="35000" min="0" step="1000" disabled={isFree}
+                              aria-label={`Precio ${ticket.name}`} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Cupo</Label>
+                            <Input type="number" value={ticket.capacity}
+                              onChange={(e) => updateTicketType(index, 'capacity', e.target.value)}
+                              className="bg-background border-border text-foreground mt-1"
+                              placeholder="100" min={Math.max(1, sold)}
+                              aria-label={`Cupo ${ticket.name}`} />
+                          </div>
+                          <Button type="button" variant="ghost" size="icon"
+                            onClick={() => removeTicketType(ticket.name)}
+                            disabled={ticketTypes.length === 1 || sold > 0}
+                            className="text-destructive hover:text-destructive/80 disabled:opacity-25"
+                            title={sold > 0 ? 'No se puede eliminar un tipo con tickets emitidos' : `Eliminar ${ticket.name}`}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -503,9 +636,10 @@ const EventManager = () => {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0" disabled={saving}>
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+                  disabled={saving || loadingTicketSales || !ticketTypesValid}>
                   {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  {editingEvent ? 'Guardar cambios' : 'Crear Evento'}
+                  {loadingTicketSales ? 'Cargando inventario…' : editingEvent ? 'Guardar todos los cambios' : 'Crear Evento'}
                 </Button>
               </form>
             </DialogContent>
@@ -522,7 +656,7 @@ const EventManager = () => {
           ) : (
             <div className="space-y-3">
               {events.map((event) => (
-                <div key={event.id} className="flex items-center gap-4 p-4 bg-background rounded-xl border border-border">
+                <div key={event.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-background rounded-xl border border-border">
                   {event.image_url && (
                     <img src={event.image_url} alt={event.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   )}
@@ -550,7 +684,7 @@ const EventManager = () => {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+                  <div className="flex gap-1.5 shrink-0 flex-wrap sm:justify-end">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -560,8 +694,10 @@ const EventManager = () => {
                       <Users className="w-3.5 h-3.5" />
                       Ver lista
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(event)} className="text-secondary hover:text-secondary/80">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(event)}
+                      className="text-xs gap-1.5 text-secondary hover:text-secondary/80 border-secondary/25">
                       <Edit className="w-4 h-4" />
+                      Editar evento
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-destructive hover:text-destructive/80">
                       <Trash2 className="w-4 h-4" />

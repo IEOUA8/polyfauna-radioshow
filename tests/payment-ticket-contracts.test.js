@@ -34,6 +34,9 @@ const artistMentionInput = readFileSync('src/components/ArtistMentionInput.jsx',
 const editProfile = readFileSync('src/components/EditProfile.jsx', 'utf8');
 const validatePage = readFileSync('src/pages/ValidatePage.jsx', 'utf8');
 const signupPage = readFileSync('src/pages/SignupPage.jsx', 'utf8');
+const eventManager = readFileSync('src/components/admin/EventManager.jsx', 'utf8');
+const sidebar = readFileSync('src/components/Sidebar.jsx', 'utf8');
+const mobileMenu = readFileSync('src/components/MobileMenu.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -171,6 +174,19 @@ test('organizadores administran asistentes y emiten transferencias manuales audi
   assert.match(manualTicketFunction, /signTicketToken/);
   assert.match(manualTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
   assert.match(adminDashboard, /Generar ticket manual/);
+});
+
+test('panel operativo unifica edición completa de eventos y tickets', () => {
+  assert.doesNotMatch(sidebar, /Gestor de Eventos/);
+  assert.doesNotMatch(mobileMenu, /PROMOTER_ITEM/);
+  assert.match(adminDashboard, /<EventManager ownerId=\{isAdmin \? null : currentUser\?\.id\}/);
+  assert.match(eventManager, /function EventManager|const EventManager = \(\{ ownerId = null \}\)/);
+  assert.match(eventManager, /query = query\.eq\('owner_id', ownerId\)/);
+  assert.match(eventManager, /ticket_types: normalizedTicketTypes/);
+  assert.match(eventManager, /setTicketTypes\(existingTicketTypes/);
+  assert.match(eventManager, /Editar evento/);
+  assert.match(eventManager, /Guardar todos los cambios/);
+  assert.match(eventManager, /ticket\.capacity >= Math\.max\(1, ticketSales\[ticket\.name\]/);
 });
 
 test('portadas de eventos y pagos pendientes tienen estados recuperables', () => {
