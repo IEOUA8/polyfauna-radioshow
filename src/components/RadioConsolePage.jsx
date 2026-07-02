@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bookmark, Loader2, MessageCircle, Pause, Play, Radio, Share2, Tv2, User, Users } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';

@@ -10,12 +10,12 @@ const corsHeaders = {
 
 const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
-const ADMIN_EMAIL       = Deno.env.get('ADMIN_EMAIL') || 'admin@polyfauna.com';
+const SUPPORT_EMAIL     = Deno.env.get('SUPPORT_EMAIL') || 'info@polyfauna.com';
 const APP_URL           = Deno.env.get('APP_URL') || 'https://www.polyfauna.com';
 const MAX_BODY_BYTES    = 8192;
 
 webpush.setVapidDetails(
-  `mailto:${ADMIN_EMAIL}`,
+  `mailto:${SUPPORT_EMAIL}`,
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY,
 );

@@ -1,5 +1,6 @@
 const RESEND_API = 'https://api.resend.com/emails';
 const FROM = 'POLYFAUNA <noreply@polyfauna.com>';
+export const SUPPORT_EMAIL = Deno.env.get('SUPPORT_EMAIL') || 'info@polyfauna.com';
 
 export interface EmailPayload {
   to: string | string[];
@@ -11,11 +12,12 @@ export interface EmailPayload {
 export async function sendEmail(payload: EmailPayload): Promise<void> {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) throw new Error('RESEND_API_KEY not set');
+  const { replyTo, ...email } = payload;
 
   const res = await fetch(RESEND_API, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM, ...payload }),
+    body: JSON.stringify({ from: FROM, reply_to: replyTo || SUPPORT_EMAIL, ...email }),
   });
 
   if (!res.ok) {

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Loader2, Save, X } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 

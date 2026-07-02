@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CalendarDays, Clock, ExternalLink, Mic, Play, Video } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 

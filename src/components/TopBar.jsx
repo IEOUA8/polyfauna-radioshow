@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Calendar, Clock, Disc3, FileText, Headphones, Music, Radio, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 
 const TYPE_META = {
   events:        { label: 'Evento',   icon: Calendar,   section: 'events',   imgKey: 'image_url',          nameKey: 'title' },

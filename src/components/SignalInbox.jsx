@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Edit, MessageSquare, Search, Send, X } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSkeleton, EmptyState, ErrorState, LoginRequired } from '@/components/SectionStates';
 import { useAuth } from '@/contexts/AuthContext';

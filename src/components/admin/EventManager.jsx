@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -13,11 +13,11 @@ import { UploadField } from './UploadField';
 const EMPTY = {
   title: '', date: '', venue: '', city: '', lineup: '',
   image_url: '', price: '', description: '',
-  tickets_total: '100', ticket_type: 'GA',
+  tickets_total: '100', ticket_type: 'General',
   featured: false, featured_order: '',
 };
 
-const TICKET_TYPES = ['GA', 'VIP', 'Early Bird', 'Artist', 'Press'];
+const TICKET_TYPES = ['General', 'VIP', 'Early', 'Anytime'];
 
 /* ── Attendees Modal ─────────────────────────────────────── */
 function AttendeesModal({ event, onClose }) {
@@ -255,6 +255,13 @@ const EventManager = () => {
         ...rest,
         price:          formData.price         ? parseFloat(formData.price)         : null,
         tickets_total:  formData.tickets_total  ? parseInt(formData.tickets_total)   : 100,
+        ticket_types: Array.isArray(editingEvent?.ticket_types) && editingEvent.ticket_types.length > 1
+          ? editingEvent.ticket_types
+          : [{
+              name: ticket_type,
+              price: formData.price ? parseFloat(formData.price) : 0,
+              capacity: formData.tickets_total ? parseInt(formData.tickets_total) : 100,
+            }],
         featured_order: formData.featured && fo ? parseInt(fo) : null,
         owner_id:       currentUser.id,
         status:         'upcoming',
@@ -303,7 +310,7 @@ const EventManager = () => {
       price:          event.price || '',
       description:    event.description || '',
       tickets_total:  event.tickets_total || '100',
-      ticket_type:    event.ticket_type || 'GA',
+      ticket_type:    event.ticket_types?.[0]?.name || 'General',
       featured:       event.featured || false,
       featured_order: event.featured_order != null ? String(event.featured_order) : '',
     });
@@ -396,8 +403,8 @@ const EventManager = () => {
                   <div>
                     <Label>Tipo de entrada</Label>
                     <select value={formData.ticket_type} onChange={(e) => set('ticket_type', e.target.value)}
-                      className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3">
-                      {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3 [color-scheme:dark]">
+                      {TICKET_TYPES.map(t => <option className="bg-[#101615] text-white" key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                 </div>

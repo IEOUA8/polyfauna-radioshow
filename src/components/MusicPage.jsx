@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Clock, Disc3, Heart, Music, Play } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';

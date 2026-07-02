@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { getFunctionErrorMessage } from '../src/lib/functionErrors.js';
 
 const migration = readFileSync('supabase/migrations/20260622000004_launch_ticket_integrity.sql', 'utf8');
 const webhook = readFileSync('supabase/functions/webhook-wompi/index.ts', 'utf8');
@@ -11,6 +12,18 @@ const governance = readFileSync('supabase/migrations/20260624000002_governance_a
 const userManager = readFileSync('src/components/admin/UserManager.jsx', 'utf8');
 const roleRequestsPanel = readFileSync('src/components/RoleRequestsPanel.jsx', 'utf8');
 const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
+const roleAndTicketTiers = readFileSync('supabase/migrations/20260701000001_role_requests_and_ticket_tiers.sql', 'utf8');
+const promoterDashboard = readFileSync('src/components/PromoterDashboard.jsx', 'utf8');
+const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
+const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
+const organizerOperations = readFileSync('supabase/migrations/20260701000002_organizer_operations_and_manual_tickets.sql', 'utf8');
+const manualTicketFunction = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
+const ticketVault = readFileSync('src/components/TicketVault.jsx', 'utf8');
+const legacyTicketCompatibility = readFileSync('supabase/migrations/20260701000003_legacy_ticket_type_compatibility.sql', 'utf8');
+const roleRequestDelivery = readFileSync('supabase/migrations/20260701000004_role_request_delivery.sql', 'utf8');
+const sendRoleRequest = readFileSync('supabase/functions/send-role-request/index.ts', 'utf8');
+const authContext = readFileSync('src/contexts/AuthContext.jsx', 'utf8');
+const formModal = readFileSync('src/components/ui/FormModal.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -48,6 +61,79 @@ test('checkout de pago conserva límites y referencias firmadas', () => {
   assert.match(createPayment, /checkout pendiente/);
   assert.match(createPayment, /sha256hex\(`\$\{reference\}\$\{amount_in_cents\}COP\$\{INTEGRITY_KEY\}`\)/);
   assert.doesNotMatch(createPayment, /detail: txErr\.message/);
+});
+
+test('checkout conserva compatibilidad GA y muestra el error real del servidor', async () => {
+  assert.match(createPayment, /\['ga', 'general admission'\]/);
+  assert.match(legacyTicketCompatibility, /lower\(v_type_name\) IN \('ga', 'general admission'\)/);
+  const message = await getFunctionErrorMessage({
+    message: 'Edge Function returned a non-2xx status code',
+    context: new Response(JSON.stringify({ error: 'Tipo de entrada no disponible' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  });
+  assert.equal(message, 'Tipo de entrada no disponible');
+});
+
+test('tipos de entrada conservan precio, cupo e inventario independientes', () => {
+  assert.match(roleAndTicketTiers, /ADD COLUMN IF NOT EXISTS ticket_types JSONB/);
+  assert.match(roleAndTicketTiers, /ADD COLUMN IF NOT EXISTS ticket_type TEXT NOT NULL DEFAULT 'General'/);
+  assert.match(roleAndTicketTiers, /v_tier_sold \+ v_tx\.quantity > v_tier_capacity/);
+  assert.match(roleAndTicketTiers, /v_tx\.ticket_type, 'valid'/);
+  assert.match(createPayment, /ticket_types, owner_id/);
+  assert.match(createPayment, /Math\.round\(tierPrice \* qty\)/);
+  assert.match(createPayment, /ticket_type:\s+tierName/);
+  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime'\]/);
+  assert.match(promoterDashboard, /ticket_types: normalizedTicketTypes/);
+  assert.match(eventTerminal, /ticket_type: selectedTicket\.name/);
+});
+
+test('solicitudes profesionales llegan al Control Center del admin', () => {
+  assert.match(roleAndTicketTiers, /requested_role IN \('artist', 'promoter', 'club', 'sello'\)/);
+  assert.match(roleAndTicketTiers, /INSERT INTO public\.role_requests/);
+  assert.match(roleAndTicketTiers, /source', 'migration_recovery'/);
+  assert.match(roleRequestDelivery, /role_requests_user_profile_fkey/);
+  assert.match(roleRequestDelivery, /REFERENCES public\.profiles\(id\)/);
+  assert.match(roleRequestDelivery, /NOTIFY pgrst, 'reload schema'/);
+  assert.match(authContext, /body: \{ userId: data\.user\.id, email \}/);
+  assert.match(sendRoleRequest, /requestAge > 30 \* 60 \* 1000/);
+  assert.match(sendRoleRequest, /applicant\.email\.trim\(\)\.toLowerCase\(\) !== email\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(sendRoleRequest, /SUPPORT_EMAIL/);
+  assert.match(sendRoleRequest, /notification_sent_at: claimedAt/);
+  assert.match(roleRequestsPanel, /admin-role-requests/);
+  assert.match(roleRequestsPanel, /postgres_changes/);
+  assert.match(controlCenter, /<RoleRequestsPanel \/>/);
+});
+
+test('organizadores administran asistentes y emiten transferencias manuales auditadas', () => {
+  assert.match(organizerOperations, /CREATE OR REPLACE FUNCTION public\.get_event_attendees/);
+  assert.match(organizerOperations, /v_role IN \('promoter', 'club'\)/);
+  assert.match(organizerOperations, /CREATE OR REPLACE FUNCTION public\.issue_manual_transfer_ticket/);
+  assert.match(organizerOperations, /payment_method,[\s\S]*'bank_transfer'/);
+  assert.match(organizerOperations, /ticket\.manual_bank_transfer/);
+  assert.match(organizerOperations, /TO service_role/);
+  assert.match(manualTicketFunction, /issue_manual_transfer_ticket/);
+  assert.match(manualTicketFunction, /signTicketToken/);
+  assert.match(manualTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
+  assert.match(adminDashboard, /Generar ticket manual/);
+});
+
+test('portadas de eventos y pagos pendientes tienen estados recuperables', () => {
+  assert.match(organizerOperations, /event_covers_organizer_insert/);
+  assert.match(organizerOperations, /storage\.foldername\(name\)/);
+  assert.match(promoterDashboard, /events\/\$\{currentUser\.id\}\/\$\{crypto\.randomUUID\(\)\}/);
+  assert.match(promoterDashboard, /No se pudo subir la portada/);
+  assert.match(ticketVault, /Wompi aún no confirma el pago/);
+});
+
+test('modal de eventos mantiene la acción visible sobre el reproductor', () => {
+  assert.match(formModal, /createPortal\(/);
+  assert.match(formModal, /z-\[200\]/);
+  assert.match(formModal, /pb-\[calc\(160px\+env\(safe-area-inset-bottom,0px\)\)\]/);
+  assert.match(formModal, /footer &&/);
+  assert.match(promoterDashboard, /form="create-event-form"/);
+  assert.match(promoterDashboard, /id="create-event-form"/);
 });
 
 test('sincronización offline conserva autorización, idempotencia y auditoría', () => {

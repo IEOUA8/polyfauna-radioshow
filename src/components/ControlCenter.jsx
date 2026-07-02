@@ -4,7 +4,7 @@ import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRi
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
@@ -148,7 +148,7 @@ function DeactivateModal({ onClose, onConfirm, email }) {
           </p>
           <p className="text-xs text-white/35 leading-relaxed mb-6">
             Tu sesión se cerrará. Para reactivar tu cuenta o eliminar tus datos permanentemente, escribe a{' '}
-            <span className="text-white/50">soporte@polyfauna.com</span>.
+            <a href="mailto:info@polyfauna.com" className="text-white/50 hover:text-white/70 underline">info@polyfauna.com</a>.
           </p>
           <div className="flex gap-3">
             <button
@@ -262,7 +262,7 @@ export default function ControlCenter({ setCurrentSection }) {
   const handleDeactivate = async () => {
     setDeactivateOpen(false);
     await supabase.auth.signOut();
-    toast({ title: 'Cuenta desactivada', description: 'Escribe a soporte@polyfauna.com para reactivarla o eliminar tus datos.' });
+    toast({ title: 'Cuenta desactivada', description: 'Escribe a info@polyfauna.com para reactivarla o eliminar tus datos.' });
     navigate('/login');
   };
 
@@ -320,7 +320,7 @@ export default function ControlCenter({ setCurrentSection }) {
                 { h: 'Datos que recopilamos', b: 'Recopilamos tu dirección de correo electrónico para autenticación, nombre o alias de usuario, foto de perfil (opcional), y datos de actividad en la plataforma como likes, Organismo, tickets y preferencias.' },
                 { h: 'Uso de los datos', b: 'Usamos tus datos para operar la plataforma, personalizar tu experiencia, enviarte notificaciones que hayas autorizado y gestionar tu cuenta. No vendemos ni compartimos información personal con terceros con fines comerciales.' },
                 { h: 'Cookies', b: 'Usamos cookies de sesión necesarias para el funcionamiento de la plataforma. Puedes desactivar las cookies opcionales desde la configuración de tu navegador, aunque esto puede afectar algunas funcionalidades.' },
-                { h: 'Tus derechos', b: 'Puedes solicitar acceso, corrección o eliminación de tus datos en cualquier momento escribiendo a soporte@polyfauna.com. Responderemos en un plazo máximo de 30 días.' },
+                { h: 'Tus derechos', b: 'Puedes solicitar acceso, corrección o eliminación de tus datos en cualquier momento escribiendo a info@polyfauna.com. Responderemos en un plazo máximo de 30 días.' },
                 { h: 'Retención de datos', b: 'Conservamos tus datos mientras tu cuenta esté activa. Al desactivar tu cuenta, tus datos se eliminan de los servidores en un plazo de 90 días.' },
               ].map(({ h, b }) => (
                 <div key={h}>
@@ -504,11 +504,11 @@ export default function ControlCenter({ setCurrentSection }) {
                   delay={0.15}
                 />
               )}
-              {isAdmin && (
+              {hasPromoterHub && (
                 <SettingsTile
                   icon={Shield}
-                  label="Panel Operativo"
-                  description="Usuarios, contenido, eventos y administración"
+                  label={isAdmin ? 'Panel Administrativo' : 'Panel Operativo'}
+                  description={isAdmin ? 'Usuarios, contenido, eventos y administración' : 'Administra tus eventos, tickets, asistentes y accesos'}
                   onClick={() => navigate('/admin')}
                   delay={0.18}
                 />

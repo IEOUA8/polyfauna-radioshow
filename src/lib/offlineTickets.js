@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { verifySignedTicketQR } from '@/lib/tickets';
 import { evaluateOfflineTicket } from '@/lib/offlineTicketRules';
 

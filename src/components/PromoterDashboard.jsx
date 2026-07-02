@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle, ArrowUpRight, Banknote, Calendar, CheckCircle,
-  CreditCard, ExternalLink, Loader2, Plus, QrCode, Ticket, TrendingUp, Users, Wallet,
+  CreditCard, ExternalLink, Loader2, Plus, QrCode, Ticket, Trash2, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { LoadingSkeleton, EmptyState, LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
-import FormModal, { FField, FInput, FTextarea, FSelect, FImageZone, FSubmit } from '@/components/ui/FormModal';
+import FormModal, { FField, FInput, FTextarea, FImageZone, FSubmit } from '@/components/ui/FormModal';
 
-const TICKET_TYPES = ['GA', 'VIP', 'Early Bird', 'Artist', 'Press'];
+const TICKET_TYPE_OPTIONS = ['General', 'VIP', 'Early', 'Anytime'];
+const DEFAULT_TICKET_TYPES = [{ name: 'General', price: '', capacity: '100' }];
 const BANKS = [
   'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA', 'Banco Popular',
   'Banco de Occidente', 'Nequi', 'Daviplata', 'Otro',
@@ -33,36 +34,65 @@ function CreateEventModal({ onClose, onCreated }) {
   const [coverFile, setCoverFile] = useState(null);
   const [form, setForm] = useState({
     title: '', description: '', date: '', venue: '', city: '',
-    price: '', tickets_total: '100', ticket_type: 'GA',
   });
+  const [ticketTypes, setTicketTypes] = useState(DEFAULT_TICKET_TYPES);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const updateTicketType = (index, key, value) => {
+    setTicketTypes(current => current.map((ticket, i) => i === index ? { ...ticket, [key]: value } : ticket));
+  };
+  const addTicketType = (name) => {
+    setTicketTypes(current => current.some(ticket => ticket.name === name)
+      ? current
+      : [...current, { name, price: '', capacity: '50' }]);
+  };
+  const removeTicketType = (name) => {
+    setTicketTypes(current => current.length === 1 ? current : current.filter(ticket => ticket.name !== name));
+  };
+
+  const normalizedTicketTypes = ticketTypes.map(ticket => ({
+    name: ticket.name,
+    price: Math.max(0, Number(ticket.price) || 0),
+    capacity: Math.max(0, parseInt(ticket.capacity, 10) || 0),
+  }));
+  const ticketTypesValid = normalizedTicketTypes.length > 0
+    && normalizedTicketTypes.every(ticket => ticket.capacity > 0);
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.date) return;
+    if (!form.title || !form.date || !ticketTypesValid) return;
     setSaving(true);
 
     let image_url = null;
     if (coverFile) {
       const ext = coverFile.name.split('.').pop();
-      const path = `events/${Date.now()}.${ext}`;
+      const path = `events/${currentUser.id}/${crypto.randomUUID()}.${ext}`;
       const { data: up, error: upErr } = await supabase.storage
         .from('album-covers')
-        .upload(path, coverFile, { upsert: true });
-      if (!upErr && up) {
-        const { data: { publicUrl } } = supabase.storage.from('album-covers').getPublicUrl(up.path);
-        image_url = publicUrl;
+        .upload(path, coverFile, { upsert: false });
+      if (upErr || !up) {
+        toast({
+          title: 'No se pudo subir la portada',
+          description: upErr?.message || 'Intenta nuevamente con otra imagen.',
+          variant: 'destructive',
+        });
+        setSaving(false);
+        return;
       }
+      const { data: { publicUrl } } = supabase.storage.from('album-covers').getPublicUrl(up.path);
+      image_url = publicUrl;
     }
 
+    const ticketsTotal = normalizedTicketTypes.reduce((sum, ticket) => sum + ticket.capacity, 0);
+    const startingPrice = Math.min(...normalizedTicketTypes.map(ticket => ticket.price));
     const { data, error } = await supabase.from('events').insert({
       title: form.title,
       description: form.description || null,
       date: form.date,
       venue: form.venue || null,
       city: form.city || null,
-      price: parseFloat(form.price) || 0,
-      tickets_total: parseInt(form.tickets_total) || 100,
+      price: startingPrice,
+      tickets_total: ticketsTotal,
+      ticket_types: normalizedTicketTypes,
       owner_id: currentUser.id,
       status: 'upcoming',
       image_url,
@@ -78,8 +108,23 @@ function CreateEventModal({ onClose, onCreated }) {
   };
 
   return (
-    <FormModal title="Crear Evento" subtitle="Completa los datos y publica la preventa" onClose={onClose} maxWidth="max-w-lg">
-      <form onSubmit={handleCreate} className="space-y-4">
+    <FormModal
+      title="Crear Evento"
+      subtitle="Completa los datos y configura uno o varios tipos de entrada"
+      onClose={onClose}
+      maxWidth="max-w-2xl"
+      footer={(
+        <FSubmit
+          form="create-event-form"
+          loading={saving}
+          disabled={!form.title || !form.date || !ticketTypesValid}
+        >
+          <Plus className="w-4 h-4" />
+          {saving ? 'Publicando…' : 'Publicar Evento'}
+        </FSubmit>
+      )}
+    >
+      <form id="create-event-form" onSubmit={handleCreate} className="space-y-4">
         <FImageZone
           file={coverFile}
           onFile={setCoverFile}
@@ -94,30 +139,82 @@ function CreateEventModal({ onClose, onCreated }) {
           <FField label="Fecha y hora" required>
             <FInput type="datetime-local" value={form.date} onChange={e => set('date', e.target.value)} />
           </FField>
-          <FField label="Tipo de entrada">
-            <FSelect value={form.ticket_type} onChange={e => set('ticket_type', e.target.value)}>
-              {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </FSelect>
-          </FField>
           <FField label="Venue / Lugar">
             <FInput value={form.venue} onChange={e => set('venue', e.target.value)} placeholder="Club Razzmatazz" />
           </FField>
           <FField label="Ciudad">
             <FInput value={form.city} onChange={e => set('city', e.target.value)} placeholder="Bogotá" />
           </FField>
-          <FField label="Precio (COP)">
-            <FInput type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="35000" min="0" step="1000" />
-          </FField>
-          <FField label="Total entradas">
-            <FInput type="number" value={form.tickets_total} onChange={e => set('tickets_total', e.target.value)} placeholder="100" min="1" />
+          <FField label="Tipos de entrada" span={2}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {TICKET_TYPE_OPTIONS.map(name => {
+                  const active = ticketTypes.some(ticket => ticket.name === name);
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => active ? removeTicketType(name) : addTicketType(name)}
+                      className="rounded-xl px-3 py-2.5 text-xs font-black transition-all"
+                      style={{
+                        background: active ? 'rgba(32,199,232,0.16)' : 'rgba(255,255,255,0.045)',
+                        color: active ? '#8BEAFF' : 'rgba(255,255,255,0.62)',
+                        border: active ? '1px solid rgba(32,199,232,0.45)' : '1px solid rgba(255,255,255,0.12)',
+                        boxShadow: active ? '0 0 0 1px rgba(32,199,232,0.08)' : 'none',
+                      }}
+                    >
+                      {active ? '✓ ' : '+ '}{name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {ticketTypes.map((ticket, index) => (
+                <div key={ticket.name} className="grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl p-3"
+                  style={{ background: 'rgba(4,10,10,0.58)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div>
+                    <p className="text-xs font-black text-white mb-2">{ticket.name}</p>
+                    <FInput
+                      type="number"
+                      value={ticket.price}
+                      onChange={e => updateTicketType(index, 'price', e.target.value)}
+                      placeholder="Precio COP"
+                      min="0"
+                      step="1000"
+                      aria-label={`Precio ${ticket.name}`}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-white mb-2">Cupo</p>
+                    <FInput
+                      type="number"
+                      value={ticket.capacity}
+                      onChange={e => updateTicketType(index, 'capacity', e.target.value)}
+                      placeholder="Cantidad"
+                      min="1"
+                      aria-label={`Cupo ${ticket.name}`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeTicketType(ticket.name)}
+                    disabled={ticketTypes.length === 1}
+                    className="self-end mb-1 w-9 h-9 rounded-lg flex items-center justify-center disabled:opacity-20"
+                    style={{ color: '#FCA5A5', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.16)' }}
+                    aria-label={`Eliminar ${ticket.name}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                Puedes combinar General, VIP, Early y Anytime. Cada tipo tiene precio y cupo independientes.
+              </p>
+            </div>
           </FField>
           <FField label="Descripción" span={2}>
             <FTextarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe el evento, artistas, rooms…" rows={3} />
           </FField>
-          <FSubmit loading={saving} disabled={!form.title || !form.date}>
-            <Plus className="w-4 h-4" />
-            {saving ? 'Publicando…' : 'Publicar Evento'}
-          </FSubmit>
         </div>
       </form>
     </FormModal>

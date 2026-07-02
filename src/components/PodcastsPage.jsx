@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, LayoutGrid, LayoutList, Link, Link2, Lock, MessageCircle, Pause, Play, Plus, Send } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useLikes } from '@/hooks/useLikes';
 import { useAuth } from '@/contexts/AuthContext';

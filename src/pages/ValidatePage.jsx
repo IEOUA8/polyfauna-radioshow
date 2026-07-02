@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ArrowLeft, CheckCircle, CloudUpload, Download, Loader2, QrCode, RefreshCw, ScanLine, Wifi, WifiOff, XCircle } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
 import { downloadEventPack, getOfflineScannerState, syncOfflineScans, validateTicketOffline } from '@/lib/offlineTickets';
 import { useAuth } from '@/contexts/AuthContext';
@@ -115,9 +115,15 @@ function ScannerView({ onDetected, eventName }) {
 
     return () => {
       mounted = false;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
+      const activeScanner = scannerRef.current;
+      scannerRef.current = null;
+      if (activeScanner) {
+        try {
+          const stopped = activeScanner.stop();
+          if (stopped?.catch) stopped.catch(() => {});
+        } catch (_) {
+          // The scanner may already be stopped during route transitions.
+        }
       }
     };
   }, [onDetected]);

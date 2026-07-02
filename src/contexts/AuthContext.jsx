@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import supabase from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
 const AuthContext = createContext(undefined);
@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [recoveryMode, setRecoveryMode] = useState(false);
+  const roleNotificationIds = useRef(new Set());
 
   const fetchUserProfile = useCallback(async (authUser) => {
     try {
@@ -86,12 +87,36 @@ export const AuthProvider = ({ children }) => {
     window.localStorage.removeItem(PENDING_OAUTH_ROLE_KEY);
   }, []);
 
+  const notifyPendingRoleRequest = useCallback(async (authUser) => {
+    if (!authUser?.id) return;
+    const { data: roleRequest } = await supabase
+      .from('role_requests')
+      .select('id')
+      .eq('user_id', authUser.id)
+      .eq('status', 'pending')
+      .is('notification_sent_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (roleRequest?.id) {
+      if (roleNotificationIds.current.has(roleRequest.id)) return;
+      roleNotificationIds.current.add(roleRequest.id);
+      supabase.functions.invoke('send-role-request', {
+        body: { requestId: roleRequest.id },
+      }).catch(() => {
+        roleNotificationIds.current.delete(roleRequest.id);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           await consumePendingOAuthRole(session.user);
+          await notifyPendingRoleRequest(session.user);
           await fetchUserProfile(session.user);
         }
       } catch (err) {
@@ -113,6 +138,7 @@ export const AuthProvider = ({ children }) => {
       setRecoveryMode(false);
       if (session?.user) {
         await consumePendingOAuthRole(session.user);
+        await notifyPendingRoleRequest(session.user);
         await fetchUserProfile(session.user);
       } else {
         setCurrentUser(null);
@@ -122,7 +148,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [consumePendingOAuthRole, fetchUserProfile]);
+  }, [consumePendingOAuthRole, fetchUserProfile, notifyPendingRoleRequest]);
 
   const signup = useCallback(async (email, password, name, role = 'citizen') => {
     setError(null);
@@ -136,18 +162,18 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
 
       // The database trigger creates the request even when email confirmation
-      // means Supabase has not issued a session yet.
-      if (role !== 'citizen' && data?.session) {
-        const { data: roleRequest } = await supabase
-          .from('role_requests')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .eq('status', 'pending')
-          .maybeSingle();
-        if (roleRequest?.id) {
-          supabase.functions.invoke('send-role-request', {
-            body: { requestId: roleRequest.id },
-          }).catch(() => {});
+      // means Supabase has not issued a session yet. The function verifies the
+      // fresh signup against the auth user before sending either notification.
+      if (role !== 'citizen' && data?.user?.id) {
+        const { error: notificationError } = await supabase.functions.invoke('send-role-request', {
+          body: { userId: data.user.id, email },
+        });
+        if (notificationError) {
+          console.error('Role request notification could not be sent:', notificationError);
+          toast({
+            title: 'Solicitud registrada',
+            description: 'La notificación será reintentada cuando inicies sesión.',
+          });
         }
       }
 
