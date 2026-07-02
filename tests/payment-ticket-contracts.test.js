@@ -215,6 +215,17 @@ test('modal de eventos mantiene la acción visible sobre el reproductor', () => 
   assert.match(promoterDashboard, /id="create-event-form"/);
 });
 
+test('modales de compra y perfil usan portal global con un solo scroll interno', () => {
+  assert.match(eventTerminal, /createPortal\(/);
+  assert.match(eventTerminal, /fixed inset-0 z-\[220\] flex items-center justify-center/);
+  assert.doesNotMatch(eventTerminal, /playerBottom/);
+  assert.match(eventTerminal, /document\.body\.style\.overflow = 'hidden'/);
+  assert.match(editProfile, /createPortal\(/);
+  assert.match(editProfile, /fixed inset-0 z-\[220\] flex items-center justify-center/);
+  assert.match(editProfile, /flex-1 min-h-0 overflow-y-auto overscroll-contain/);
+  assert.match(editProfile, /Save footer/);
+});
+
 test('sincronización offline conserva autorización, idempotencia y auditoría', () => {
   assert.match(offlineMigration, /CREATE TABLE IF NOT EXISTS public\.ticket_scan_log/);
   assert.match(offlineMigration, /jsonb_array_length\(p_scans\) > 500/);

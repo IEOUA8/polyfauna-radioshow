@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronLeft, ChevronRight, ExternalLink, Loader2, MapPin, Search, Share2, Star, Ticket, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -13,18 +14,6 @@ import { trackUsageEvent } from '@/lib/telemetry';
 import { getFunctionErrorMessage } from '@/lib/functionErrors';
 import { claimFreeTicket } from '@/lib/freeTickets';
 import { loadTicketIdentity } from '@/lib/ticketIdentity';
-
-// Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
-// Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
-function usePlayerOffset() {
-  const [offset, setOffset] = useState(() => window.innerWidth < 1024 ? 138 : 98);
-  useEffect(() => {
-    const update = () => setOffset(window.innerWidth < 1024 ? 138 : 98);
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-  return offset;
-}
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -65,7 +54,6 @@ function BuyModal({ event, onClose }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const playerBottom = usePlayerOffset();
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
@@ -84,6 +72,17 @@ function BuyModal({ event, onClose }) {
   const isSoldOut = availableLeft <= 0;
   const isBusy = status === 'buying' || status === 'processing';
   const totalPrice = selectedTicket.price * quantity;
+
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.id || !isFree) return;
@@ -203,24 +202,32 @@ function BuyModal({ event, onClose }) {
     }
   };
 
-  return (
-    /* Overlay — se detiene en el borde superior del player (responsive) */
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="fixed inset-x-0 top-0 z-[60] flex items-end justify-center px-4 pb-3"
-      style={{ bottom: playerBottom, background: 'rgba(4,7,7,0.88)', backdropFilter: 'blur(10px)' }}
+      className="fixed inset-0 z-[220] flex items-center justify-center p-3 sm:p-6"
+      style={{
+        background: 'rgba(4,7,7,0.82)',
+        backdropFilter: 'blur(18px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(18px) saturate(120%)',
+      }}
       onClick={onClose}
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Comprar entrada para ${event.title}`}
         initial={{ opacity: 0, scale: 0.97, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: 20 }}
         transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-        className="relative w-full max-w-sm rounded-3xl flex flex-col"
+        className="relative w-full max-w-md max-h-[calc(100dvh-24px)] sm:max-h-[calc(100dvh-48px)] rounded-3xl flex flex-col"
         style={{
           background: 'rgba(8,14,9,0.98)',
           border: '1px solid rgba(255,255,255,0.09)',
-          maxHeight: `calc(100vh - ${playerBottom}px - 16px)`,
           overflow: 'hidden',
+          boxShadow: '0 30px 100px rgba(0,0,0,0.72)',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -236,7 +243,8 @@ function BuyModal({ event, onClose }) {
           </button>
         </div>
 
-        <div className="px-6 pb-6 pt-4 space-y-4 overflow-y-auto overscroll-contain" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex-1 min-h-0 px-4 sm:px-6 pb-6 pt-4 space-y-4 overflow-y-auto overscroll-contain"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.16) transparent' }}>
           {/* ── Éxito gratuito ── */}
           {status === 'success' && (
             <div className="flex flex-col items-center gap-3 py-2 text-center">
@@ -500,7 +508,8 @@ function BuyModal({ event, onClose }) {
           )}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

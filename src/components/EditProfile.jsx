@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, IdCard, Loader2, Save, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +35,17 @@ export default function EditProfile({ profile, onSave, onClose }) {
         else setIdentity(current => ({ ...current, full_name: profile?.display_name || '' }));
       });
   }, [currentUser.id, profile?.display_name]);
+
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+    };
+  }, []);
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
   const setSocial = (key, val) => setForm(prev => ({
@@ -97,13 +109,34 @@ export default function EditProfile({ profile, onSave, onClose }) {
     setSaving(false);
   };
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
-      <div className="w-full max-w-lg rounded-2xl overflow-hidden overflow-y-auto max-h-[90vh]"
-        style={{ background: 'rgba(11,16,15,0.96)', border: '1px solid rgba(255,255,255,0.1)' }}>
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center p-3 sm:p-6"
+      style={{
+        background: 'rgba(0,0,0,0.80)',
+        backdropFilter: 'blur(18px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(18px) saturate(120%)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Editar perfil"
+        className="w-full max-w-lg max-h-[calc(100dvh-24px)] sm:max-h-[calc(100dvh-48px)] rounded-3xl overflow-hidden flex flex-col"
+        style={{
+          background: 'rgba(11,16,15,0.98)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 30px 100px rgba(0,0,0,0.72)',
+        }}
+        onClick={event => event.stopPropagation()}
+      >
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(11,16,15,0.98)' }}>
           <h2 className="text-base font-black text-white">Editar Perfil</h2>
           <button type="button" onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">
@@ -111,7 +144,8 @@ export default function EditProfile({ profile, onSave, onClose }) {
           </button>
         </div>
 
-        <div className="px-6 pb-6 space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 py-5 space-y-5"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.16) transparent' }}>
           {/* Avatar */}
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0"
@@ -239,7 +273,11 @@ export default function EditProfile({ profile, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Save button */}
+        </div>
+
+        {/* Save footer */}
+        <div className="shrink-0 px-5 sm:px-6 py-4"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(11,16,15,0.99)' }}>
           <button type="button" onClick={handleSave} disabled={saving}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
@@ -248,6 +286,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
