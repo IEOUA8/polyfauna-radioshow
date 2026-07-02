@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getFunctionErrorMessage } from '@/lib/functionErrors';
+import { claimFreeTicket } from '@/lib/freeTickets';
 
 // Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
 // Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
@@ -30,8 +31,9 @@ const useFallbackImage = (event) => {
 };
 
 function formatPrice(price) {
-  if (!price && price !== 0) return 'Gratis';
-  return `$${Number(price).toLocaleString('es-CO')}`;
+  const value = Number(price);
+  if (!Number.isFinite(value) || value <= 0) return 'Gratis';
+  return `$${value.toLocaleString('es-CO')}`;
 }
 
 function formatDateLong(str) {
@@ -103,21 +105,13 @@ function BuyModal({ event, onClose }) {
     }
 
     if (isFree) {
-      // Evento gratuito: compra directa vía RPC
+      // Evento gratuito o cortesía: emisión directa y correo, sin Wompi.
       setStatus('buying');
-      const { data, error } = await supabase.rpc('purchase_ticket', {
-        p_event_id: event.id,
-        p_ticket_type: selectedTicket.name,
-      });
-      if (error || !data?.success) {
-        setStatus('error');
-        setErrorMsg(data?.error || error?.message || 'Error al procesar la compra');
-        trackUsageEvent('checkout_error', {
-          event_id: event.id,
-          price_tier: 'free',
-          error_code: error?.code || 'purchase_ticket_failed',
+      try {
+        const data = await claimFreeTicket({
+          eventId: event.id,
+          ticketType: selectedTicket.name,
         });
-      } else {
         setTicketNumber(data.ticket_number);
         setStatus('success');
         trackUsageEvent('ticket_claimed', {
@@ -125,7 +119,24 @@ function BuyModal({ event, onClose }) {
           price_tier: 'free',
           quantity: 1,
         });
-        toast({ title: '¡Entrada confirmada!', description: `#${data.ticket_number} · ${event.title}` });
+        toast({
+          title: selectedTicket.name === 'Cortesía' ? '¡Cortesía confirmada!' : '¡Entrada confirmada!',
+          description: `#${data.ticket_number} · ${event.title}`,
+        });
+        if (data.email_warning) {
+          toast({
+            title: 'Ticket creado',
+            description: 'Está en tu Ticket Vault, aunque el correo no pudo enviarse.',
+          });
+        }
+      } catch (error) {
+        setStatus('error');
+        setErrorMsg(error?.message || 'Error al procesar la entrada');
+        trackUsageEvent('checkout_error', {
+          event_id: event.id,
+          price_tier: 'free',
+          error_code: error?.code || 'purchase_ticket_failed',
+        });
       }
     } else {
       // Evento de pago: flujo Wompi

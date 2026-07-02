@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getFunctionErrorMessage } from '@/lib/functionErrors';
+import { claimFreeTicket } from '@/lib/freeTickets';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -18,8 +19,9 @@ const useFallbackImage = (event) => {
 };
 
 function formatPrice(price) {
-  if (!price && price !== 0) return 'Gratis';
-  return `$${Number(price).toLocaleString('es-CO')} COP`;
+  const value = Number(price);
+  if (!Number.isFinite(value) || value <= 0) return 'Gratis';
+  return `$${value.toLocaleString('es-CO')} COP`;
 }
 
 function formatDateLong(str) {
@@ -132,25 +134,28 @@ export default function EventPublicPage() {
     setErrorMsg('');
 
     if (isFree) {
-      const { data, error } = await supabase.rpc('purchase_ticket', {
-        p_event_id: event.id,
-        p_ticket_type: selectedTicket.name,
-      });
-      if (error || !data?.success) {
-        setStatus('error');
-        setErrorMsg(data?.error || error?.message || 'Error al procesar la compra');
-        trackUsageEvent('checkout_error', {
-          event_id: event.id,
-          price_tier: 'free',
-          error_code: error?.code || 'purchase_ticket_failed',
+      try {
+        const data = await claimFreeTicket({
+          eventId: event.id,
+          ticketType: selectedTicket.name,
         });
-      } else {
         setTicketNo(data.ticket_number);
         setStatus('success');
         trackUsageEvent('ticket_claimed', {
           event_id: event.id,
           price_tier: 'free',
           quantity: 1,
+        });
+        if (data.email_warning) {
+          setErrorMsg('El ticket está en tu Vault, pero el correo no pudo enviarse.');
+        }
+      } catch (error) {
+        setStatus('error');
+        setErrorMsg(error?.message || 'Error al procesar la entrada');
+        trackUsageEvent('checkout_error', {
+          event_id: event.id,
+          price_tier: 'free',
+          error_code: error?.code || 'purchase_ticket_failed',
         });
       }
     } else {
@@ -476,7 +481,7 @@ export default function EventPublicPage() {
                         style={{ background: 'rgba(255,255,255,0.95)', color: '#080B14' }}
                       >
                         <Ticket className="w-4 h-4" />
-                        Crear cuenta y comprar entrada
+                        {isFree ? 'Crear cuenta y obtener entrada' : 'Crear cuenta y comprar entrada'}
                       </Link>
                       <p className="text-[11px] text-white/35 text-center">
                         ¿Ya tienes cuenta?{' '}
@@ -510,7 +515,7 @@ export default function EventPublicPage() {
                         {status === 'buying'
                           ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando…</>
                           : isFree
-                            ? <><Ticket className="w-4 h-4" /> Confirmar (Gratis)</>
+                            ? <><Ticket className="w-4 h-4" /> {selectedTicket.name === 'Cortesía' ? 'Confirmar cortesía' : 'Obtener entrada gratis'}</>
                             : <><ExternalLink className="w-4 h-4" /> Pagar con Wompi</>
                         }
                       </motion.button>

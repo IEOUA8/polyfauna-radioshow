@@ -13,7 +13,8 @@ import { LoadingSkeleton, EmptyState, LoginRequired } from '@/components/Section
 import { useToast } from '@/components/ui/use-toast';
 import FormModal, { FField, FInput, FTextarea, FImageZone, FSubmit } from '@/components/ui/FormModal';
 
-const TICKET_TYPE_OPTIONS = ['General', 'VIP', 'Early', 'Anytime'];
+const TICKET_TYPE_OPTIONS = ['General', 'VIP', 'Early', 'Anytime', 'Gratis', 'Cortesía'];
+const FREE_TICKET_TYPES = new Set(['Gratis', 'Cortesía']);
 const DEFAULT_TICKET_TYPES = [{ name: 'General', price: '', capacity: '100' }];
 const BANKS = [
   'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA', 'Banco Popular',
@@ -43,7 +44,7 @@ function CreateEventModal({ onClose, onCreated }) {
   const addTicketType = (name) => {
     setTicketTypes(current => current.some(ticket => ticket.name === name)
       ? current
-      : [...current, { name, price: '', capacity: '50' }]);
+      : [...current, { name, price: FREE_TICKET_TYPES.has(name) ? '0' : '', capacity: '50' }]);
   };
   const removeTicketType = (name) => {
     setTicketTypes(current => current.length === 1 ? current : current.filter(ticket => ticket.name !== name));
@@ -55,7 +56,11 @@ function CreateEventModal({ onClose, onCreated }) {
     capacity: Math.max(0, parseInt(ticket.capacity, 10) || 0),
   }));
   const ticketTypesValid = normalizedTicketTypes.length > 0
-    && normalizedTicketTypes.every(ticket => ticket.capacity > 0);
+    && normalizedTicketTypes.every((ticket, index) =>
+      ticket.capacity > 0
+      && ticketTypes[index].price !== ''
+      && Number(ticketTypes[index].price) >= 0
+    );
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -173,7 +178,9 @@ function CreateEventModal({ onClose, onCreated }) {
                 <div key={ticket.name} className="grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl p-3"
                   style={{ background: 'rgba(4,10,10,0.58)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <div>
-                    <p className="text-xs font-black text-white mb-2">{ticket.name}</p>
+                    <p className="text-xs font-black text-white mb-2">
+                      {ticket.name}{FREE_TICKET_TYPES.has(ticket.name) ? ' · Sin costo' : ''}
+                    </p>
                     <FInput
                       type="number"
                       value={ticket.price}
@@ -181,6 +188,7 @@ function CreateEventModal({ onClose, onCreated }) {
                       placeholder="Precio COP"
                       min="0"
                       step="1000"
+                      disabled={FREE_TICKET_TYPES.has(ticket.name)}
                       aria-label={`Precio ${ticket.name}`}
                     />
                   </div>
@@ -208,7 +216,7 @@ function CreateEventModal({ onClose, onCreated }) {
                 </div>
               ))}
               <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                Puedes combinar General, VIP, Early y Anytime. Cada tipo tiene precio y cupo independientes.
+                Puedes combinar entradas pagas, gratis y cortesías. Cada tipo tiene cupo independiente y las de valor $0 se emiten sin Wompi.
               </p>
             </div>
           </FField>
