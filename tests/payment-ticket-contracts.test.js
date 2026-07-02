@@ -13,7 +13,6 @@ const userManager = readFileSync('src/components/admin/UserManager.jsx', 'utf8')
 const roleRequestsPanel = readFileSync('src/components/RoleRequestsPanel.jsx', 'utf8');
 const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
 const roleAndTicketTiers = readFileSync('supabase/migrations/20260701000001_role_requests_and_ticket_tiers.sql', 'utf8');
-const promoterDashboard = readFileSync('src/components/PromoterDashboard.jsx', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
 const eventPublicPage = readFileSync('src/pages/EventPublicPage.jsx', 'utf8');
 const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
@@ -35,6 +34,7 @@ const editProfile = readFileSync('src/components/EditProfile.jsx', 'utf8');
 const validatePage = readFileSync('src/pages/ValidatePage.jsx', 'utf8');
 const signupPage = readFileSync('src/pages/SignupPage.jsx', 'utf8');
 const eventManager = readFileSync('src/components/admin/EventManager.jsx', 'utf8');
+const uploadField = readFileSync('src/components/admin/UploadField.jsx', 'utf8');
 const sidebar = readFileSync('src/components/Sidebar.jsx', 'utf8');
 const mobileMenu = readFileSync('src/components/MobileMenu.jsx', 'utf8');
 const ticketIdentity = readFileSync('src/lib/ticketIdentity.js', 'utf8');
@@ -98,14 +98,14 @@ test('tipos de entrada conservan precio, cupo e inventario independientes', () =
   assert.match(createPayment, /ticket_types, owner_id/);
   assert.match(createPayment, /Math\.round\(tierPrice \* qty\)/);
   assert.match(createPayment, /ticket_type:\s+tierName/);
-  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime', 'Gratis'\]/);
-  assert.match(promoterDashboard, /ticket_types: normalizedTicketTypes/);
+  assert.match(eventManager, /TICKET_TYPES = \['General', 'VIP', 'Early', 'Anytime', 'Gratis'\]/);
+  assert.match(eventManager, /ticket_types: normalizedTicketTypes/);
   assert.match(eventTerminal, /ticket_type: selectedTicket\.name/);
 });
 
 test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', () => {
-  assert.match(promoterDashboard, /FREE_TICKET_TYPES = new Set\(\['Gratis'\]\)/);
-  assert.match(promoterDashboard, /ticketTypes\[index\]\.price !== ''/);
+  assert.match(eventManager, /FREE_TICKET_TYPES = new Set\(\['Gratis'\]\)/);
+  assert.match(eventManager, /ticketTypes\[index\]\.price !== ''/);
   assert.match(freeTicketsClient, /functions\.invoke\('claim-free-ticket'/);
   assert.match(freeTicketConfirmation, /confirmation_email_sent_at TIMESTAMPTZ/);
   assert.match(claimFreeTicketFunction, /Number\(tier\.price\) !== 0/);
@@ -136,7 +136,6 @@ test('colectivos, cortesías e identidad usan permisos y superficies restringida
   assert.match(organizerCommunity, /courtesy_limit INTEGER/);
   assert.match(courtesyFunction, /Cortesía confirmada/);
   assert.match(courtesyFunction, /sendPush/);
-  assert.match(promoterDashboard, /functions\.invoke\('issue-courtesy-ticket'/);
   assert.match(adminDashboard, /function CourtesyTicketModal/);
   assert.match(adminDashboard, /functions\.invoke\('issue-courtesy-ticket'/);
   assert.match(adminDashboard, /courtesy_limit, courtesies_issued/);
@@ -146,8 +145,8 @@ test('colectivos, cortesías e identidad usan permisos y superficies restringida
 
 test('eventos guardan final, lineup enlazado y validación visual de identidad', () => {
   assert.match(organizerCommunity, /ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ/);
-  assert.match(promoterDashboard, /label="Final del evento"/);
-  assert.match(promoterDashboard, /<ArtistMentionInput/);
+  assert.match(eventManager, /<Label>Final \*<\/Label>/);
+  assert.match(eventManager, /<ArtistMentionInput/);
   assert.match(artistMentionInput, /from\('artists'\)/);
   assert.match(artistMentionInput, /artist_id: artist\.id/);
   assert.match(organizerCommunity, /'full_name', identity\.full_name/);
@@ -201,8 +200,9 @@ test('panel operativo unifica edición completa de eventos y tickets', () => {
 test('portadas de eventos y pagos pendientes tienen estados recuperables', () => {
   assert.match(organizerOperations, /event_covers_organizer_insert/);
   assert.match(organizerOperations, /storage\.foldername\(name\)/);
-  assert.match(promoterDashboard, /events\/\$\{currentUser\.id\}\/\$\{crypto\.randomUUID\(\)\}/);
-  assert.match(promoterDashboard, /No se pudo subir la portada/);
+  assert.match(eventManager, /pathPrefix=\{`events\/\$\{currentUser\.id\}\/`\}/);
+  assert.match(uploadField, /const path = `\$\{pathPrefix\}\$\{crypto\.randomUUID\(\)\}/);
+  assert.match(uploadField, /Error al subir archivo/);
   assert.match(ticketVault, /Wompi aún no confirma el pago/);
 });
 
@@ -211,8 +211,7 @@ test('modal de eventos mantiene la acción visible sobre el reproductor', () => 
   assert.match(formModal, /z-\[200\]/);
   assert.match(formModal, /pb-\[calc\(160px\+env\(safe-area-inset-bottom,0px\)\)\]/);
   assert.match(formModal, /footer &&/);
-  assert.match(promoterDashboard, /form="create-event-form"/);
-  assert.match(promoterDashboard, /id="create-event-form"/);
+  assert.match(eventManager, /max-h-\[90dvh\] overflow-y-auto pb-28/);
 });
 
 test('modales de compra y perfil usan portal global con un solo scroll interno', () => {

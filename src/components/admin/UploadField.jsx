@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import supabase from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
-export function UploadField({ label, bucket, accept, value, onChange, required = false }) {
+export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '' }) {
   const { toast } = useToast();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -19,7 +19,7 @@ export function UploadField({ label, bucket, accept, value, onChange, required =
     setFileName(file.name);
     try {
       const ext = file.name.split('.').pop().toLowerCase();
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${pathPrefix}${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from(bucket).getPublicUrl(path);

@@ -8,7 +8,6 @@ const sourceFiles = [
   readFileSync('src/components/admin/UserManager.jsx', 'utf8'),
   readFileSync('src/components/RoleRequestsPanel.jsx', 'utf8'),
   readFileSync('src/components/admin/EventManager.jsx', 'utf8'),
-  readFileSync('src/components/PromoterDashboard.jsx', 'utf8'),
   readFileSync('src/components/PodcastsPage.jsx', 'utf8'),
   readFileSync('src/pages/EventPublicPage.jsx', 'utf8'),
   readFileSync('src/components/EventTerminal.jsx', 'utf8'),

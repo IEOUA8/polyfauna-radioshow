@@ -448,6 +448,7 @@ const EventManager = ({ ownerId = null }) => {
                   accept="image/jpeg,image/png,image/webp"
                   value={formData.image_url}
                   onChange={(url) => set('image_url', url)}
+                  pathPrefix={`events/${currentUser.id}/`}
                 />
 
                 {/* Título */}
