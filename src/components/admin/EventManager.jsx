@@ -584,7 +584,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                 Nuevo Evento
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[90dvh] overflow-y-auto pb-28">
+            <DialogContent className="bg-card border-border text-foreground max-w-3xl w-[calc(100vw-2rem)] sm:w-full max-h-[90dvh] overflow-y-auto overflow-x-hidden pb-28">
               <DialogHeader>
                 <DialogTitle>{editingEvent ? 'Editar Evento' : 'Crear Evento'}</DialogTitle>
               </DialogHeader>
@@ -637,8 +637,8 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
 
                 {/* Tipos de entrada */}
                 <div className="space-y-3 rounded-xl p-4 border border-border bg-background/40">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
                       <Label>Tipos de entrada</Label>
                       <p className="text-xs text-muted-foreground mt-1">
                         Agrega, edita precios y ajusta cupos sin bajar del inventario ya emitido.

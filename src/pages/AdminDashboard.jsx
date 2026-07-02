@@ -6,7 +6,7 @@ import {
   AlertCircle, AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, CreditCard, Disc3, FileText, Headphones, Home, Loader2, Menu,
   Gift, MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
-  Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle, ListMusic,
+  Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle,
 } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
@@ -23,7 +23,6 @@ const ShowManager      = lazy(lazyImport(() => import('@/components/admin/ShowMa
 const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserManager')));
 const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
 const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
-const TrackManager     = lazy(lazyImport(() => import('@/components/admin/TrackManager')));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
 const NAV_GROUPS = [
@@ -51,7 +50,6 @@ const NAV_GROUPS = [
       { id: 'shows',      label: 'Shows',        icon: Radio,       color: 'rgba(255,255,255,0.85)' },
       { id: 'artists',    label: 'Artistas',     icon: Disc3,       color: 'rgba(255,255,255,0.85)' },
       { id: 'albums',     label: 'Álbumes',      icon: Music,       color: 'rgba(255,255,255,0.85)' },
-      { id: 'tracks',     label: 'Tracks',       icon: ListMusic,   color: 'rgba(255,255,255,0.85)' },
     ],
   },
   {
@@ -2333,8 +2331,7 @@ const AdminDashboard = () => {
       case 'interviews':  return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Interviews</h2><p className="text-sm text-white/40 mt-0.5">Entrevistas</p></div><InterviewManager /></div>;
       case 'shows':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Shows</h2><p className="text-sm text-white/40 mt-0.5">Programación de shows</p></div><ShowManager /></div>;
       case 'artists':     return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Artistas</h2><p className="text-sm text-white/40 mt-0.5">Perfiles de artistas y sellos</p></div><ArtistManager /></div>;
-      case 'albums':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Álbumes</h2><p className="text-sm text-white/40 mt-0.5">Discografía</p></div><AlbumManager /></div>;
-      case 'tracks':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Tracks</h2><p className="text-sm text-white/40 mt-0.5">Canciones y pistas</p></div><TrackManager /></div>;
+      case 'albums':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Álbumes</h2><p className="text-sm text-white/40 mt-0.5">Discografía y tracks</p></div><AlbumManager /></div>;
       case 'users':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Usuarios</h2><p className="text-sm text-white/40 mt-0.5">Gestión de cuentas y roles</p></div><UserManager /></div>;
       default:            return <DashboardSection />;
     }

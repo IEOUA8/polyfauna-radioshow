@@ -219,7 +219,18 @@ test('modal de eventos mantiene la acción visible sobre el reproductor', () => 
   assert.match(formModal, /z-\[200\]/);
   assert.match(formModal, /pb-\[calc\(160px\+env\(safe-area-inset-bottom,0px\)\)\]/);
   assert.match(formModal, /footer &&/);
-  assert.match(eventManager, /max-h-\[90dvh\] overflow-y-auto pb-28/);
+  assert.match(eventManager, /max-h-\[90dvh\] overflow-y-auto overflow-x-hidden pb-28/);
+});
+
+test('modal de eventos no se desplaza lateralmente en móvil', () => {
+  assert.match(eventManager, /w-\[calc\(100vw-2rem\)\] sm:w-full/);
+  assert.match(eventManager, /overflow-x-hidden/);
+  assert.match(eventManager, /flex flex-wrap items-start justify-between gap-4/);
+});
+
+test('la fila de usuario en el panel admin se apila en móvil en vez de comprimir el nombre', () => {
+  assert.match(userManager, /flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between/);
+  assert.doesNotMatch(userManager, /flex items-center justify-between p-4 bg-background rounded-xl border border-border/);
 });
 
 test('modales de compra y perfil usan portal global con un solo scroll interno', () => {

@@ -88,9 +88,9 @@ const UserManager = () => {
             {users.map((user) => (
               <div
                 key={user.id}
-                className="flex items-center justify-between p-4 bg-background rounded-xl border border-border"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between p-4 bg-background rounded-xl border border-border"
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
                     {user.avatar_url
                       ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -106,9 +106,9 @@ const UserManager = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 pl-12 sm:pl-0">
                   <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded"
+                    className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
                     style={{
                       background: `${ROLE_COLOR[user.role] || '#20C7E8'}18`,
                       color: ROLE_COLOR[user.role] || '#20C7E8',
@@ -120,7 +120,7 @@ const UserManager = () => {
                   <select
                     value={user.role || 'citizen'}
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                    className="bg-background border border-border text-foreground rounded-md px-2 py-1 text-xs"
+                    className="bg-background border border-border text-foreground rounded-md px-2 py-1 text-xs shrink-0"
                   >
                     {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
@@ -128,7 +128,7 @@ const UserManager = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(user.id)}
-                    className="text-destructive hover:text-destructive/80"
+                    className="text-destructive hover:text-destructive/80 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
