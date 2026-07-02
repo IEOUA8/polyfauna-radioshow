@@ -5,7 +5,7 @@ import {
   CreditCard, ExternalLink, Loader2, Plus, QrCode, Ticket, Trash2, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';

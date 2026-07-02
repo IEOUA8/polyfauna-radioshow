@@ -4,7 +4,7 @@ import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRi
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';

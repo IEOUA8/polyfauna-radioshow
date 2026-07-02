@@ -4,7 +4,7 @@ import {
   Disc3, Dna, Headphones, Heart, Loader2, Music2,
   Pause, Play, Shuffle, Trash2,
 } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState, ErrorState, LoadingSkeleton, LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';

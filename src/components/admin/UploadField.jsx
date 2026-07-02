@@ -3,7 +3,7 @@ import { Loader2, Upload, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
 export function UploadField({ label, bucket, accept, value, onChange, required = false }) {

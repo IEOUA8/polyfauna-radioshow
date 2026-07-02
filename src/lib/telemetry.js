@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 
 const ERROR_SESSION_KEY = 'pf_error_session_v1';
 const USAGE_SESSION_KEY = 'pf_usage_session_v1';

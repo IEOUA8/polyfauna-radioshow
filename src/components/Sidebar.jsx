@@ -10,7 +10,7 @@ import HoloSpectrum from '@/components/HoloSpectrum';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 
 const ALL_NAV = [
   { id: 'radio-console', label: 'Radio Console',     icon: Radio,             public: true  },

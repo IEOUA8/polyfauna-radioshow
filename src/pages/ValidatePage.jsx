@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ArrowLeft, CheckCircle, CloudUpload, Download, Loader2, QrCode, RefreshCw, ScanLine, Wifi, WifiOff, XCircle } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
 import { downloadEventPack, getOfflineScannerState, syncOfflineScans, validateTicketOffline } from '@/lib/offlineTickets';
 import { useAuth } from '@/contexts/AuthContext';

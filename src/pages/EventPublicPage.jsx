@@ -6,7 +6,7 @@ import {
   ArrowLeft, Building, Calendar, CheckCircle, ExternalLink,
   Loader2, MapPin, Share2, Ticket, Users,
 } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';

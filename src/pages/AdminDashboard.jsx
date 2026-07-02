@@ -8,7 +8,7 @@ import {
   MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
   Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle, ListMusic,
 } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import supabase from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
