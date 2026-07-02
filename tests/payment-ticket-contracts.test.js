@@ -15,6 +15,7 @@ const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
 const roleAndTicketTiers = readFileSync('supabase/migrations/20260701000001_role_requests_and_ticket_tiers.sql', 'utf8');
 const promoterDashboard = readFileSync('src/components/PromoterDashboard.jsx', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
+const eventPublicPage = readFileSync('src/pages/EventPublicPage.jsx', 'utf8');
 const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
 const organizerOperations = readFileSync('supabase/migrations/20260701000002_organizer_operations_and_manual_tickets.sql', 'utf8');
 const manualTicketFunction = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
@@ -24,6 +25,9 @@ const roleRequestDelivery = readFileSync('supabase/migrations/20260701000004_rol
 const sendRoleRequest = readFileSync('supabase/functions/send-role-request/index.ts', 'utf8');
 const authContext = readFileSync('src/contexts/AuthContext.jsx', 'utf8');
 const formModal = readFileSync('src/components/ui/FormModal.jsx', 'utf8');
+const freeTicketConfirmation = readFileSync('supabase/migrations/20260701000005_free_ticket_confirmation.sql', 'utf8');
+const claimFreeTicketFunction = readFileSync('supabase/functions/claim-free-ticket/index.ts', 'utf8');
+const freeTicketsClient = readFileSync('src/lib/freeTickets.js', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -84,9 +88,22 @@ test('tipos de entrada conservan precio, cupo e inventario independientes', () =
   assert.match(createPayment, /ticket_types, owner_id/);
   assert.match(createPayment, /Math\.round\(tierPrice \* qty\)/);
   assert.match(createPayment, /ticket_type:\s+tierName/);
-  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime'\]/);
+  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime', 'Gratis', 'Cortesía'\]/);
   assert.match(promoterDashboard, /ticket_types: normalizedTicketTypes/);
   assert.match(eventTerminal, /ticket_type: selectedTicket\.name/);
+});
+
+test('entradas gratis y cortesías se emiten sin Wompi y envían confirmación', () => {
+  assert.match(promoterDashboard, /FREE_TICKET_TYPES = new Set\(\['Gratis', 'Cortesía'\]\)/);
+  assert.match(promoterDashboard, /ticketTypes\[index\]\.price !== ''/);
+  assert.match(freeTicketsClient, /functions\.invoke\('claim-free-ticket'/);
+  assert.match(freeTicketConfirmation, /confirmation_email_sent_at TIMESTAMPTZ/);
+  assert.match(claimFreeTicketFunction, /Number\(tier\.price\) !== 0/);
+  assert.match(claimFreeTicketFunction, /rpc\('purchase_ticket'/);
+  assert.match(claimFreeTicketFunction, /confirmation_email_sent_at: claimedAt/);
+  assert.match(claimFreeTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
+  assert.match(eventTerminal, /claimFreeTicket\(\{/);
+  assert.match(eventPublicPage, /claimFreeTicket\(\{/);
 });
 
 test('solicitudes profesionales llegan al Control Center del admin', () => {
