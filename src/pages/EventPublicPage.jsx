@@ -12,6 +12,7 @@ import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getFunctionErrorMessage } from '@/lib/functionErrors';
 import { claimFreeTicket } from '@/lib/freeTickets';
+import { loadTicketIdentity } from '@/lib/ticketIdentity';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -63,6 +64,8 @@ export default function EventPublicPage() {
   const [copied,   setCopied]   = useState(false);
   const [artists,  setArtists]  = useState([]);
   const [selectedType, setSelectedType] = useState('');
+  const [identity, setIdentity] = useState({ fullName: '', documentNumber: '' });
+  const [loadingIdentity, setLoadingIdentity] = useState(false);
   const ticketTypes = getTicketTypes(event);
   const selectedTicket = ticketTypes.find(ticket => ticket.name === selectedType) || ticketTypes[0];
 
@@ -89,6 +92,21 @@ export default function EventPublicPage() {
       .select('id, name, slug')
       .then(({ data }) => setArtists(data || []));
   }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id || selectedTicket.price !== 0) return;
+    let active = true;
+    setLoadingIdentity(true);
+    loadTicketIdentity(currentUser.id)
+      .then(data => {
+        if (active) setIdentity(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoadingIdentity(false);
+      });
+    return () => { active = false; };
+  }, [currentUser?.id, selectedTicket.price]);
 
   useEffect(() => {
     if (!event?.id) return;
@@ -138,6 +156,9 @@ export default function EventPublicPage() {
         const data = await claimFreeTicket({
           eventId: event.id,
           ticketType: selectedTicket.name,
+          userId: currentUser.id,
+          fullName: identity.fullName,
+          documentNumber: identity.documentNumber,
         });
         setTicketNo(data.ticket_number);
         setStatus('success');
@@ -510,10 +531,50 @@ export default function EventPublicPage() {
                     </button>
                   ) : (
                     <>
+                      {isFree && (
+                        <div className="space-y-3 rounded-xl p-4 mb-3 text-left"
+                          style={{ background: 'rgba(34,197,94,0.055)', border: '1px solid rgba(34,197,94,0.16)' }}>
+                          <div>
+                            <p className="text-xs font-black text-white">Identificación del asistente</p>
+                            <p className="text-[10px] leading-relaxed mt-1 text-white/35">
+                              Quedará asociada al ticket para validar tu identidad con la cédula física en la entrada.
+                            </p>
+                          </div>
+                          <div className="grid sm:grid-cols-2 gap-2.5">
+                            <label className="space-y-1.5">
+                              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Nombre completo</span>
+                              <input
+                                type="text"
+                                autoComplete="name"
+                                value={identity.fullName}
+                                onChange={e => setIdentity(current => ({ ...current, fullName: e.target.value }))}
+                                placeholder="Nombre y apellido"
+                                disabled={status === 'buying' || loadingIdentity}
+                                className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 disabled:opacity-50"
+                                style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Número de cédula</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                value={identity.documentNumber}
+                                onChange={e => setIdentity(current => ({ ...current, documentNumber: e.target.value.replace(/\D/g, '') }))}
+                                placeholder="Ej. 1023456789"
+                                disabled={status === 'buying' || loadingIdentity}
+                                className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 disabled:opacity-50"
+                                style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      )}
                       <motion.button
                         type="button"
                         onClick={handleBuy}
-                        disabled={status === 'buying'}
+                        disabled={status === 'buying' || (isFree && (loadingIdentity || !identity.fullName.trim() || !identity.documentNumber.trim()))}
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         className="btn-cta w-full py-3.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60 transition-all"
