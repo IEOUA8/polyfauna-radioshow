@@ -60,9 +60,12 @@ Deno.serve(async (req) => {
       .slice(0, qty - 1)
       .map(e => (typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())) ? e.trim().toLowerCase() : null);
 
-    const requestedType = typeof ticket_type === 'string' ? ticket_type.trim().slice(0, 60) : '';
-    if (!requestedType)
+    const rawRequestedType = typeof ticket_type === 'string' ? ticket_type.trim().slice(0, 60) : '';
+    if (!rawRequestedType)
       return new Response(JSON.stringify({ error: 'ticket_type requerido' }), { status: 400, headers: CORS });
+    const requestedType = ['ga', 'general admission'].includes(rawRequestedType.toLowerCase())
+      ? 'General'
+      : rawRequestedType;
 
     // Obtener evento y sus tipos de entrada
     const { data: event, error: evErr } = await supabase

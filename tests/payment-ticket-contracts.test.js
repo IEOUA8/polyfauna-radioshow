@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { getFunctionErrorMessage } from '../src/lib/functionErrors.js';
 
 const migration = readFileSync('supabase/migrations/20260622000004_launch_ticket_integrity.sql', 'utf8');
 const webhook = readFileSync('supabase/functions/webhook-wompi/index.ts', 'utf8');
@@ -18,6 +19,7 @@ const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
 const organizerOperations = readFileSync('supabase/migrations/20260701000002_organizer_operations_and_manual_tickets.sql', 'utf8');
 const manualTicketFunction = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
 const ticketVault = readFileSync('src/components/TicketVault.jsx', 'utf8');
+const legacyTicketCompatibility = readFileSync('supabase/migrations/20260701000003_legacy_ticket_type_compatibility.sql', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -55,6 +57,19 @@ test('checkout de pago conserva límites y referencias firmadas', () => {
   assert.match(createPayment, /checkout pendiente/);
   assert.match(createPayment, /sha256hex\(`\$\{reference\}\$\{amount_in_cents\}COP\$\{INTEGRITY_KEY\}`\)/);
   assert.doesNotMatch(createPayment, /detail: txErr\.message/);
+});
+
+test('checkout conserva compatibilidad GA y muestra el error real del servidor', async () => {
+  assert.match(createPayment, /\['ga', 'general admission'\]/);
+  assert.match(legacyTicketCompatibility, /lower\(v_type_name\) IN \('ga', 'general admission'\)/);
+  const message = await getFunctionErrorMessage({
+    message: 'Edge Function returned a non-2xx status code',
+    context: new Response(JSON.stringify({ error: 'Tipo de entrada no disponible' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  });
+  assert.equal(message, 'Tipo de entrada no disponible');
 });
 
 test('tipos de entrada conservan precio, cupo e inventario independientes', () => {

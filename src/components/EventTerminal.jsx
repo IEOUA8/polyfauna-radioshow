@@ -10,6 +10,7 @@ import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates
 import { useToast } from '@/components/ui/use-toast';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
+import { getFunctionErrorMessage } from '@/lib/functionErrors';
 
 // Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
 // Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
@@ -134,7 +135,7 @@ function BuyModal({ event, onClose }) {
         const { data, error } = await supabase.functions.invoke('create-payment', {
           body: { event_id: event.id, ticket_type: selectedTicket.name, quantity, assigned_emails: emails },
         });
-        if (error) throw new Error(error.message || 'Error al crear el pago');
+        if (error) throw new Error(await getFunctionErrorMessage(error, 'Error al crear el pago'));
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
 
         const origin = window.location.origin;

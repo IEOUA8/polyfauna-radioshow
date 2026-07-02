@@ -10,6 +10,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
+import { getFunctionErrorMessage } from '@/lib/functionErrors';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -157,7 +158,7 @@ export default function EventPublicPage() {
         const { data, error } = await supabase.functions.invoke('create-payment', {
           body: { event_id: event.id, ticket_type: selectedTicket.name, quantity: 1, assigned_emails: [] },
         });
-        if (error) throw new Error(error.message || 'Error al crear el pago');
+        if (error) throw new Error(await getFunctionErrorMessage(error, 'Error al crear el pago'));
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
 
         const origin = window.location.origin;
