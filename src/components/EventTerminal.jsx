@@ -12,6 +12,7 @@ import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getFunctionErrorMessage } from '@/lib/functionErrors';
 import { claimFreeTicket } from '@/lib/freeTickets';
+import { loadTicketIdentity } from '@/lib/ticketIdentity';
 
 // Offset del player según pantalla: móvil (< lg) tiene BottomNav (56px) + player a bottom-14 (56px) + h-[82px] = 138px
 // Escritorio: player a bottom-4 (16px) + h-[82px] = 98px
@@ -71,6 +72,8 @@ function BuyModal({ event, onClose }) {
   const [wompiRef, setWompiRef] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [assignedEmails, setAssignedEmails] = useState({ 2: '', 3: '', 4: '' });
+  const [identity, setIdentity] = useState({ fullName: '', documentNumber: '' });
+  const [loadingIdentity, setLoadingIdentity] = useState(false);
   const ticketTypes = useMemo(() => getTicketTypes(event), [event]);
   const [selectedType, setSelectedType] = useState(() => ticketTypes[0]?.name || 'General');
   const selectedTicket = ticketTypes.find(ticket => ticket.name === selectedType) || ticketTypes[0];
@@ -81,6 +84,21 @@ function BuyModal({ event, onClose }) {
   const isSoldOut = availableLeft <= 0;
   const isBusy = status === 'buying' || status === 'processing';
   const totalPrice = selectedTicket.price * quantity;
+
+  useEffect(() => {
+    if (!currentUser?.id || !isFree) return;
+    let active = true;
+    setLoadingIdentity(true);
+    loadTicketIdentity(currentUser.id)
+      .then(data => {
+        if (active) setIdentity(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoadingIdentity(false);
+      });
+    return () => { active = false; };
+  }, [currentUser?.id, isFree]);
 
   useEffect(() => {
     trackUsageEvent('event_view', {
@@ -111,6 +129,9 @@ function BuyModal({ event, onClose }) {
         const data = await claimFreeTicket({
           eventId: event.id,
           ticketType: selectedTicket.name,
+          userId: currentUser.id,
+          fullName: identity.fullName,
+          documentNumber: identity.documentNumber,
         });
         setTicketNumber(data.ticket_number);
         setStatus('success');
@@ -326,6 +347,48 @@ function BuyModal({ event, onClose }) {
                 </p>
               )}
 
+              {/* ── Identidad para entrada gratuita ── */}
+              {!isSoldOut && currentUser && isFree && (
+                <div className="space-y-3 rounded-xl p-4"
+                  style={{ background: 'rgba(34,197,94,0.055)', border: '1px solid rgba(34,197,94,0.16)' }}>
+                  <div>
+                    <p className="text-xs font-black text-white">Identificación del asistente</p>
+                    <p className="text-[10px] leading-relaxed mt-1" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                      Estos datos quedarán asociados al ticket y se compararán con tu cédula física en la entrada.
+                    </p>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2.5">
+                    <label className="space-y-1.5">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Nombre completo</span>
+                      <input
+                        type="text"
+                        autoComplete="name"
+                        value={identity.fullName}
+                        onChange={e => setIdentity(current => ({ ...current, fullName: e.target.value }))}
+                        placeholder="Nombre y apellido"
+                        disabled={isBusy || loadingIdentity}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 disabled:opacity-50"
+                        style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      />
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Número de cédula</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={identity.documentNumber}
+                        onChange={e => setIdentity(current => ({ ...current, documentNumber: e.target.value.replace(/\D/g, '') }))}
+                        placeholder="Ej. 1023456789"
+                        disabled={isBusy || loadingIdentity}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 disabled:opacity-50"
+                        style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* ── Selector de cantidad ── */}
               {!isSoldOut && currentUser && !isFree && (
                 <div>
@@ -418,7 +481,8 @@ function BuyModal({ event, onClose }) {
                   Entradas agotadas
                 </button>
               ) : (
-                <button type="button" onClick={handleConfirm} disabled={isBusy}
+                <button type="button" onClick={handleConfirm}
+                  disabled={isBusy || (isFree && (loadingIdentity || !identity.fullName.trim() || !identity.documentNumber.trim()))}
                   className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60"
                   style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
                   {isBusy

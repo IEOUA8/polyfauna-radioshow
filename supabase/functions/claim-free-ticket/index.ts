@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
     if (!identity?.full_name || !identity?.document_number) {
-      return json({ error: 'Completa tu nombre y documento en el Control Center antes de adquirir tickets' }, 400);
+      return json({ error: 'Ingresa tu nombre completo y número de cédula antes de confirmar la entrada' }, 400);
     }
 
     const { eventId, ticketType } = await req.json();

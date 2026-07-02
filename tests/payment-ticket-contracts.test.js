@@ -37,6 +37,7 @@ const signupPage = readFileSync('src/pages/SignupPage.jsx', 'utf8');
 const eventManager = readFileSync('src/components/admin/EventManager.jsx', 'utf8');
 const sidebar = readFileSync('src/components/Sidebar.jsx', 'utf8');
 const mobileMenu = readFileSync('src/components/MobileMenu.jsx', 'utf8');
+const ticketIdentity = readFileSync('src/lib/ticketIdentity.js', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -115,6 +116,14 @@ test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', (
   assert.match(eventPublicPage, /claimFreeTicket\(\{/);
   assert.match(eventTerminal, /!isFree/);
   assert.match(claimFreeTicketFunction, /Las cortesías solo pueden ser emitidas por el organizador/);
+  assert.match(freeTicketsClient, /saveTicketIdentity/);
+  assert.match(ticketIdentity, /from\('user_identity'\)/);
+  assert.match(ticketIdentity, /document_type: 'CC'/);
+  assert.match(eventTerminal, /Identificación del asistente/);
+  assert.match(eventTerminal, /Número de cédula/);
+  assert.match(eventPublicPage, /Identificación del asistente/);
+  assert.match(eventPublicPage, /Número de cédula/);
+  assert.match(claimFreeTicketFunction, /Ingresa tu nombre completo y número de cédula/);
 });
 
 test('colectivos, cortesías e identidad usan permisos y superficies restringidas', () => {
