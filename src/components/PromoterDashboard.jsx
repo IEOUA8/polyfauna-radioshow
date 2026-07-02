@@ -108,8 +108,23 @@ function CreateEventModal({ onClose, onCreated }) {
   };
 
   return (
-    <FormModal title="Crear Evento" subtitle="Completa los datos y configura uno o varios tipos de entrada" onClose={onClose} maxWidth="max-w-2xl">
-      <form onSubmit={handleCreate} className="space-y-4">
+    <FormModal
+      title="Crear Evento"
+      subtitle="Completa los datos y configura uno o varios tipos de entrada"
+      onClose={onClose}
+      maxWidth="max-w-2xl"
+      footer={(
+        <FSubmit
+          form="create-event-form"
+          loading={saving}
+          disabled={!form.title || !form.date || !ticketTypesValid}
+        >
+          <Plus className="w-4 h-4" />
+          {saving ? 'Publicando…' : 'Publicar Evento'}
+        </FSubmit>
+      )}
+    >
+      <form id="create-event-form" onSubmit={handleCreate} className="space-y-4">
         <FImageZone
           file={coverFile}
           onFile={setCoverFile}
@@ -200,10 +215,6 @@ function CreateEventModal({ onClose, onCreated }) {
           <FField label="Descripción" span={2}>
             <FTextarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe el evento, artistas, rooms…" rows={3} />
           </FField>
-          <FSubmit loading={saving} disabled={!form.title || !form.date || !ticketTypesValid}>
-            <Plus className="w-4 h-4" />
-            {saving ? 'Publicando…' : 'Publicar Evento'}
-          </FSubmit>
         </div>
       </form>
     </FormModal>

@@ -1,8 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageIcon, Loader2, X } from 'lucide-react';
-
-const PLAYER_H = 98;
 
 /* ── Tokens glassmorphism — dark botanical ── */
 const glass = {
@@ -180,11 +179,12 @@ export function FImageZone({ file, onFile, previewUrl, label = 'Subir portada', 
   );
 }
 
-export function FSubmit({ children, loading, disabled }) {
+export function FSubmit({ children, loading, disabled, ...rest }) {
   return (
     <button
       type="submit"
       disabled={disabled || loading}
+      {...rest}
       className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 col-span-2 transition-all duration-200"
       style={{
         background: disabled || loading
@@ -203,16 +203,17 @@ export function FSubmit({ children, loading, disabled }) {
 }
 
 /* ── Modal contenedor ── */
-export default function FormModal({ title, subtitle, onClose, children, maxWidth = 'max-w-xl', closeable = true }) {
-  return (
+export default function FormModal({ title, subtitle, onClose, children, footer, maxWidth = 'max-w-xl', closeable = true }) {
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-6"
-        style={{ paddingBottom: PLAYER_H }}
+        className="fixed inset-0 z-[200] flex items-start justify-center px-3 sm:px-4 pt-3 sm:pt-6 pb-[calc(160px+env(safe-area-inset-bottom,0px))] lg:pb-[108px]"
       >
         {/* Backdrop */}
         <motion.div
@@ -234,11 +235,8 @@ export default function FormModal({ title, subtitle, onClose, children, maxWidth
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-          className={`relative w-full ${maxWidth} rounded-3xl flex flex-col`}
-          style={{
-            ...glass.panel,
-            maxHeight: `calc(100vh - ${PLAYER_H + 32}px)`,
-          }}
+          className={`relative w-full ${maxWidth} max-h-full rounded-3xl flex flex-col overflow-hidden`}
+          style={glass.panel}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Línea superior de brillo */}
@@ -270,15 +268,29 @@ export default function FormModal({ title, subtitle, onClose, children, maxWidth
           </div>
 
           {/* Body scrollable */}
-          <div className="overflow-y-auto flex-1 px-6 py-5">
+          <div className="overflow-y-auto overscroll-contain flex-1 min-h-0 px-4 sm:px-6 py-5">
             {children}
           </div>
+
+          {footer && (
+            <div
+              className="relative z-10 shrink-0 px-4 sm:px-6 py-4 rounded-b-3xl"
+              style={{
+                background: 'rgba(9,15,14,0.94)',
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 -12px 28px rgba(0,0,0,0.22)',
+              }}
+            >
+              {footer}
+            </div>
+          )}
 
           {/* Línea inferior de sombra interior */}
           <div className="absolute bottom-0 left-0 right-0 h-16 rounded-b-3xl pointer-events-none"
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)' }} />
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -23,6 +23,7 @@ const legacyTicketCompatibility = readFileSync('supabase/migrations/202607010000
 const roleRequestDelivery = readFileSync('supabase/migrations/20260701000004_role_request_delivery.sql', 'utf8');
 const sendRoleRequest = readFileSync('supabase/functions/send-role-request/index.ts', 'utf8');
 const authContext = readFileSync('src/contexts/AuthContext.jsx', 'utf8');
+const formModal = readFileSync('src/components/ui/FormModal.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -124,6 +125,15 @@ test('portadas de eventos y pagos pendientes tienen estados recuperables', () =>
   assert.match(promoterDashboard, /events\/\$\{currentUser\.id\}\/\$\{crypto\.randomUUID\(\)\}/);
   assert.match(promoterDashboard, /No se pudo subir la portada/);
   assert.match(ticketVault, /Wompi aún no confirma el pago/);
+});
+
+test('modal de eventos mantiene la acción visible sobre el reproductor', () => {
+  assert.match(formModal, /createPortal\(/);
+  assert.match(formModal, /z-\[200\]/);
+  assert.match(formModal, /pb-\[calc\(160px\+env\(safe-area-inset-bottom,0px\)\)\]/);
+  assert.match(formModal, /footer &&/);
+  assert.match(promoterDashboard, /form="create-event-form"/);
+  assert.match(promoterDashboard, /id="create-event-form"/);
 });
 
 test('sincronización offline conserva autorización, idempotencia y auditoría', () => {
