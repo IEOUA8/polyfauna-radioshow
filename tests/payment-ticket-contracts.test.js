@@ -20,6 +20,9 @@ const organizerOperations = readFileSync('supabase/migrations/20260701000002_org
 const manualTicketFunction = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
 const ticketVault = readFileSync('src/components/TicketVault.jsx', 'utf8');
 const legacyTicketCompatibility = readFileSync('supabase/migrations/20260701000003_legacy_ticket_type_compatibility.sql', 'utf8');
+const roleRequestDelivery = readFileSync('supabase/migrations/20260701000004_role_request_delivery.sql', 'utf8');
+const sendRoleRequest = readFileSync('supabase/functions/send-role-request/index.ts', 'utf8');
+const authContext = readFileSync('src/contexts/AuthContext.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -89,6 +92,14 @@ test('solicitudes profesionales llegan al Control Center del admin', () => {
   assert.match(roleAndTicketTiers, /requested_role IN \('artist', 'promoter', 'club', 'sello'\)/);
   assert.match(roleAndTicketTiers, /INSERT INTO public\.role_requests/);
   assert.match(roleAndTicketTiers, /source', 'migration_recovery'/);
+  assert.match(roleRequestDelivery, /role_requests_user_profile_fkey/);
+  assert.match(roleRequestDelivery, /REFERENCES public\.profiles\(id\)/);
+  assert.match(roleRequestDelivery, /NOTIFY pgrst, 'reload schema'/);
+  assert.match(authContext, /body: \{ userId: data\.user\.id, email \}/);
+  assert.match(sendRoleRequest, /requestAge > 30 \* 60 \* 1000/);
+  assert.match(sendRoleRequest, /applicant\.email\.trim\(\)\.toLowerCase\(\) !== email\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(sendRoleRequest, /SUPPORT_EMAIL/);
+  assert.match(sendRoleRequest, /notification_sent_at: claimedAt/);
   assert.match(roleRequestsPanel, /admin-role-requests/);
   assert.match(roleRequestsPanel, /postgres_changes/);
   assert.match(controlCenter, /<RoleRequestsPanel \/>/);

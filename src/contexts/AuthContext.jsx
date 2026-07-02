@@ -162,18 +162,18 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
 
       // The database trigger creates the request even when email confirmation
-      // means Supabase has not issued a session yet.
-      if (role !== 'citizen' && data?.session) {
-        const { data: roleRequest } = await supabase
-          .from('role_requests')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .eq('status', 'pending')
-          .maybeSingle();
-        if (roleRequest?.id) {
-          supabase.functions.invoke('send-role-request', {
-            body: { requestId: roleRequest.id },
-          }).catch(() => {});
+      // means Supabase has not issued a session yet. The function verifies the
+      // fresh signup against the auth user before sending either notification.
+      if (role !== 'citizen' && data?.user?.id) {
+        const { error: notificationError } = await supabase.functions.invoke('send-role-request', {
+          body: { userId: data.user.id, email },
+        });
+        if (notificationError) {
+          console.error('Role request notification could not be sent:', notificationError);
+          toast({
+            title: 'Solicitud registrada',
+            description: 'La notificación será reintentada cuando inicies sesión.',
+          });
         }
       }
 
