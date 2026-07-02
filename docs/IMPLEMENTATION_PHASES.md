@@ -721,3 +721,84 @@ Resultado:
 - Definir umbrales y alertas externas para errores de checkout o caidas de conversion.
 - Activar leaked password protection desde Supabase Auth.
 - Ejecutar la prueba controlada completa de compra, correo, QR y devolucion.
+
+## Fase 7.8 - Auditoria y mejoras de rendimiento
+
+Fecha: 2026-07-02
+
+### Objetivo
+
+Revisar el proyecto completo en busca de cuellos de botella de carga y renderizado, y corregir los de mayor impacto con menor riesgo primero.
+
+### Implementacion
+
+- Animaciones CSS (`@keyframes`) en lugar de un `motion.div` de framer-motion por barra en `HoloSpectrum.jsx` (usado en Sidebar, GlobalPlayer y RadioConsolePage, montado casi toda la sesion) y en `MiniSignalBars` (GlobalPlayer). Elimina el costo de JS/rAF continuo mientras suena la radio.
+- Correccion de bug real en `AdminDashboard.jsx` (`DashboardSection`): hacia 2 consultas extra de `user_tickets` fuera del `Promise.all` y sin filtrar por `ownerId`, por lo que el dashboard de un promotor mostraba ingresos y total de tickets de toda la plataforma, no solo los suyos. Se unifico en una sola consulta `events!inner(price, owner_id)` escopeada, dentro del mismo `Promise.all`.
+- `.limit()` agregado a consultas sin limite: `SignalInbox.jsx` (mensajes enviados/recibidos), `BlogInterviewsSection.jsx` e `InterviewsSection.jsx` (articulos/entrevistas).
+- `loading="lazy"` en imagenes fuera del viewport inicial (`ArtistsPage.jsx`, `RightPanel.jsx`, `EventTerminal.jsx`), dejando eager solo las que son LCP real (hero de detalle de artista/podcast).
+- `EventCard` (grilla de `EventTerminal.jsx`) extraido como componente memoizado (`React.memo`) para que el auto-avance del banner destacado (cada 8s) no vuelva a renderizar toda la grilla de eventos. Para que la memoizacion funcione, `useFavorites.js` y `useLikes.js` ahora envuelven `isFav`/`isLiked`/`toggle` en `useCallback` (antes eran funciones nuevas en cada render, lo que invalidaba cualquier memoizacion rio abajo).
+- Codigo muerto eliminado: `Hero.jsx`, `CarouselBanner.jsx`, `NextEvent.jsx`, `Events.jsx`, `Podcasts.jsx`, `src/components/HomePage.jsx` y `src/pages/HomePage.jsx` no estaban enrutados en `App.jsx` ni importados por nada alcanzable; no aparecian en el build de produccion.
+
+### Verificacion
+
+```bash
+npm run verify
+npm run audit:ci
+```
+
+Resultado:
+
+- Suite automatizada: 78 pruebas OK.
+- Performance budget (medido con `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` reales; sin esas variables el bundler elimina `@supabase/supabase-js` del bundle por deteccion de codigo inalcanzable y el numero de JS inicial queda artificialmente bajo, ojo con esto en builds locales sin `.env`):
+  - JS inicial gzip: 160.4 KiB / 190 KiB.
+  - CSS inicial gzip: 17.8 KiB / 30 KiB.
+  - Chunk lazy mayor gzip: 125.7 KiB / 260 KiB.
+  - JS total gzip: 683.2 KiB / 720 KiB.
+- `npm run audit:ci`: 0 vulnerabilidades altas.
+
+### Pendientes para Fase 7.9
+
+- `React.memo` para las listas de `PodcastsPage.jsx` (vista lista y cuadricula), siguiendo el mismo patron aplicado a `EventTerminal.jsx`.
+- Reemplazar el patron "refetch de tabla completa tras cada mutacion" por actualizacion de estado local optimista en los managers admin (`ArtistManager.jsx`, `InterviewManager.jsx`, `EventManager.jsx`, etc.).
+- Revisar si `framer-motion` es realmente necesario en componentes siempre montados (`TopBar`, `Sidebar`, `BottomNav`).
+
+## Fase 7.9 - Cortesias a correos sin cuenta PolyFauna
+
+Fecha: 2026-07-02
+
+### Objetivo
+
+Permitir que el panel operativo emita cortesias a un correo que todavia no tiene cuenta en PolyFauna, sin bloquear la emision ni perder el cupo, y activar el ticket automaticamente cuando esa persona se registre con el mismo correo.
+
+### Implementacion
+
+- Migracion `supabase/migrations/20260702231304_courtesy_ticket_unregistered_recipients.sql`:
+  - `issue_courtesy_ticket`: si el correo no tiene cuenta, crea un `user_tickets` con `user_id NULL`, `assigned_email` y `status = 'pending_registration'` (antes lanzaba `user_not_found` y bloqueaba la emision). Sigue exigiendo identidad (nombre/documento) solo para correos ya registrados. Evita doble emision al mismo correo pendiente.
+  - `validate_ticket`: rechaza el escaneo de tickets `pending_registration` con mensaje explicito indicando que el destinatario debe crear su cuenta con ese correo.
+  - `handle_new_user`: al registrarse, reclama automaticamente cualquier ticket `pending_registration` cuyo `assigned_email` coincida con el correo nuevo (asigna `user_id`, pasa `status` a `valid`).
+  - `get_event_attendees`: muestra `assigned_email` como correo del asistente cuando el ticket todavia no tiene usuario vinculado.
+- Edge function `issue-courtesy-ticket`: rama nueva para tickets pendientes que evita `getUserById` y el push (no hay cuenta todavia) y envia la plantilla `courtesyPendingActivation` con boton de registro (`/signup?email=...`).
+- Plantilla de correo nueva `courtesyPendingActivation` (mismo sistema visual que `ticketPurchased`, registrada en `tools/import-email-templates.js` y `email-templates.generated.ts`), con el mismo QR firmado que ya trae el ticket y explicacion de activacion pendiente.
+- `SignupPage.jsx` prellena el correo desde el parametro `?email=` del enlace de invitacion.
+- `offlineTicketRules.js`: nueva rama `PENDING_REGISTRATION` para el escaner sin conexion (antes caia en el mensaje generico `INVALID_STATUS`).
+- `EventManager.jsx`: la lista de asistentes muestra una insignia morada "PENDIENTE" para estos tickets (antes se mostraban incorrectamente como "VALIDO", ya que el badge solo distinguia el estado `used` de cualquier otro).
+- `AdminDashboard.jsx` (`CourtesyTicketModal`): copy actualizado indicando que los correos sin cuenta tambien reciben el QR, y toast distinto cuando la cortesia queda pendiente de activacion.
+
+### Verificacion
+
+```bash
+npm run verify
+npm run audit:ci
+```
+
+Resultado:
+
+- Suite automatizada: 78 pruebas OK (11 nuevas en `tests/courtesy-unregistered-recipients.test.js`).
+- Migracion aplicada al proyecto Supabase enlazado.
+- Edge Function `issue-courtesy-ticket` desplegada al proyecto Supabase enlazado.
+- `npm run audit:ci`: 0 vulnerabilidades altas.
+
+### Pendientes para Fase 7.10
+
+- Notificacion dentro de la plataforma (no solo por correo) cuando una cortesia pendiente se activa al registrarse.
+- Prueba controlada end-to-end: emitir cortesia a un correo sin cuenta, confirmar recepcion del correo, registrarse con ese correo, confirmar que el ticket aparece activo en Ticket Vault y que el QR valida correctamente en puerta.

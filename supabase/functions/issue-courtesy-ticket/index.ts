@@ -47,7 +47,6 @@ Deno.serve(async (req) => {
       const knownErrors: Record<string, string> = {
         event_not_found: 'Evento no encontrado',
         not_authorized: 'No tienes permiso para emitir cortesías de este evento',
-        user_not_found: 'El correo no pertenece a una cuenta PolyFauna',
         identity_required: 'El usuario debe completar nombre y documento en su perfil antes de recibir la cortesía',
         courtesy_not_configured: 'Este evento no tiene cupos de cortesía configurados',
         courtesy_sold_out: 'Se agotaron las cortesías disponibles',
@@ -56,6 +55,8 @@ Deno.serve(async (req) => {
       const message = error?.message || 'No fue posible emitir la cortesía';
       return json({ error: knownErrors[message] || message }, 400);
     }
+
+    const isPending = Boolean(ticket.pending);
 
     let emailSent = false;
     let pushSent = false;
@@ -73,6 +74,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         alreadyProcessed: true,
+        pending: isPending,
         ticketNumber: ticket.ticket_number,
         emailSent: true,
         pushSent: true,
@@ -81,13 +83,10 @@ Deno.serve(async (req) => {
     }
 
     try {
-      const { data: { user: ticketUser } } = await admin.auth.admin.getUserById(ticket.user_id);
-      const { data: identity } = await admin
-        .from('user_identity')
-        .select('full_name')
-        .eq('user_id', ticket.user_id)
-        .maybeSingle();
-      if (!ticketUser?.email) throw new Error('El usuario no tiene correo disponible');
+      const recipientEmail = isPending
+        ? ticket.recipient_email
+        : (await admin.auth.admin.getUserById(ticket.user_id)).data.user?.email;
+      if (!recipientEmail) throw new Error('El destinatario no tiene correo disponible');
 
       const qrPayload = await signTicketToken(ticket.ticket_id, eventId, ticket.event_date);
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
@@ -98,29 +97,52 @@ Deno.serve(async (req) => {
           })
         : '';
 
-      const html = renderEmailTemplate('ticketPurchased', {
-        user_name: identity?.full_name || ticketUser.email.split('@')[0],
-        event_name: ticket.event_title,
-        event_date: formattedDate,
-        event_venue: ticket.event_city || 'Por confirmar',
-        ticket_type: 'Cortesía',
-        ticket_id: ticket.ticket_number,
-        qr_url: publicEmailUrl(qrDataUrl),
-        ticket_url: `${appUrl}/?section=tickets`,
-      });
+      let html: string;
+      if (isPending) {
+        html = renderEmailTemplate('courtesyPendingActivation', {
+          event_name: ticket.event_title,
+          event_date: formattedDate,
+          event_venue: ticket.event_city || 'Por confirmar',
+          ticket_id: ticket.ticket_number,
+          qr_url: publicEmailUrl(qrDataUrl),
+          recipient_email: recipientEmail,
+          signup_url: `${appUrl}/signup?email=${encodeURIComponent(recipientEmail)}`,
+        });
+      } else {
+        const { data: identity } = await admin
+          .from('user_identity')
+          .select('full_name')
+          .eq('user_id', ticket.user_id)
+          .maybeSingle();
+
+        html = renderEmailTemplate('ticketPurchased', {
+          user_name: identity?.full_name || recipientEmail.split('@')[0],
+          event_name: ticket.event_title,
+          event_date: formattedDate,
+          event_venue: ticket.event_city || 'Por confirmar',
+          ticket_type: 'Cortesía',
+          ticket_id: ticket.ticket_number,
+          qr_url: publicEmailUrl(qrDataUrl),
+          ticket_url: `${appUrl}/?section=tickets`,
+        });
+      }
 
       await sendEmail({
-        to: ticketUser.email,
-        subject: `Cortesía confirmada · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`,
+        to: recipientEmail,
+        subject: isPending
+          ? `Cortesía pendiente de activación · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`
+          : `Cortesía confirmada · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`,
         html,
       });
       emailSent = true;
 
-      try {
-        await sendPush(ticket.user_id, ticket.event_title);
-        pushSent = true;
-      } catch (pushError) {
-        notificationWarning = pushError instanceof Error ? pushError.message : 'Push no disponible';
+      if (!isPending) {
+        try {
+          await sendPush(ticket.user_id, ticket.event_title);
+          pushSent = true;
+        } catch (pushError) {
+          notificationWarning = pushError instanceof Error ? pushError.message : 'Push no disponible';
+        }
       }
     } catch (notificationError) {
       notificationWarning = notificationError instanceof Error
@@ -136,6 +158,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       alreadyProcessed: ticket.already_processed,
+      pending: isPending,
       ticketNumber: ticket.ticket_number,
       emailSent,
       pushSent,

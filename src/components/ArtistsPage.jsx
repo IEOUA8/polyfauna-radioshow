@@ -308,7 +308,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
                     >
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center shrink-0">
                         {track.albums?.cover_url
-                          ? <img src={track.albums.cover_url} alt="" className="w-full h-full object-cover" />
+                          ? <img src={track.albums.cover_url} alt="" loading="lazy" className="w-full h-full object-cover" />
                           : <Music className="w-4 h-4 text-white/45" />
                         }
                       </div>
@@ -344,7 +344,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
                       style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
                     >
                       <div className="aspect-square bg-white/5 overflow-hidden">
-                        <img src={album.cover_url || img} alt={album.title} className="w-full h-full object-cover" />
+                        <img src={album.cover_url || img} alt={album.title} loading="lazy" className="w-full h-full object-cover" />
                       </div>
                       <div className="p-3">
                         <p className="text-sm font-bold text-white truncate">{album.title}</p>
@@ -373,7 +373,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
                       style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
                     >
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                        <img src={podcast.cover_url || img} alt="" className="w-full h-full object-cover" />
+                        <img src={podcast.cover_url || img} alt="" loading="lazy" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-white truncate">{podcast.title}</p>
@@ -402,7 +402,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
                       style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
                     >
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                        <img src={event.image_url || img} alt="" className="w-full h-full object-cover" />
+                        <img src={event.image_url || img} alt="" loading="lazy" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-white truncate">{event.title}</p>

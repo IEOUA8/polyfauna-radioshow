@@ -20,9 +20,12 @@ export function useFavorites() {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const isFav = (type, id) => favorites.some(f => f.item_type === type && f.item_id === id);
+  const isFav = useCallback(
+    (type, id) => favorites.some(f => f.item_type === type && f.item_id === id),
+    [favorites]
+  );
 
-  const toggle = async (type, id) => {
+  const toggle = useCallback(async (type, id) => {
     if (!currentUser) return;
     if (isFav(type, id)) {
       await supabase.from('user_favorites')
@@ -37,7 +40,7 @@ export function useFavorites() {
         .select().single();
       if (data) setFavorites(prev => [...prev, data]);
     }
-  };
+  }, [currentUser, isFav]);
 
   return { favorites, loading, isFav, toggle, refetch: fetch };
 }

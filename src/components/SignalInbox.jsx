@@ -467,7 +467,7 @@ export default function SignalInbox() {
     refetch: refetchR,
   } = useSupabaseQuery(
     () => currentUser
-      ? supabase.from('messages').select('*').eq('to_user_id', currentUser.id).order('created_at', { ascending: false })
+      ? supabase.from('messages').select('*').eq('to_user_id', currentUser.id).order('created_at', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );
@@ -479,7 +479,7 @@ export default function SignalInbox() {
     refetch: refetchS,
   } = useSupabaseQuery(
     () => currentUser
-      ? supabase.from('messages').select('*').eq('from_user_id', currentUser.id).order('created_at', { ascending: false })
+      ? supabase.from('messages').select('*').eq('from_user_id', currentUser.id).order('created_at', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );

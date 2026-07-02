@@ -190,6 +190,30 @@ Cierre:
 - `payouts.status = completed` o `rejected`.
 - Wallet refleja saldo disponible correcto.
 
+## Cortesia pendiente de activacion en puerta
+
+Senal:
+
+- El escaner (online u offline) rechaza un QR de cortesia con codigo `PENDING_REGISTRATION`.
+- El destinatario dice que recibio el correo de cortesia pero el QR "no funciona".
+
+Contexto:
+
+- Una cortesia emitida a un correo sin cuenta PolyFauna queda con `status = 'pending_registration'` (`user_id` en NULL, `assigned_email` con el correo invitado) hasta que esa persona se registra con el mismo correo. El registro la activa solo (`handle_new_user` la reclama automaticamente).
+
+Pasos:
+
+1. Confirmar con el asistente el correo exacto al que le llego la cortesia.
+2. Pedirle que revise si ya tiene cuenta PolyFauna con ese correo exacto; si no, que se registre ahi mismo (el enlace del correo prellena el campo).
+3. Una vez registrado, el ticket pasa a `valid` automaticamente: pedirle que reabra el Ticket Vault o vuelva a mostrar el mismo QR del correo (es el mismo token firmado, no cambia).
+4. Si insiste en que ya tiene cuenta con ese correo y el ticket sigue pendiente, revisar en `user_tickets` que `assigned_email` coincida exactamente (mayusculas/espacios) con el email en `auth.users`.
+5. No emitir una segunda cortesia manual sin antes confirmar que la primera sigue pendiente (ver `admin_audit_log`, accion `ticket.courtesy`).
+
+Cierre:
+
+- El ticket queda `valid` y el asistente puede validarlo en puerta.
+- Si el problema fue un correo mal escrito al emitir la cortesia, se corrige manualmente y se le avisa al asistente.
+
 ## Conflictos de validacion offline
 
 Senal:

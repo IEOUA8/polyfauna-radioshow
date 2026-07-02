@@ -7,6 +7,9 @@ export function evaluateOfflineTicket({ verified, eventId, pack, locallyUsed }) 
   const ticket = pack.tickets?.find(item => item.id === verified.payload.tid);
   if (!ticket) return { code: 'NOT_FOUND', error: 'El ticket no aparece en el paquete descargado' };
   if (ticket.status === 'used') return { code: 'ALREADY_USED', error: 'El ticket ya estaba usado al descargar el paquete', ...ticket };
+  if (ticket.status === 'pending_registration') {
+    return { code: 'PENDING_REGISTRATION', error: 'Cortesía pendiente: el destinatario debe crear su cuenta en Polyfauna antes de poder validar este QR', ...ticket };
+  }
   if (ticket.status !== 'valid') return { code: 'INVALID_STATUS', error: `Ticket no vigente: ${ticket.status}`, ...ticket };
   if (locallyUsed) return { code: 'ALREADY_USED', error: 'Ticket ya escaneado en este dispositivo', ...ticket };
 

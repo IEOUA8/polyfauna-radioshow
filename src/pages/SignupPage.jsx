@@ -328,7 +328,7 @@ const SignupPage = () => {
   const { currentUser, signup } = useAuth();
   const [step, setStep] = useState('role');   // 'role' | 'details' | 'pending'
   const [selectedRole, setSelectedRole] = useState('citizen');
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [formData, setFormData] = useState({ name: '', email: searchParams.get('email') || '', password: '', confirmPassword: '' });
   const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const requestedNext = searchParams.get('next');

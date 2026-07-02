@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Building, Calendar, CheckCircle, ChevronLeft, ChevronRight, ExternalLink, Loader2, MapPin, Search, Share2, Star, Ticket, Users, X } from 'lucide-react';
@@ -235,7 +235,7 @@ function BuyModal({ event, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="relative h-36 shrink-0 overflow-hidden">
-          <img src={event.image_url || FALLBACK_IMG} onError={useFallbackImage} alt={event.title} className="w-full h-full object-cover" />
+          <img src={event.image_url || FALLBACK_IMG} onError={useFallbackImage} alt={event.title} loading="lazy" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
           <button
             type="button" onClick={onClose}
@@ -516,6 +516,78 @@ function BuyModal({ event, onClose }) {
   );
 }
 
+/* ── Event grid card (memoizado: la carga automática del banner destacado cada
+   8s no debe re-renderizar toda la grilla de eventos) ── */
+const EventCard = React.memo(function EventCard({ event, index, isFavorite, onToggleFavorite, onSelect, onBuy }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.07 }}
+      className="rounded-xl overflow-hidden border flex flex-col cursor-pointer group"
+      style={{ background: 'rgba(11, 16, 15, 0.90)', borderColor: 'rgba(255,255,255,0.07)' }}
+      onClick={() => onSelect(event)}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,138,31,0.25)')}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
+    >
+      <div className="relative aspect-video overflow-hidden">
+        <img
+          src={event.image_url || FALLBACK_IMG}
+          onError={useFallbackImage}
+          alt={event.title}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <button
+          type="button"
+          onClick={(e) => onToggleFavorite(e, event.id)}
+          className="absolute top-2 right-2 p-1.5 rounded-full transition-colors"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+        >
+          <Star
+            className="w-4 h-4 transition-colors"
+            style={{
+              fill: isFavorite ? '#F59E0B' : 'none',
+              color: isFavorite ? '#F59E0B' : 'rgba(255,255,255,0.6)',
+            }}
+          />
+        </button>
+      </div>
+
+      <div className="p-3 flex flex-col gap-2 flex-1">
+        <p className="text-sm font-bold text-white leading-tight">{event.title}</p>
+        <div className="space-y-1 text-xs text-white/50">
+          {event.date && (
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3 h-3 shrink-0" />
+              {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          )}
+          {(event.venue || event.city) && (
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 shrink-0" />
+              {[event.venue, event.city].filter(Boolean).join(', ')}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-auto pt-2">
+          <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            {formatPrice(event.price)}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onBuy(event); }}
+            className="btn-cta text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200"
+          >
+            Comprar
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 /* ── Event detail page ── */
 function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], setCurrentSection }) {
   const [linkCopied, setLinkCopied] = React.useState(false);
@@ -760,10 +832,10 @@ export default function EventTerminal({ setCurrentSection }) {
     if (inList) setSelectedEvent(inList);
   }, [events]);
 
-  const toggleFavorite = (e, id) => {
+  const toggleFavorite = useCallback((e, id) => {
     e.stopPropagation();
     toggleFav('event', id);
-  };
+  }, [toggleFav]);
 
   const handlePrevFeatured = (e) => {
     e.stopPropagation();
@@ -1011,71 +1083,15 @@ export default function EventTerminal({ setCurrentSection }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 {filteredEvents.map((event, i) => (
-                  <motion.div
+                  <EventCard
                     key={event.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.07 }}
-                    className="rounded-xl overflow-hidden border flex flex-col cursor-pointer group"
-                    style={{ background: 'rgba(11, 16, 15, 0.90)', borderColor: 'rgba(255,255,255,0.07)' }}
-                    onClick={() => setSelectedEvent(event)}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,138,31,0.25)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
-                  >
-                    <div className="relative aspect-video overflow-hidden">
-                      <img
-                        src={event.image_url || FALLBACK_IMG}
-                        onError={useFallbackImage}
-                        alt={event.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      <button
-                        type="button"
-                        onClick={(e) => toggleFavorite(e, event.id)}
-                        className="absolute top-2 right-2 p-1.5 rounded-full transition-colors"
-                        style={{ background: 'rgba(0,0,0,0.5)' }}
-                      >
-                        <Star
-                          className="w-4 h-4 transition-colors"
-                          style={{
-                            fill: isFav('event', event.id) ? '#F59E0B' : 'none',
-                            color: isFav('event', event.id) ? '#F59E0B' : 'rgba(255,255,255,0.6)',
-                          }}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="p-3 flex flex-col gap-2 flex-1">
-                      <p className="text-sm font-bold text-white leading-tight">{event.title}</p>
-                      <div className="space-y-1 text-xs text-white/50">
-                        {event.date && (
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3 shrink-0" />
-                            {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </div>
-                        )}
-                        {(event.venue || event.city) && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3 h-3 shrink-0" />
-                            {[event.venue, event.city].filter(Boolean).join(', ')}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between mt-auto pt-2">
-                        <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                          {formatPrice(event.price)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setBuyingEvent(event); }}
-                          className="btn-cta text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200"
-                        >
-                          Comprar
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
+                    event={event}
+                    index={i}
+                    isFavorite={isFav('event', event.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onSelect={setSelectedEvent}
+                    onBuy={setBuyingEvent}
+                  />
                 ))}
               </div>
             </div>

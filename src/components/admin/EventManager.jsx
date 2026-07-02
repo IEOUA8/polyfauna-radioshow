@@ -192,10 +192,18 @@ function AttendeesModal({ event, onClose }) {
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
                           style={{
-                            background: a.ticket_status === 'used' ? 'rgba(255,255,255,0.06)' : 'rgba(34,197,94,0.1)',
-                            color: a.ticket_status === 'used' ? 'rgba(255,255,255,0.3)' : '#22c55e',
+                            background: a.ticket_status === 'used'
+                              ? 'rgba(255,255,255,0.06)'
+                              : a.ticket_status === 'pending_registration'
+                                ? 'rgba(167,139,250,0.14)'
+                                : 'rgba(34,197,94,0.1)',
+                            color: a.ticket_status === 'used'
+                              ? 'rgba(255,255,255,0.3)'
+                              : a.ticket_status === 'pending_registration'
+                                ? '#A78BFA'
+                                : '#22c55e',
                           }}>
-                          {a.ticket_status === 'used' ? 'USADO' : 'VÁLIDO'}
+                          {a.ticket_status === 'used' ? 'USADO' : a.ticket_status === 'pending_registration' ? 'PENDIENTE' : 'VÁLIDO'}
                         </span>
                         <Button
                           variant="ghost"

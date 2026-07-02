@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const N = 40;
 
@@ -17,28 +16,27 @@ const BAR_DATA = Array.from({ length: N }, (_, i) => {
   };
 });
 
+// CSS-driven (no framer-motion): esta barra vive en Sidebar y GlobalPlayer,
+// montada en casi toda la app. 40 motion.div con rAF propio por barra era
+// un costo de JS constante mientras suena la radio; @keyframes deja que el
+// navegador anime sin recalcular física de resorte en cada frame.
 export default function HoloSpectrum({ isPlaying = false, height = 80, className = '', fillWidth = false }) {
   return (
     <div className={`relative flex items-end ${className}`} style={{ height, gap: fillWidth ? '2px' : '3px' }}>
       {BAR_DATA.map((bar, i) => (
-        <motion.div
+        <div
           key={i}
           style={{
             flex: '1',
             ...(fillWidth ? {} : { maxWidth: '4px' }),
             borderRadius: '1px 1px 0 0',
             background: `rgba(255, 255, 255, ${bar.opacity})`,
-          }}
-          animate={isPlaying
-            ? { height: [`${bar.minH}%`, `${bar.maxH}%`] }
-            : { height: `${bar.minH * 0.4}%` }
-          }
-          transition={{
-            duration: bar.dur,
-            repeat: Infinity,
-            repeatType: 'reverse',
-            delay: bar.del,
-            ease: 'easeInOut',
+            height: isPlaying ? undefined : `${bar.minH * 0.4}%`,
+            '--pf-bar-min': `${bar.minH}%`,
+            '--pf-bar-max': `${bar.maxH}%`,
+            animation: isPlaying
+              ? `pf-spectrum-bar ${bar.dur}s ease-in-out ${bar.del}s infinite alternate`
+              : 'none',
           }}
         />
       ))}

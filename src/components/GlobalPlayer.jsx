@@ -32,16 +32,13 @@ function MiniSignalBars({ active }) {
   return (
     <div className="flex items-end gap-0.5 h-3.5 shrink-0" aria-hidden="true">
       {[0, 1, 2, 3].map((index) => (
-        <motion.span
+        <span
           key={index}
           className="w-0.5 rounded-full"
-          style={{ background: active ? 'rgba(236,236,236,0.72)' : 'rgba(255,255,255,0.20)' }}
-          animate={active ? { height: [4, 12, 6, 10, 4] } : { height: 4 }}
-          transition={{
-            duration: 1,
-            repeat: active ? Infinity : 0,
-            ease: 'easeInOut',
-            delay: index * 0.1,
+          style={{
+            background: active ? 'rgba(236,236,236,0.72)' : 'rgba(255,255,255,0.20)',
+            height: active ? undefined : '4px',
+            animation: active ? `pf-mini-bar 1s ease-in-out ${index * 0.1}s infinite` : 'none',
           }}
         />
       ))}

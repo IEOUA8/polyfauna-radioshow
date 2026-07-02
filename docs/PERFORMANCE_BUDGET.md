@@ -30,6 +30,10 @@ El script `tools/performance-budget.js` mide el build generado en `dist/`:
 
 Estos limites son un baseline de control, no una meta final. Si una funcionalidad importante requiere subirlos, debe venir con una nota de tradeoff y, si es posible, una compensacion en otro punto del bundle.
 
+## Cuidado con builds sin `.env`
+
+Si `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` no estan definidas al correr `npm run build` (por ejemplo, en un worktree nuevo sin `.env`), `src/lib/customSupabaseClient.js` lanza un error incondicional en la evaluacion del modulo. El bundler detecta que ese `throw` es alcanzable siempre y elimina `@supabase/supabase-js` (y todo lo que depende de el) como codigo muerto, lo que reduce artificialmente el JS inicial reportado (~91 KiB en vez de ~160 KiB medidos con credenciales reales). Antes de comparar o reportar numeros de este presupuesto, confirmar que el build corrio con un `.env` valido.
+
 ## Reglas de cuidado
 
 - PDF, scanner QR, admin y dashboards pesados deben permanecer lazy.

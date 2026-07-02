@@ -14,6 +14,7 @@ const sources = {
   ticketPurchased: join(clientRoot, 'plantillas/04-ticket-comprado.html'),
   radioSpecial: join(clientRoot, 'files 5/05-programa-radio-especial.html'),
   upcomingEvents: join(clientRoot, 'files 5/06-eventos-proximos.html'),
+  courtesyPendingActivation: join(clientRoot, 'plantillas/07-cortesia-pendiente.html'),
 };
 
 mkdirSync(templatesDir, { recursive: true });

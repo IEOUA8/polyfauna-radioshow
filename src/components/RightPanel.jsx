@@ -106,7 +106,7 @@ function NotificationsModal({ open, onClose, setCurrentSection }) {
                     <div className="relative shrink-0 mt-0.5">
                       {n.image ? (
                         <div className="w-8 h-8 rounded-lg overflow-hidden">
-                          <img src={n.image} alt="" className="w-full h-full object-cover" />
+                          <img src={n.image} alt="" loading="lazy" className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -182,7 +182,7 @@ function TicketCard({ ticket }) {
     <div className="rounded-xl overflow-hidden"
       style={{ background: 'rgba(8,14,9,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="relative h-10 overflow-hidden">
-        <img src={event?.image_url || FALLBACK_EVENT} alt={event?.title}
+        <img src={event?.image_url || FALLBACK_EVENT} alt={event?.title} loading="lazy"
           className="w-full h-full object-cover opacity-50" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-black/20" />
         <p className="absolute bottom-1.5 left-3 text-[10px] font-bold text-white truncate max-w-[65%]">
@@ -229,7 +229,7 @@ function EventRow({ event, index }) {
     >
       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
         style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-        <img src={event.image_url || FALLBACK_EVENT} alt={event.title}
+        <img src={event.image_url || FALLBACK_EVENT} alt={event.title} loading="lazy"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
       </div>
       <div className="flex-1 min-w-0">
@@ -257,7 +257,7 @@ function PodcastRow({ pod, isPlaying, onPlay }) {
   return (
     <div className="flex items-center gap-3 group">
       <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-        <img src={pod.cover_url || FALLBACK_PODCAST} alt={pod.title}
+        <img src={pod.cover_url || FALLBACK_PODCAST} alt={pod.title} loading="lazy"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
       </div>
       <div className="flex-1 min-w-0">
@@ -294,7 +294,7 @@ function ArtistAvatar({ artist, index }) {
         style={{ border: '2px solid rgba(255,255,255,0.1)', boxShadow: '0 0 0 0 rgba(129,140,248,0)' }}
         onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 0 2px rgba(129,140,248,0.5)'}
         onMouseLeave={e => e.currentTarget.style.boxShadow = '0 0 0 0 rgba(129,140,248,0)'}>
-        <img src={artist.image_url || FALLBACK_ARTIST} alt={artist.name}
+        <img src={artist.image_url || FALLBACK_ARTIST} alt={artist.name} loading="lazy"
           className="w-full h-full object-cover" />
       </div>
       <p className="text-[9px] font-semibold text-white/45 truncate max-w-[52px] text-center group-hover:text-white/70 transition-colors">

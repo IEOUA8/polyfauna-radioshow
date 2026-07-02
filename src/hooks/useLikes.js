@@ -17,9 +17,9 @@ export function useLikes() {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const isLiked = (id) => liked.includes(id);
+  const isLiked = useCallback((id) => liked.includes(id), [liked]);
 
-  const toggle = async (podcastId) => {
+  const toggle = useCallback(async (podcastId) => {
     if (!currentUser) return;
     if (isLiked(podcastId)) {
       await supabase.from('user_likes')
@@ -30,7 +30,7 @@ export function useLikes() {
         .insert({ user_id: currentUser.id, podcast_id: podcastId });
       setLiked(prev => [...prev, podcastId]);
     }
-  };
+  }, [currentUser, isLiked]);
 
   return { liked, isLiked, toggle };
 }

@@ -296,20 +296,26 @@ function DashboardSection({ ownerId }) {
     const load = async () => {
       let eventsQuery = supabase.from('events').select('id', { count: 'exact', head: true });
       if (ownerId) eventsQuery = eventsQuery.eq('owner_id', ownerId);
-      const [usersRes, eventsRes, ticketsRes] = await Promise.all([
+
+      // Tickets + ingresos en una sola consulta agregada, escopeada al dueño
+      // cuando aplica (antes eran 2 consultas extra sin límite y SIN filtrar
+      // por ownerId, así que un promotor veía el total de toda la plataforma).
+      let ticketsAggQuery = supabase.from('user_tickets').select('id, events!inner(price, owner_id)', { count: 'exact' });
+      if (ownerId) ticketsAggQuery = ticketsAggQuery.eq('events.owner_id', ownerId);
+
+      const [usersRes, eventsRes, ticketsRes, ticketsAggRes] = await Promise.all([
         ownerId ? Promise.resolve({ count: 0 }) : supabase.from('profiles').select('id', { count: 'exact', head: true }),
         eventsQuery,
         supabase.from('user_tickets').select('id, user_id, created_at, events(title, price), profiles(display_name, email)').order('created_at', { ascending: false }).limit(50),
+        ticketsAggQuery,
       ]);
 
-      // calculate total sold & revenue from tickets
-      const allTickets = await supabase.from('user_tickets').select('events(price)');
-      const revenue = (allTickets.data || []).reduce((sum, t) => sum + (t.events?.price || 0), 0);
+      const revenue = (ticketsAggRes.data || []).reduce((sum, t) => sum + (t.events?.price || 0), 0);
 
       setStats({
         users: ownerId ? new Set((ticketsRes.data || []).map(t => t.user_id)).size : usersRes.count || 0,
         events: eventsRes.count || 0,
-        tickets: ticketsRes.data?.length ? (await supabase.from('user_tickets').select('id', { count: 'exact', head: true })).count || 0 : 0,
+        tickets: ticketsAggRes.count ?? ticketsAggRes.data?.length ?? 0,
         revenue,
       });
       setRecentTickets(ticketsRes.data || []);
@@ -1041,9 +1047,13 @@ function CourtesyTicketModal({ event, onClose, onIssued, onConfigure }) {
     }
 
     toast({
-      title: data.alreadyProcessed ? 'El usuario ya tenía entrada' : 'Cortesía enviada',
+      title: data.alreadyProcessed
+        ? (data.pending ? 'Ya se había invitado a este correo' : 'El usuario ya tenía entrada')
+        : (data.pending ? 'Cortesía enviada · pendiente de activación' : 'Cortesía enviada'),
       description: data.emailSent
-        ? `#${data.ticketNumber} · correo y Ticket Vault actualizados`
+        ? data.pending
+          ? `#${data.ticketNumber} · el destinatario debe crear su cuenta para activarla`
+          : `#${data.ticketNumber} · correo y Ticket Vault actualizados`
         : `#${data.ticketNumber} · ${data.notificationWarning || 'notificación pendiente'}`,
       variant: data.emailSent ? undefined : 'destructive',
     });
@@ -1086,7 +1096,7 @@ function CourtesyTicketModal({ event, onClose, onIssued, onConfigure }) {
                 className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.11)' }} />
               <span className="block text-[10px] text-white/28">
-                Debe ser una cuenta PolyFauna con nombre y documento completos.
+                Si el correo no tiene cuenta PolyFauna, igual recibe el QR por correo con invitación a registrarse para activarlo.
               </span>
             </label>
             <button type="submit" disabled={saving || !email.trim()}
