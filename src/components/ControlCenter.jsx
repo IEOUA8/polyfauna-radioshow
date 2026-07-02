@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, Upload, UserX, Users, X, Zap } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import supabase from '@/lib/customSupabaseClient';
-import { LoginRequired } from '@/components/SectionStates';
+import { LoginRequired, PulseLoader } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
-import UploadPodcastModal from '@/components/UploadPodcastModal';
 import RoleRequestsPanel from '@/components/RoleRequestsPanel';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
@@ -235,7 +234,7 @@ function AudioQualityPanel({ onClose }) {
 }
 
 export default function ControlCenter({ setCurrentSection }) {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -243,11 +242,14 @@ export default function ControlCenter({ setCurrentSection }) {
   const [qualityOpen, setQualityOpen]   = useState(false);
   const [termsOpen, setTermsOpen]       = useState(false);
   const [privacyOpen, setPrivacyOpen]   = useState(false);
-  const [showUpload, setShowUpload]     = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
   const currentRole = profile?.role || 'citizen';
   const currentIsCreator = CREATOR_ROLES.includes(currentRole);
+
+  if (authLoading) {
+    return <div className="p-5"><PulseLoader label="Verificando sesión..." /></div>;
+  }
 
   if (!currentUser) {
     return <div className="p-5"><LoginRequired message="Inicia sesión para acceder al Control Center." /></div>;
@@ -276,7 +278,7 @@ export default function ControlCenter({ setCurrentSection }) {
   const avatar = profile?.avatar_url;
   const initials = displayName.slice(0, 2).toUpperCase();
   const isCreator = currentIsCreator;
-  const hasPromoterHub = role === 'promoter' || role === 'club' || role === 'admin';
+  const hasPromoterHub = ['promoter', 'club', 'artist', 'sello', 'admin'].includes(role);
 
   return (
     <>
@@ -338,12 +340,6 @@ export default function ControlCenter({ setCurrentSection }) {
             email={currentUser.email}
             onClose={() => setDeactivateOpen(false)}
             onConfirm={handleDeactivate}
-          />
-        )}
-        {showUpload && (
-          <UploadPodcastModal
-            onClose={() => setShowUpload(false)}
-            onSuccess={() => setShowUpload(false)}
           />
         )}
       </AnimatePresence>
@@ -465,7 +461,7 @@ export default function ControlCenter({ setCurrentSection }) {
 
               <button
                 type="button"
-                onClick={() => isAdmin ? navigate('/admin') : setShowUpload(true)}
+                onClick={() => navigate('/admin')}
                 className="w-full px-5 py-4 text-left flex items-center gap-3 transition-colors"
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.035)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -484,28 +480,17 @@ export default function ControlCenter({ setCurrentSection }) {
           </div>
         )}
 
-        {(isCreator || hasPromoterHub || isAdmin) && (
+        {hasPromoterHub && (
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Herramientas</p>
             <div className="space-y-2">
-              {isCreator && (
-                <SettingsTile
-                  icon={Upload}
-                  label="Subir Podcast / Mix"
-                  description="Publica contenido sonoro desde tu rol de creador"
-                  onClick={() => setShowUpload(true)}
-                  delay={0.12}
-                />
-              )}
-              {hasPromoterHub && (
-                <SettingsTile
-                  icon={Shield}
-                  label={isAdmin ? 'Panel Administrativo' : 'Panel Operativo'}
-                  description={isAdmin ? 'Usuarios, contenido, eventos y administración' : 'Administra tus eventos, tickets, asistentes y accesos'}
-                  onClick={() => navigate('/admin')}
-                  delay={0.18}
-                />
-              )}
+              <SettingsTile
+                icon={Shield}
+                label={isAdmin ? 'Panel Administrativo' : 'Panel Operativo'}
+                description={isAdmin ? 'Usuarios, contenido, eventos y administración' : 'Administra tus eventos, podcasts, tickets y accesos'}
+                onClick={() => navigate('/admin')}
+                delay={0.18}
+              />
             </div>
 
             {isAdmin && (

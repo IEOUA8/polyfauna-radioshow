@@ -83,7 +83,7 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
   const displayName     = profile?.display_name || currentUser?.email?.split('@')[0] || 'Invitado';
 
   const OPERATIONS_ITEM = { id: 'operations', label: 'Panel operativo', icon: Shield, public: false, requiresLogin: true, href: '/admin' };
-  const showOperations = isLoggedIn && (role === 'promoter' || role === 'club' || role === 'admin');
+  const showOperations = isLoggedIn && ['promoter', 'club', 'artist', 'sello', 'admin'].includes(role);
   const allItems = showOperations ? [...NAV_ITEMS, OPERATIONS_ITEM] : NAV_ITEMS;
 
   return (

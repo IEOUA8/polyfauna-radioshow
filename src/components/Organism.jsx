@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { EmptyState, ErrorState, LoadingSkeleton, LoginRequired } from '@/components/SectionStates';
+import { EmptyState, ErrorState, LoadingSkeleton, LoginRequired, PulseLoader } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
@@ -176,7 +176,7 @@ function OrganismRow({ item, index, isActive, isPlaying, onPlay, onRemove, remov
 }
 
 export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -394,6 +394,14 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
     if (!currentTrack) return null;
     return items.find(item => item.queue.some(track => track.id === currentTrack.id)) || null;
   }, [items, currentTrack]);
+
+  if (authLoading) {
+    return (
+      <div className="p-5">
+        <PulseLoader label="Verificando sesión..." />
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (

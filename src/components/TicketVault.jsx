@@ -6,7 +6,7 @@ import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import supabase from '@/lib/customSupabaseClient';
 import { buildTicketQRPayload } from '@/lib/tickets';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { CardSkeleton, EmptyState, ErrorState, LoginRequired } from '@/components/SectionStates';
+import { CardSkeleton, EmptyState, ErrorState, LoginRequired, PulseLoader } from '@/components/SectionStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -523,7 +523,7 @@ function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequest
 
 /* ── Main Component ── */
 export default function TicketVault() {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
   const [activeTicket, setActiveTicket] = useState(null);
   const [refundTicket, setRefundTicket] = useState(null);
   const [signedTokens, setSignedTokens] = useState({});
@@ -572,6 +572,7 @@ export default function TicketVault() {
       });
   }, [currentUser?.id]);
 
+  if (authLoading) return <div className="p-5"><PulseLoader label="Verificando sesión..." /></div>;
   if (!currentUser) return <div className="p-5"><LoginRequired message="Inicia sesión para ver tus entradas." /></div>;
 
   return (

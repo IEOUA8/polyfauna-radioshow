@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Edit, MessageSquare, Search, Send, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { LoadingSkeleton, EmptyState, ErrorState, LoginRequired } from '@/components/SectionStates';
+import { LoadingSkeleton, EmptyState, ErrorState, LoginRequired, PulseLoader } from '@/components/SectionStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/components/ui/use-toast';
@@ -449,7 +449,7 @@ function MessageDetail({ msg, onBack, onReply, isSent }) {
 // ── SignalInbox ───────────────────────────────────────────────────────────────
 
 export default function SignalInbox() {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
   const { profile } = useProfile();
   const [tab, setTab] = useState('recibidos');
   const [selectedId, setSelectedId] = useState(null);
@@ -483,6 +483,14 @@ export default function SignalInbox() {
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );
+
+  if (authLoading) {
+    return (
+      <div className="p-5">
+        <PulseLoader label="Verificando sesión..." />
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (

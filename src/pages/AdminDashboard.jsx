@@ -2259,8 +2259,10 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen, group
   );
 }
 
-function MobileOperationsDock({ active, setActive, openMenu }) {
-  const quickItems = NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'qr'].includes(item.id));
+function MobileOperationsDock({ active, setActive, openMenu, allowedIds }) {
+  const quickItems = NAV_GROUPS.flatMap(group => group.items)
+    .filter(item => ['dashboard', 'events', 'tickets', 'qr', 'podcasts'].includes(item.id) && allowedIds.includes(item.id))
+    .slice(0, 4);
   const moreActive = !quickItems.some(item => item.id === active);
   return (
     <nav className="fixed left-0 right-0 bottom-0 z-30 lg:hidden" aria-label="Navegación rápida del panel"
@@ -2300,9 +2302,18 @@ const AdminDashboard = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const isAdmin = userRole === 'admin';
+  const canManageEvents = isAdmin || userRole === 'promoter' || userRole === 'club';
+  const canManagePodcasts = isAdmin || userRole === 'artist' || userRole === 'club' || userRole === 'sello'
+    || (userRole === 'promoter' && currentUser?.organizer_type === 'collective');
+  const allowedSectionIds = [
+    'dashboard',
+    ...(canManageEvents ? ['events', 'tickets', 'refunds', 'qr', 'wallet'] : []),
+    ...(canManagePodcasts ? ['podcasts'] : []),
+  ];
+  const allNavItems = NAV_GROUPS.flatMap(group => group.items);
   const visibleGroups = isAdmin ? NAV_GROUPS : [{
     label: 'Operación',
-    items: NAV_GROUPS[0].items.filter(item => ['dashboard', 'events', 'tickets', 'refunds', 'qr', 'wallet'].includes(item.id)),
+    items: allNavItems.filter(item => allowedSectionIds.includes(item.id)),
   }];
 
   const renderSection = () => {
@@ -2317,7 +2328,7 @@ const AdminDashboard = () => {
       case 'qr':          return <QRSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'wallet':      return <WalletSection />;
       case 'payouts':     return <PayoutsSection />;
-      case 'podcasts':    return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Podcasts</h2><p className="text-sm text-white/40 mt-0.5">Gestionar episodios</p></div><PodcastManager /></div>;
+      case 'podcasts':    return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Podcasts</h2><p className="text-sm text-white/40 mt-0.5">Gestionar episodios</p></div><PodcastManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
       case 'blog':        return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Blog</h2><p className="text-sm text-white/40 mt-0.5">Artículos y publicaciones</p></div><BlogManager /></div>;
       case 'interviews':  return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Interviews</h2><p className="text-sm text-white/40 mt-0.5">Entrevistas</p></div><InterviewManager /></div>;
       case 'shows':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Shows</h2><p className="text-sm text-white/40 mt-0.5">Programación de shows</p></div><ShowManager /></div>;
@@ -2396,7 +2407,7 @@ const AdminDashboard = () => {
           </AnimatePresence>
         </main>
       </div>
-      <MobileOperationsDock active={activeSection} setActive={setActiveSection} openMenu={() => setMobileNavOpen(true)} />
+      <MobileOperationsDock active={activeSection} setActive={setActiveSection} openMenu={() => setMobileNavOpen(true)} allowedIds={allowedSectionIds} />
     </div>
   );
 };

@@ -10,7 +10,7 @@ import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 
-const PodcastManager = () => {
+const PodcastManager = ({ ownerId = null }) => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [podcasts, setPodcasts] = useState([]);
@@ -30,12 +30,15 @@ const PodcastManager = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [ownerId]);
 
   const fetchData = async () => {
     try {
+      let podcastsQuery = supabase.from('podcasts').select('*, artists(name)').order('created_at', { ascending: false });
+      if (ownerId) podcastsQuery = podcastsQuery.eq('uploaded_by', ownerId);
+
       const [podcastsRes, artistsRes] = await Promise.all([
-        supabase.from('podcasts').select('*, artists(name)').order('created_at', { ascending: false }),
+        podcastsQuery,
         supabase.from('artists').select('id, name').order('name'),
       ]);
 
@@ -57,13 +60,8 @@ const PodcastManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    try {
-      if (editingPodcast && currentUser?.role !== 'admin') {
-        toast({ variant: "destructive", title: "Unauthorized", description: "Only admins can update podcasts." });
-        return;
-      }
 
+    try {
       const podcastData = {
         ...formData,
         duration: parseInt(formData.duration),
@@ -81,7 +79,7 @@ const PodcastManager = () => {
       } else {
         const { error } = await supabase
           .from('podcasts')
-          .insert([podcastData]);
+          .insert([{ ...podcastData, uploaded_by: currentUser.id }]);
 
         if (error)throw error;
         toast({ title: "Podcast created successfully" });
@@ -114,11 +112,6 @@ const PodcastManager = () => {
   };
 
   const handleDelete = async (id) => {
-    if (currentUser?.role !== 'admin') {
-      toast({ variant: "destructive", title: "Unauthorized", description: "Only admins can delete podcasts." });
-      return;
-    }
-
     if (!confirm('Are you sure you want to delete this podcast?')) return;
 
     try {
