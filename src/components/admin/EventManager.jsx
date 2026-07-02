@@ -6,18 +6,19 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
+import ArtistMentionInput from '@/components/ArtistMentionInput';
 
 const EMPTY = {
-  title: '', date: '', venue: '', city: '', lineup: '',
+  title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
   image_url: '', price: '', description: '',
-  tickets_total: '100', ticket_type: 'General',
+  tickets_total: '100', ticket_type: 'General', courtesy_limit: '0',
   featured: false, featured_order: '',
 };
 
-const TICKET_TYPES = ['General', 'VIP', 'Early', 'Anytime'];
+const TICKET_TYPES = ['General', 'VIP', 'Early', 'Anytime', 'Gratis'];
 
 /* ── Attendees Modal ─────────────────────────────────────── */
 function AttendeesModal({ event, onClose }) {
@@ -179,6 +180,13 @@ function AttendeesModal({ event, onClose }) {
                             {a.wompi_reference || a.ticket_number?.slice(0, 20) || '—'}
                           </span>
                         </div>
+                        <div className="flex items-center gap-2 min-w-0 sm:col-span-2">
+                          <IdCard className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm text-muted-foreground">
+                            {a.full_name || 'Identidad pendiente'}
+                            {a.document_number ? ` · ${a.document_type || 'Documento'} ${a.document_number}` : ''}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
@@ -254,7 +262,9 @@ const EventManager = () => {
       const payload = {
         ...rest,
         price:          formData.price         ? parseFloat(formData.price)         : null,
-        tickets_total:  formData.tickets_total  ? parseInt(formData.tickets_total)   : 100,
+        tickets_total:  (formData.tickets_total ? parseInt(formData.tickets_total) : 100)
+          + (parseInt(formData.courtesy_limit, 10) || 0),
+        courtesy_limit: parseInt(formData.courtesy_limit, 10) || 0,
         ticket_types: Array.isArray(editingEvent?.ticket_types) && editingEvent.ticket_types.length > 1
           ? editingEvent.ticket_types
           : [{
@@ -265,10 +275,12 @@ const EventManager = () => {
         featured_order: formData.featured && fo ? parseInt(fo) : null,
         owner_id:       currentUser.id,
         status:         'upcoming',
-        lineup:         formData.lineup
-          ? formData.lineup.split(',').map(s => s.trim()).filter(Boolean)
-          : [],
+        lineup:         formData.lineup || [],
       };
+
+      if (!formData.ends_at || new Date(formData.ends_at) <= new Date(formData.date)) {
+        throw new Error('La fecha de finalización debe ser posterior al inicio.');
+      }
 
       if (editingEvent) {
         const { error } = await supabase.from('events').update(payload).eq('id', editingEvent.id);
@@ -303,14 +315,16 @@ const EventManager = () => {
     setFormData({
       title:          event.title || '',
       date:           event.date ? event.date.slice(0, 16) : '',
+      ends_at:        event.ends_at ? event.ends_at.slice(0, 16) : '',
       venue:          event.venue || '',
       city:           event.city || '',
-      lineup:         Array.isArray(event.lineup) ? event.lineup.join(', ') : (event.lineup || ''),
+      lineup:         event.lineup || [],
       image_url:      event.image_url || '',
       price:          event.price || '',
       description:    event.description || '',
-      tickets_total:  event.tickets_total || '100',
+      tickets_total:  Math.max(1, (event.tickets_total || 100) - (event.courtesy_limit || 0)),
       ticket_type:    event.ticket_types?.[0]?.name || 'General',
+      courtesy_limit: String(event.courtesy_limit || 0),
       featured:       event.featured || false,
       featured_order: event.featured_order != null ? String(event.featured_order) : '',
     });
@@ -365,17 +379,18 @@ const EventManager = () => {
                     className="bg-background border-border text-foreground" required />
                 </div>
 
-                {/* Fecha + Precio */}
+                {/* Fechas */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Fecha y hora *</Label>
+                    <Label>Inicio *</Label>
                     <Input type="datetime-local" value={formData.date} onChange={(e) => set('date', e.target.value)}
                       className="bg-background border-border text-foreground" required />
                   </div>
                   <div>
-                    <Label>Precio (COP)</Label>
-                    <Input type="number" value={formData.price} onChange={(e) => set('price', e.target.value)}
-                      className="bg-background border-border text-foreground" placeholder="35000" min="0" />
+                    <Label>Final *</Label>
+                    <Input type="datetime-local" value={formData.ends_at} min={formData.date || undefined}
+                      onChange={(e) => set('ends_at', e.target.value)}
+                      className="bg-background border-border text-foreground" required />
                   </div>
                 </div>
 
@@ -409,11 +424,23 @@ const EventManager = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Precio (COP)</Label>
+                    <Input type="number" value={formData.price} onChange={(e) => set('price', e.target.value)}
+                      className="bg-background border-border text-foreground" placeholder="35000" min="0" />
+                  </div>
+                  <div>
+                    <Label>Cupos de cortesía</Label>
+                    <Input type="number" value={formData.courtesy_limit} onChange={(e) => set('courtesy_limit', e.target.value)}
+                      className="bg-background border-border text-foreground" placeholder="0" min="0" />
+                  </div>
+                </div>
+
                 {/* Lineup */}
                 <div>
-                  <Label>Lineup</Label>
-                  <Input value={formData.lineup} onChange={(e) => set('lineup', e.target.value)}
-                    className="bg-background border-border text-foreground" placeholder="Artista 1, Artista 2…" />
+                  <Label>DJs / Artistas</Label>
+                  <ArtistMentionInput value={formData.lineup} onChange={lineup => set('lineup', lineup)} />
                 </div>
 
                 {/* Descripción */}

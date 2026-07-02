@@ -267,7 +267,9 @@ export default function ControlCenter({ setCurrentSection }) {
   };
 
   const role = currentRole;
-  const roleMeta = ROLE_META[role] || ROLE_META.citizen;
+  const roleMeta = role === 'promoter' && profile?.organizer_type === 'collective'
+    ? { ...ROLE_META.promoter, label: 'Colectivo', description: 'Construye comunidad y gestiona eventos con permisos de promotor.' }
+    : ROLE_META[role] || ROLE_META.citizen;
   const RoleIcon = roleMeta.icon || Headphones;
   const isAdmin = role === 'admin';
   const displayName = profile?.display_name || currentUser.email?.split('@')[0] || 'Usuario';

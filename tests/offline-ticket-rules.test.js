@@ -15,7 +15,7 @@ const pack = {
   eventId: EVENT_ID,
   eventTitle: 'Noche PolyFauna',
   tickets: [
-    { id: TICKET_ID, number: 'PF-001', type: 'GA', status: 'valid' },
+    { id: TICKET_ID, number: 'PF-001', type: 'GA', status: 'valid', full_name: 'Ana Pérez', document_type: 'CC', document_number: '12345678' },
     { id: '423e4567-e89b-42d3-a456-426614174000', number: 'PF-002', type: 'VIP', status: 'used' },
     { id: '523e4567-e89b-42d3-a456-426614174000', number: 'PF-003', type: 'GA', status: 'refunded' },
   ],
@@ -68,4 +68,7 @@ test('autoriza ticket offline válido con datos mínimos de sincronización visu
   assert.equal(result.event_title, 'Noche PolyFauna');
   assert.equal(result.ticket_type, 'GA');
   assert.equal(result.ticket_number, 'PF-001');
+  assert.equal(result.full_name, 'Ana Pérez');
+  assert.equal(result.document_type, 'CC');
+  assert.equal(result.document_number, '12345678');
 });

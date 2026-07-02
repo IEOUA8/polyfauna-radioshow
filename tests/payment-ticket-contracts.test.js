@@ -28,6 +28,12 @@ const formModal = readFileSync('src/components/ui/FormModal.jsx', 'utf8');
 const freeTicketConfirmation = readFileSync('supabase/migrations/20260701000005_free_ticket_confirmation.sql', 'utf8');
 const claimFreeTicketFunction = readFileSync('supabase/functions/claim-free-ticket/index.ts', 'utf8');
 const freeTicketsClient = readFileSync('src/lib/freeTickets.js', 'utf8');
+const organizerCommunity = readFileSync('supabase/migrations/20260701000006_organizer_community_flow.sql', 'utf8');
+const courtesyFunction = readFileSync('supabase/functions/issue-courtesy-ticket/index.ts', 'utf8');
+const artistMentionInput = readFileSync('src/components/ArtistMentionInput.jsx', 'utf8');
+const editProfile = readFileSync('src/components/EditProfile.jsx', 'utf8');
+const validatePage = readFileSync('src/pages/ValidatePage.jsx', 'utf8');
+const signupPage = readFileSync('src/pages/SignupPage.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -88,13 +94,13 @@ test('tipos de entrada conservan precio, cupo e inventario independientes', () =
   assert.match(createPayment, /ticket_types, owner_id/);
   assert.match(createPayment, /Math\.round\(tierPrice \* qty\)/);
   assert.match(createPayment, /ticket_type:\s+tierName/);
-  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime', 'Gratis', 'Cortesía'\]/);
+  assert.match(promoterDashboard, /TICKET_TYPE_OPTIONS = \['General', 'VIP', 'Early', 'Anytime', 'Gratis'\]/);
   assert.match(promoterDashboard, /ticket_types: normalizedTicketTypes/);
   assert.match(eventTerminal, /ticket_type: selectedTicket\.name/);
 });
 
-test('entradas gratis y cortesías se emiten sin Wompi y envían confirmación', () => {
-  assert.match(promoterDashboard, /FREE_TICKET_TYPES = new Set\(\['Gratis', 'Cortesía'\]\)/);
+test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', () => {
+  assert.match(promoterDashboard, /FREE_TICKET_TYPES = new Set\(\['Gratis'\]\)/);
   assert.match(promoterDashboard, /ticketTypes\[index\]\.price !== ''/);
   assert.match(freeTicketsClient, /functions\.invoke\('claim-free-ticket'/);
   assert.match(freeTicketConfirmation, /confirmation_email_sent_at TIMESTAMPTZ/);
@@ -104,6 +110,33 @@ test('entradas gratis y cortesías se emiten sin Wompi y envían confirmación',
   assert.match(claimFreeTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
   assert.match(eventTerminal, /claimFreeTicket\(\{/);
   assert.match(eventPublicPage, /claimFreeTicket\(\{/);
+  assert.match(eventTerminal, /!isFree/);
+  assert.match(claimFreeTicketFunction, /Las cortesías solo pueden ser emitidas por el organizador/);
+});
+
+test('colectivos, cortesías e identidad usan permisos y superficies restringidas', () => {
+  assert.match(signupPage, /id: 'collective'/);
+  assert.match(authContext, /role === 'collective' \? 'promoter' : role/);
+  assert.match(organizerCommunity, /CREATE TABLE IF NOT EXISTS public\.user_identity/);
+  assert.match(organizerCommunity, /CREATE OR REPLACE FUNCTION public\.protect_profile_access_fields/);
+  assert.match(organizerCommunity, /CREATE OR REPLACE FUNCTION public\.issue_courtesy_ticket/);
+  assert.match(organizerCommunity, /'ticket\.courtesy'/);
+  assert.match(organizerCommunity, /courtesy_limit INTEGER/);
+  assert.match(courtesyFunction, /Cortesía confirmada/);
+  assert.match(courtesyFunction, /sendPush/);
+  assert.match(promoterDashboard, /functions\.invoke\('issue-courtesy-ticket'/);
+  assert.match(editProfile, /from\('user_identity'\)/);
+});
+
+test('eventos guardan final, lineup enlazado y validación visual de identidad', () => {
+  assert.match(organizerCommunity, /ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ/);
+  assert.match(promoterDashboard, /label="Final del evento"/);
+  assert.match(promoterDashboard, /<ArtistMentionInput/);
+  assert.match(artistMentionInput, /from\('artists'\)/);
+  assert.match(artistMentionInput, /artist_id: artist\.id/);
+  assert.match(organizerCommunity, /'full_name', identity\.full_name/);
+  assert.match(validatePage, /Verificar identidad/);
+  assert.match(validatePage, /result\.document_number/);
 });
 
 test('solicitudes profesionales llegan al Control Center del admin', () => {

@@ -44,7 +44,7 @@ function formatDateLong(str) {
 function getTicketTypes(event) {
   if (Array.isArray(event?.ticket_types) && event.ticket_types.length > 0) {
     const configured = event.ticket_types
-      .filter(ticket => ticket?.name && Number(ticket?.capacity) > 0)
+      .filter(ticket => ticket?.name && !/^cortes[ií]a$/i.test(ticket.name) && Number(ticket?.capacity) > 0)
       .map(ticket => ({
         name: String(ticket.name),
         price: Math.max(0, Number(ticket.price) || 0),

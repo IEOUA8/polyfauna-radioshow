@@ -51,6 +51,15 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
+    const requestedRole = role === 'collective' ? 'promoter' : role;
+    const organizerType = role === 'collective' ? 'collective' : role === 'promoter' ? 'promoter' : role === 'club' ? 'club' : null;
+    if (organizerType) {
+      await supabase
+        .from('profiles')
+        .update({ organizer_type: organizerType })
+        .eq('id', authUser.id)
+        .is('organizer_type', null);
+    }
     const { data: existing } = await supabase
       .from('role_requests')
       .select('id')
@@ -67,11 +76,12 @@ export const AuthProvider = ({ children }) => {
         .from('role_requests')
         .insert({
           user_id: authUser.id,
-          requested_role: role,
+          requested_role: requestedRole,
           form_data: {
             name: displayName,
             source: 'oauth',
             provider: authUser.app_metadata?.provider || 'social',
+            organizer_type: organizerType,
           },
         })
         .select('id')
@@ -154,10 +164,12 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     setIsLoading(true);
     try {
+      const requestedRole = role === 'collective' ? 'promoter' : role;
+      const organizerType = role === 'collective' ? 'collective' : role === 'promoter' ? 'promoter' : role === 'club' ? 'club' : null;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name, requested_role: role } },
+        options: { data: { name, requested_role: requestedRole, organizer_type: organizerType } },
       });
       if (error) throw error;
 

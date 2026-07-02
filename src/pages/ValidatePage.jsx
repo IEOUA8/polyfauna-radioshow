@@ -12,8 +12,10 @@ function ResultScreen({ result, onScanNext }) {
   const isValid = result.code === 'VALID';
   const isUsed  = result.code === 'ALREADY_USED';
 
-  const bg    = isValid ? '#052010' : '#150505';
-  const color = isValid ? '#22c55e' : '#ef4444';
+  const bg    = isValid
+    ? 'radial-gradient(circle at 50% 30%, #4ade80 0%, #16a34a 42%, #052e16 100%)'
+    : '#150505';
+  const color = isValid ? '#ffffff' : '#ef4444';
   const Icon  = isValid ? CheckCircle : XCircle;
 
   return (
@@ -52,6 +54,18 @@ function ResultScreen({ result, onScanNext }) {
             #{result.ticket_number}
           </p>
         )}
+        {isValid && (
+          <div className="mt-5 rounded-2xl px-6 py-4 min-w-[280px]"
+            style={{ background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.28)' }}>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/65">Verificar identidad</p>
+            <p className="text-xl font-black text-white mt-2">
+              {result.full_name || 'Nombre no registrado'}
+            </p>
+            <p className="text-sm font-mono text-white/85 mt-1">
+              {result.document_type || 'Documento'} · {result.document_number || 'Sin registrar'}
+            </p>
+          </div>
+        )}
         {result.pendingSync && (
           <p className="text-xs mt-3 font-bold" style={{ color: '#f59e0b' }}>
             Pendiente de sincronizar con Polyfauna
@@ -68,7 +82,7 @@ function ResultScreen({ result, onScanNext }) {
         type="button"
         onClick={onScanNext}
         className="flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-black transition-all active:scale-95"
-        style={{ background: color, color: isValid ? '#052010' : '#150505' }}
+        style={{ background: isValid ? '#ffffff' : color, color: isValid ? '#14532d' : '#150505' }}
       >
         <ScanLine className="w-5 h-5" />
         Escanear siguiente

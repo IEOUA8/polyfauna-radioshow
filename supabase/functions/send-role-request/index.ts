@@ -51,7 +51,9 @@ serve(async (req) => {
       }
     }
 
-    const roleLabel = ROLE_LABELS[roleRequest.requested_role];
+    const roleLabel = roleRequest.form_data?.organizer_type === 'collective'
+      ? 'Colectivo'
+      : ROLE_LABELS[roleRequest.requested_role];
     if (!roleLabel) return json({ error: 'Solicitud inválida' }, 400);
     const applicantName = roleRequest.form_data?.name || applicant.user_metadata?.name || 'Usuario';
     const userName = escapeHtml(applicantName);
