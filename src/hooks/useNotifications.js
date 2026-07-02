@@ -24,7 +24,7 @@ export function useNotifications() {
       const now = new Date().toISOString();
       const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const [podRes, eventRes, blogRes] = await Promise.all([
+      const [podRes, eventRes, blogRes, albumRes, dbRes] = await Promise.all([
         supabase
           .from('podcasts')
           .select('id, title, cover_url, created_at, artists(name)')
@@ -44,9 +44,34 @@ export function useNotifications() {
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false })
           .limit(2),
+        supabase
+          .from('albums')
+          .select('id, title, cover_url, created_at, artists(name)')
+          .gte('created_at', sevenDaysAgo)
+          .order('created_at', { ascending: false })
+          .limit(3),
+        // RLS ya limita a las propias (user_id = auth.uid()) o globales (user_id IS NULL).
+        supabase
+          .from('notifications')
+          .select('id, type, title, body, image_url, action_section, created_at')
+          .gte('created_at', sevenDaysAgo)
+          .order('created_at', { ascending: false })
+          .limit(10),
       ]);
 
       const notifs = [];
+
+      (dbRes.data || []).forEach(n => {
+        notifs.push({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          time: n.created_at,
+          image: n.image_url,
+          section: n.action_section,
+        });
+      });
 
       (podRes.data || []).forEach(p => {
         notifs.push({
@@ -82,6 +107,18 @@ export function useNotifications() {
           time: a.created_at,
           image: a.featured_image_url,
           section: 'blog',
+        });
+      });
+
+      (albumRes.data || []).forEach(al => {
+        notifs.push({
+          id: `album-${al.id}`,
+          type: 'music',
+          title: 'Nuevo lanzamiento',
+          body: al.title + (al.artists?.name ? ` — ${al.artists.name}` : ''),
+          time: al.created_at,
+          image: al.cover_url,
+          section: 'music',
         });
       });
 

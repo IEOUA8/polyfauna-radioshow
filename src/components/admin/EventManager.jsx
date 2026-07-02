@@ -270,11 +270,16 @@ function CoPromotersManager({ eventId }) {
     if (!email.trim()) return;
     setAdding(true);
     try {
-      const { error } = await supabase.rpc('add_event_co_promoter', { p_event_id: eventId, p_email: email.trim() });
+      const { data, error } = await supabase.rpc('add_event_co_promoter', { p_event_id: eventId, p_email: email.trim() });
       if (error) throw error;
-      toast({ title: 'Co-promotor vinculado' });
+      toast({ title: 'Co-promotor vinculado', description: 'Se le notificó dentro de la plataforma y por correo.' });
       setEmail('');
       load();
+      if (data?.promoter_id) {
+        supabase.functions.invoke('notify-co-promoter-linked', {
+          body: { eventId, promoterId: data.promoter_id },
+        }).catch(() => {});
+      }
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: CO_PROMOTER_ERRORS[err.message] || err.message });
     } finally {
@@ -360,26 +365,33 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
 
   const fetchEvents = async () => {
     try {
-      const coPromotedRefs = {};
-      if (ownerId) {
-        const { data: linked } = await supabase
-          .from('event_co_promoters')
-          .select('event_id, ref_code')
-          .eq('promoter_id', ownerId)
-          .eq('status', 'active');
-        (linked || []).forEach(row => { coPromotedRefs[row.event_id] = row.ref_code; });
+      // Propios: siempre. Co-promovidos: solo si hay vínculos activos, en una
+      // segunda consulta aparte — evita depender de un filtro .or() armado a mano.
+      const ownEventsQuery = ownerId
+        ? supabase.from('events').select('*').eq('owner_id', ownerId).order('date', { ascending: false })
+        : supabase.from('events').select('*').order('date', { ascending: false });
+
+      const [{ data: ownEvents, error: ownError }, { data: linked }] = await Promise.all([
+        ownEventsQuery,
+        ownerId
+          ? supabase.from('event_co_promoters').select('event_id, ref_code').eq('promoter_id', ownerId).eq('status', 'active')
+          : Promise.resolve({ data: [] }),
+      ]);
+      if (ownError) throw ownError;
+
+      const byId = new Map((ownEvents || []).map(event => [event.id, { ...event, _coPromoterRef: null }]));
+      const linkedIds = (linked || []).map(row => row.event_id).filter(id => !byId.has(id));
+      if (linkedIds.length) {
+        const { data: coPromotedEvents, error: coError } = await supabase
+          .from('events')
+          .select('*')
+          .in('id', linkedIds);
+        if (coError) throw coError;
+        const refByEventId = Object.fromEntries((linked || []).map(row => [row.event_id, row.ref_code]));
+        (coPromotedEvents || []).forEach(event => byId.set(event.id, { ...event, _coPromoterRef: refByEventId[event.id] }));
       }
 
-      let query = supabase.from('events').select('*').order('date', { ascending: false });
-      if (ownerId) {
-        const linkedIds = Object.keys(coPromotedRefs);
-        const filters = [`owner_id.eq.${ownerId}`];
-        if (linkedIds.length) filters.push(`id.in.(${linkedIds.join(',')})`);
-        query = query.or(filters.join(','));
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      setEvents((data || []).map(event => ({ ...event, _coPromoterRef: coPromotedRefs[event.id] || null })));
+      setEvents([...byId.values()].sort((a, b) => new Date(b.date) - new Date(a.date)));
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {

@@ -1126,24 +1126,28 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const [courtesyEvent, setCourtesyEvent] = useState(null);
 
   useEffect(() => {
+    const EVENT_COLUMNS = 'id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued';
     const load = async () => {
-      let query = supabase
-        .from('events')
-        .select('id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued')
-        .order('date', { ascending: true });
-      if (ownerId) {
-        const { data: linked } = await supabase
-          .from('event_co_promoters')
-          .select('event_id')
-          .eq('promoter_id', ownerId)
-          .eq('status', 'active');
-        const linkedIds = (linked || []).map(row => row.event_id);
-        const filters = [`owner_id.eq.${ownerId}`];
-        if (linkedIds.length) filters.push(`id.in.(${linkedIds.join(',')})`);
-        query = query.or(filters.join(','));
+      // Propios en una consulta, co-promovidos en otra — sin filtro .or() armado a mano.
+      const ownEventsQuery = ownerId
+        ? supabase.from('events').select(EVENT_COLUMNS).eq('owner_id', ownerId).order('date', { ascending: true })
+        : supabase.from('events').select(EVENT_COLUMNS).order('date', { ascending: true });
+
+      const [{ data: ownEvents }, { data: linked }] = await Promise.all([
+        ownEventsQuery,
+        ownerId
+          ? supabase.from('event_co_promoters').select('event_id').eq('promoter_id', ownerId).eq('status', 'active')
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const byId = new Map((ownEvents || []).map(event => [event.id, event]));
+      const linkedIds = (linked || []).map(row => row.event_id).filter(id => !byId.has(id));
+      if (linkedIds.length) {
+        const { data: coPromotedEvents } = await supabase.from('events').select(EVENT_COLUMNS).in('id', linkedIds);
+        (coPromotedEvents || []).forEach(event => byId.set(event.id, event));
       }
-      const { data } = await query;
-      setEvents(data || []);
+
+      setEvents([...byId.values()].sort((a, b) => new Date(a.date) - new Date(b.date)));
       setLoading(false);
     };
     load();

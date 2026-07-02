@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, CalendarDays, CheckCircle, ChevronRight, Clock, FileText, Headphones, MapPin, Play, QrCode, Radio, User, X } from 'lucide-react';
+import { Bell, CalendarDays, CheckCircle, ChevronRight, Clock, FileText, Headphones, MapPin, Music, Play, QrCode, Radio, User, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,7 @@ const TYPE_META = {
   podcast: { icon: Headphones, color: 'rgba(255,255,255,0.80)' },
   event:   { icon: Bell,       color: '#FBBF24'                },
   blog:    { icon: FileText,   color: '#A78BFA'                },
+  music:   { icon: Music,      color: '#5DE0A3'                },
   system:  { icon: Radio,      color: '#FF8A1F'                },
 };
 

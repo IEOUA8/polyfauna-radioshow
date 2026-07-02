@@ -40,6 +40,11 @@ const mobileMenu = readFileSync('src/components/MobileMenu.jsx', 'utf8');
 const ticketIdentity = readFileSync('src/lib/ticketIdentity.js', 'utf8');
 const eventsDuplicateGuard = readFileSync('supabase/migrations/20260702180107_events_duplicate_guard.sql', 'utf8');
 const eventCoPromoters = readFileSync('supabase/migrations/20260702180108_event_co_promoters.sql', 'utf8');
+const notifyCoPromoterMigration = readFileSync('supabase/migrations/20260702183724_notify_co_promoter_linked.sql', 'utf8');
+const notifyCoPromoterFunction = readFileSync('supabase/functions/notify-co-promoter-linked/index.ts', 'utf8');
+const useNotifications = readFileSync('src/hooks/useNotifications.js', 'utf8');
+const rlsRecursionFix = readFileSync('supabase/migrations/20260702184953_fix_events_co_promoters_rls_recursion.sql', 'utf8');
+const rightPanel = readFileSync('src/components/RightPanel.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -192,7 +197,7 @@ test('panel operativo unifica edición completa de eventos y tickets', () => {
   assert.match(adminDashboard, /<EventManager ownerId=\{isAdmin \? null : currentUser\?\.id\} isAdmin=\{isAdmin\}/);
   assert.match(eventManager, /function EventManager|const EventManager = \(\{ ownerId = null/);
   assert.match(eventManager, /\{isAdmin && \(/);
-  assert.match(eventManager, /filters = \[`owner_id\.eq\.\$\{ownerId\}`\]/);
+  assert.match(eventManager, /eq\('owner_id', ownerId\)\.order\('date', \{ ascending: false \}\)/);
   assert.match(eventManager, /ticket_types: normalizedTicketTypes/);
   assert.match(eventManager, /setTicketTypes\(existingTicketTypes/);
   assert.match(eventManager, /Editar evento/);
@@ -334,4 +339,41 @@ test('co-promotores venden sin poder editar el evento y se acreditan en su propi
 
   // Tickets: el listado/emisión manual también incluye eventos co-promovidos
   assert.match(adminDashboard, /from\('event_co_promoters'\)/);
+
+  // Sin filtros .or() armados a mano — dos consultas simples + merge en cliente
+  assert.doesNotMatch(eventManager, /query\.or\(filters\.join/);
+  assert.doesNotMatch(adminDashboard, /query\.or\(filters\.join/);
+});
+
+test('vincular un co-promotor notifica dentro de la plataforma y por correo', () => {
+  assert.match(notifyCoPromoterMigration, /PERFORM public\.create_notification\(/);
+  assert.match(notifyCoPromoterMigration, /'Te vincularon como co-promotor'/);
+  assert.match(notifyCoPromoterMigration, /v_target_id\s*\n\s*\);/);
+
+  assert.match(useNotifications, /from\('notifications'\)/);
+  assert.match(useNotifications, /action_section/);
+
+  assert.match(notifyCoPromoterFunction, /requireUser/);
+  assert.match(notifyCoPromoterFunction, /if \(!isOwner && !isAdmin\)/);
+  assert.match(notifyCoPromoterFunction, /admin\.auth\.admin\.getUserById\(promoterId\)/);
+  assert.match(notifyCoPromoterFunction, /sendEmail\(\{ to: target\.email/);
+
+  assert.match(eventManager, /supabase\.functions\.invoke\('notify-co-promoter-linked'/);
+  assert.match(eventManager, /body: \{ eventId, promoterId: data\.promoter_id \}/);
+});
+
+test('la política de events y event_co_promoters no vuelve a recursionar entre sí', () => {
+  assert.match(rlsRecursionFix, /CREATE OR REPLACE FUNCTION public\.is_event_owner\(p_event_id UUID\)/);
+  assert.match(rlsRecursionFix, /SECURITY DEFINER/);
+  assert.match(rlsRecursionFix, /DROP POLICY IF EXISTS "event_co_promoters_select" ON public\.event_co_promoters/);
+  assert.match(rlsRecursionFix, /public\.is_event_owner\(event_id\)/);
+  // La política reescrita ya no consulta events directamente (rompe el ciclo)
+  assert.doesNotMatch(rlsRecursionFix, /FROM public\.events\s+WHERE id = event_id/);
+});
+
+test('notificaciones cubren música, podcasts, eventos, blog y avisos in-app', () => {
+  assert.match(useNotifications, /from\('albums'\)/);
+  assert.match(useNotifications, /type: 'music'/);
+  assert.match(useNotifications, /section: 'music'/);
+  assert.match(rightPanel, /music:\s*\{ icon: Music/);
 });
