@@ -131,8 +131,10 @@ Eventos disponibles:
 
 Queda pendiente:
 
-- Crear tablero visual admin sobre `usage_events`.
 - Agregar metricas del validador y Ticket Vault cuando se trabaje la fase de puertas/eventos reales.
+
+Tablero visual admin: implementado en Fase 7.7 mediante la RPC agregada
+`get_usage_metrics(p_hours)`, sin descargar eventos crudos al navegador.
 
 ### Fase 7.3 tecnica - Optimizacion RLS para carga
 

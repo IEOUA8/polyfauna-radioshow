@@ -665,3 +665,59 @@ Resultado:
 - Agregar medicion especifica de Ticket Vault y validador cuando se prepare operacion de puertas.
 - Definir umbrales de alerta para detener campanas o ventas si suben errores de checkout o caen conversiones.
 - Activar leaked password protection desde Supabase Auth.
+
+## Fase 7.7 - Tablero administrativo de telemetria
+
+Fecha: 2026-06-30
+
+### Objetivo
+
+Convertir la telemetria anonima existente en senales operativas visibles para administracion, sin descargar eventos crudos al navegador ni ampliar acceso a datos sensibles.
+
+### Implementacion
+
+- Se agregaron y aplicaron:
+  - `supabase/migrations/20260630000001_usage_metrics_dashboard.sql`.
+  - `supabase/migrations/20260630000002_usage_metrics_security_invoker.sql`.
+- Se creo la RPC admin-only `get_usage_metrics(p_hours)` con ventanas permitidas de:
+  - 1 hora.
+  - 6 horas.
+  - 24 horas.
+  - 7 dias.
+  - 30 dias.
+- La RPC agrega en servidor:
+  - sesiones unicas.
+  - usuarios autenticados unicos.
+  - inicios de radio live.
+  - reproducciones on-demand.
+  - vistas de eventos.
+  - errores de checkout.
+  - embudo `event_view -> checkout_start -> checkout_ready -> ticket_claimed`.
+  - actividad por hora o dia.
+  - errores agrupados por evento, codigo y release.
+- Se agrego la seccion `Metricas` al panel administrativo.
+- Se agregaron estados de carga, error, cero datos, selector de ventana, actividad visual, embudo y detalle de errores.
+- Se ampliaron las pruebas de contrato de telemetria.
+
+### Verificacion
+
+```bash
+npm run verify
+npm run audit:ci
+```
+
+Resultado:
+
+- Suite automatizada: 45 pruebas OK.
+- Migracion aplicada correctamente al proyecto Supabase enlazado.
+- La RPC ejecuta como `SECURITY INVOKER`, valida rol admin y no expone eventos crudos.
+- `npm run verify`: OK.
+- `npm run audit:ci`: 0 vulnerabilidades.
+- Supabase Advisors: 17 warnings de seguridad ya conocidos, 0 de performance y ninguno nuevo para `get_usage_metrics`.
+
+### Pendientes para Fase 7.8
+
+- Agregar medicion especifica de Ticket Vault y validacion online/offline.
+- Definir umbrales y alertas externas para errores de checkout o caidas de conversion.
+- Activar leaked password protection desde Supabase Auth.
+- Ejecutar la prueba controlada completa de compra, correo, QR y devolucion.

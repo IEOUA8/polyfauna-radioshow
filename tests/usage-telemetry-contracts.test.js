@@ -10,6 +10,9 @@ const app = readFileSync('src/App.jsx', 'utf8');
 const player = readFileSync('src/components/GlobalPlayer.jsx', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
 const eventPublicPage = readFileSync('src/pages/EventPublicPage.jsx', 'utf8');
+const metricsMigration = readFileSync('supabase/migrations/20260630000001_usage_metrics_dashboard.sql', 'utf8');
+const metricsInvokerMigration = readFileSync('supabase/migrations/20260630000002_usage_metrics_security_invoker.sql', 'utf8');
+const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
 
 test('fase 7.6 crea telemetria de uso cerrada para escritura cliente', () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.usage_events/);
@@ -55,4 +58,27 @@ test('fase 7.6 instrumenta actividad, escucha y checkout sin bloquear UX', () =>
   assert.match(eventPublicPage, /trackUsageEvent\('event_view'/);
   assert.match(eventPublicPage, /trackUsageEvent\('checkout_start'/);
   assert.match(eventPublicPage, /trackUsageEvent\('checkout_error'/);
+});
+
+test('fase 7.7 agrega metricas en servidor y restringe el tablero a admin', () => {
+  assert.match(metricsMigration, /CREATE OR REPLACE FUNCTION public\.get_usage_metrics/);
+  assert.match(metricsMigration, /SECURITY INVOKER/);
+  assert.match(metricsInvokerMigration, /ALTER FUNCTION public\.get_usage_metrics\(INTEGER\) SECURITY INVOKER/);
+  assert.match(metricsMigration, /role = 'admin'/);
+  assert.match(metricsMigration, /p_hours IN \(1, 6, 24, 168, 720\)/);
+  assert.match(metricsMigration, /COUNT\(DISTINCT session_id\)/);
+  assert.match(metricsMigration, /'event_view'/);
+  assert.match(metricsMigration, /'checkout_start'/);
+  assert.match(metricsMigration, /'checkout_ready'/);
+  assert.match(metricsMigration, /'ticket_claimed'/);
+  assert.match(metricsMigration, /REVOKE ALL ON FUNCTION public\.get_usage_metrics\(INTEGER\) FROM PUBLIC, anon, authenticated/);
+  assert.match(metricsMigration, /GRANT EXECUTE ON FUNCTION public\.get_usage_metrics\(INTEGER\) TO authenticated/);
+});
+
+test('fase 7.7 muestra resumen, embudo, actividad y errores en admin', () => {
+  assert.match(adminDashboard, /id: 'analytics'/);
+  assert.match(adminDashboard, /function UsageMetricsSection/);
+  assert.match(adminDashboard, /supabase\.rpc\('get_usage_metrics'/);
+  assert.match(adminDashboard, /Conversión de eventos/);
+  assert.match(adminDashboard, /Errores de checkout/);
 });
