@@ -187,8 +187,9 @@ test('organizadores administran asistentes y emiten transferencias manuales audi
 test('panel operativo unifica edición completa de eventos y tickets', () => {
   assert.doesNotMatch(sidebar, /Gestor de Eventos/);
   assert.doesNotMatch(mobileMenu, /PROMOTER_ITEM/);
-  assert.match(adminDashboard, /<EventManager ownerId=\{isAdmin \? null : currentUser\?\.id\}/);
-  assert.match(eventManager, /function EventManager|const EventManager = \(\{ ownerId = null \}\)/);
+  assert.match(adminDashboard, /<EventManager ownerId=\{isAdmin \? null : currentUser\?\.id\} isAdmin=\{isAdmin\}/);
+  assert.match(eventManager, /function EventManager|const EventManager = \(\{ ownerId = null/);
+  assert.match(eventManager, /\{isAdmin && \(/);
   assert.match(eventManager, /query = query\.eq\('owner_id', ownerId\)/);
   assert.match(eventManager, /ticket_types: normalizedTicketTypes/);
   assert.match(eventManager, /setTicketTypes\(existingTicketTypes/);

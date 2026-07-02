@@ -227,7 +227,7 @@ function AttendeesModal({ event, onClose }) {
 }
 
 /* ── Event Manager ───────────────────────────────────────── */
-const EventManager = ({ ownerId = null }) => {
+const EventManager = ({ ownerId = null, isAdmin = false }) => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [events, setEvents] = useState([]);
@@ -585,50 +585,52 @@ const EventManager = ({ ownerId = null }) => {
                     className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm resize-none" />
                 </div>
 
-                {/* Banner destacado */}
-                <div
-                  className="rounded-xl p-4 space-y-3"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${formData.featured ? 'rgba(255,138,31,0.35)' : 'hsl(var(--border))'}`, transition: 'border-color 0.2s' }}
-                >
-                  <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <div className="relative shrink-0">
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={formData.featured}
-                        onChange={(e) => set('featured', e.target.checked)}
-                      />
-                      <div
-                        className="w-10 h-6 rounded-full transition-colors duration-200"
-                        style={{ background: formData.featured ? 'rgba(255,138,31,0.85)' : 'rgba(255,255,255,0.1)' }}
-                      />
-                      <div
-                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
-                        style={{ left: formData.featured ? '22px' : '4px' }}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Mostrar en banner destacado</p>
-                      <p className="text-xs text-muted-foreground">Aparece en el slider principal de la sección Eventos</p>
-                    </div>
-                  </label>
+                {/* Banner destacado — solo el administrador puede activarlo (events_featured_admin_guard) */}
+                {isAdmin && (
+                  <div
+                    className="rounded-xl p-4 space-y-3"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${formData.featured ? 'rgba(255,138,31,0.35)' : 'hsl(var(--border))'}`, transition: 'border-color 0.2s' }}
+                  >
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <div className="relative shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={formData.featured}
+                          onChange={(e) => set('featured', e.target.checked)}
+                        />
+                        <div
+                          className="w-10 h-6 rounded-full transition-colors duration-200"
+                          style={{ background: formData.featured ? 'rgba(255,138,31,0.85)' : 'rgba(255,255,255,0.1)' }}
+                        />
+                        <div
+                          className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
+                          style={{ left: formData.featured ? '22px' : '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Mostrar en banner destacado</p>
+                        <p className="text-xs text-muted-foreground">Aparece en el slider principal de la sección Eventos</p>
+                      </div>
+                    </label>
 
-                  {formData.featured && (
-                    <div className="flex items-center gap-3 pt-1 border-t border-border">
-                      <Label className="text-xs whitespace-nowrap text-muted-foreground">Posición en banner</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={formData.featured_order}
-                        onChange={(e) => set('featured_order', e.target.value)}
-                        placeholder="1"
-                        className="bg-background border-border text-foreground w-24 h-8 text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">1 = primero en el slider</p>
-                    </div>
-                  )}
-                </div>
+                    {formData.featured && (
+                      <div className="flex items-center gap-3 pt-1 border-t border-border">
+                        <Label className="text-xs whitespace-nowrap text-muted-foreground">Posición en banner</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="99"
+                          value={formData.featured_order}
+                          onChange={(e) => set('featured_order', e.target.value)}
+                          placeholder="1"
+                          className="bg-background border-border text-foreground w-24 h-8 text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">1 = primero en el slider</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {formError && (
                   <div className="rounded-lg px-4 py-3 text-sm font-medium text-red-300 text-center"

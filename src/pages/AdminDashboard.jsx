@@ -258,25 +258,33 @@ function QRScannerWidget({ scanKey, eventId }) {
 }
 
 /* ─────────────────────── DASHBOARD SECTION ─────────────────────── */
-function StatTile({ label, value, icon: Icon, loading, sub }) {
+function StatTile({ label, value, icon: Icon, loading, sub, accent }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-5 rounded-2xl flex flex-col gap-3"
-      style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
+      className="relative p-5 rounded-2xl flex flex-col gap-3 overflow-hidden"
+      style={accent
+        ? { background: `linear-gradient(135deg, rgba(${accent},0.14), rgba(10,15,14,0.95))`, border: `1px solid rgba(${accent},0.22)` }
+        : { background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
     >
-      <div className="flex items-center justify-between">
+      {accent && (
+        <div
+          className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
+          style={{ background: `radial-gradient(circle, rgba(${accent},0.18), transparent 70%)`, transform: 'translate(30%, -30%)' }}
+        />
+      )}
+      <div className="flex items-center justify-between relative z-10">
         <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">{label}</p>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          <Icon className="w-4 h-4 text-white/50" />
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: accent ? `rgba(${accent},0.14)` : 'rgba(255,255,255,0.05)' }}>
+          <Icon className="w-4 h-4" style={{ color: accent ? `rgb(${accent})` : 'rgba(255,255,255,0.5)' }} />
         </div>
       </div>
       {loading
-        ? <div className="h-8 w-20 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
-        : <p className="text-3xl font-black text-white">{value}</p>
+        ? <div className="h-8 w-20 rounded animate-pulse relative z-10" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        : <p className="text-3xl font-black relative z-10" style={{ color: accent ? `rgb(${accent})` : '#fff' }}>{value}</p>
       }
-      {sub && <p className="text-[11px] text-white/25">{sub}</p>}
+      {sub && <p className="text-[11px] text-white/25 relative z-10">{sub}</p>}
     </motion.div>
   );
 }
@@ -320,15 +328,16 @@ function DashboardSection({ ownerId }) {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile label={ownerId ? 'Asistentes' : 'Usuarios'} value={stats.users} icon={Users} loading={loading} sub={ownerId ? 'Con ticket' : 'Registrados'} />
-        <StatTile label="Eventos" value={stats.events} icon={CalendarDays} loading={loading} sub="Creados" />
-        <StatTile label="Tickets" value={stats.tickets} icon={Ticket} loading={loading} sub="Vendidos" />
+        <StatTile label={ownerId ? 'Asistentes' : 'Usuarios'} value={stats.users} icon={Users} loading={loading} sub={ownerId ? 'Con ticket' : 'Registrados'} accent="96,165,250" />
+        <StatTile label="Eventos" value={stats.events} icon={CalendarDays} loading={loading} sub="Creados" accent="255,138,31" />
+        <StatTile label="Tickets" value={stats.tickets} icon={Ticket} loading={loading} sub="Vendidos" accent="167,139,250" />
         <StatTile
           label="Ingresos"
           value={loading ? '—' : `$${stats.revenue.toLocaleString('es-CO')}`}
           icon={Banknote}
           loading={loading}
           sub="COP total"
+          accent="93,224,163"
         />
       </div>
 
@@ -2283,7 +2292,7 @@ const AdminDashboard = () => {
       case 'analytics':   return isAdmin ? <UsageMetricsSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
-      case 'events':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos, artistas y tipos de entrada</p></div><EventManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
+      case 'events':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos, artistas y tipos de entrada</p></div><EventManager ownerId={isAdmin ? null : currentUser?.id} isAdmin={isAdmin} /></div>;
       case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} onConfigureCourtesy={() => setActiveSection('events')} />;
       case 'refunds':     return <RefundRequestsSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'qr':          return <QRSection ownerId={isAdmin ? null : currentUser?.id} />;

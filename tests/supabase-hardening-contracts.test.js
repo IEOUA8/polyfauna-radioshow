@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const hardening = readFileSync('supabase/migrations/20260625015236_phase_7_2_supabase_hardening.sql', 'utf8');
+const featuredGuardFix = readFileSync('supabase/migrations/20260702081733_fix_featured_guard_preserves_existing_value.sql', 'utf8');
 
 test('fase 7.2 fija search_path de funciones marcadas por advisors', () => {
   assert.match(hardening, /ALTER FUNCTION %I\.%I\(%s\) SET search_path = public/);
@@ -65,4 +66,14 @@ test('fase 7.2 corrige featured sin politica update siempre verdadera', () => {
   assert.doesNotMatch(hardening, /FOR UPDATE[\s\S]{0,120}USING \(true\)/);
   assert.match(hardening, /featured IS DISTINCT FROM true/);
   assert.match(hardening, /role = 'admin'/);
+});
+
+test('guard de featured preserva valores existentes en ediciones ajenas al banner', () => {
+  assert.match(featuredGuardFix, /DROP POLICY IF EXISTS "events_featured_admin_guard" ON public\.events/);
+  assert.match(featuredGuardFix, /CREATE OR REPLACE FUNCTION public\.guard_featured_admin_only\(\)/);
+  assert.match(featuredGuardFix, /NEW\.featured IS TRUE/);
+  assert.match(featuredGuardFix, /OLD\.featured IS DISTINCT FROM TRUE/);
+  assert.match(featuredGuardFix, /NOT public\.is_current_user_admin\(\)/);
+  assert.match(featuredGuardFix, /BEFORE UPDATE ON public\.events/);
+  assert.match(featuredGuardFix, /GRANT EXECUTE ON FUNCTION public\.guard_featured_admin_only\(\) TO service_role/);
 });
