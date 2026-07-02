@@ -13,16 +13,17 @@ import { parseTicketQRPayload } from '@/lib/tickets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import Logo from '@/components/Logo';
+import { lazyImport } from '@/lib/lazyImport';
 
-const EventManager     = lazy(() => import('@/components/admin/EventManager'));
-const PodcastManager   = lazy(() => import('@/components/admin/PodcastManager'));
-const BlogManager      = lazy(() => import('@/components/admin/BlogManager'));
-const InterviewManager = lazy(() => import('@/components/admin/InterviewManager'));
-const ShowManager      = lazy(() => import('@/components/admin/ShowManager'));
-const UserManager      = lazy(() => import('@/components/admin/UserManager'));
-const ArtistManager    = lazy(() => import('@/components/admin/ArtistManager'));
-const AlbumManager     = lazy(() => import('@/components/admin/AlbumManager'));
-const TrackManager     = lazy(() => import('@/components/admin/TrackManager'));
+const EventManager     = lazy(lazyImport(() => import('@/components/admin/EventManager')));
+const PodcastManager   = lazy(lazyImport(() => import('@/components/admin/PodcastManager')));
+const BlogManager      = lazy(lazyImport(() => import('@/components/admin/BlogManager')));
+const InterviewManager = lazy(lazyImport(() => import('@/components/admin/InterviewManager')));
+const ShowManager      = lazy(lazyImport(() => import('@/components/admin/ShowManager')));
+const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserManager')));
+const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
+const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
+const TrackManager     = lazy(lazyImport(() => import('@/components/admin/TrackManager')));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
 const NAV_GROUPS = [

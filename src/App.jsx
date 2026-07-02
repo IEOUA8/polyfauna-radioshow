@@ -6,15 +6,16 @@ import { NowPlayingProvider } from '@/hooks/useNowPlaying';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import UsageTelemetry from '@/components/UsageTelemetry';
+import { lazyImport } from '@/lib/lazyImport';
 
-const PolyfaunaOS     = lazy(() => import('@/components/PolyfaunaOS'));
-const LoginPage       = lazy(() => import('@/pages/LoginPage'));
-const SignupPage      = lazy(() => import('@/pages/SignupPage'));
-const UserDashboard   = lazy(() => import('@/pages/UserDashboard'));
-const AdminDashboard  = lazy(() => import('@/pages/AdminDashboard'));
-const ValidatePage    = lazy(() => import('@/pages/ValidatePage'));
-const EventPublicPage = lazy(() => import('@/pages/EventPublicPage'));
-const VercelTelemetry = lazy(() => import('@/components/VercelTelemetry'));
+const PolyfaunaOS     = lazy(lazyImport(() => import('@/components/PolyfaunaOS')));
+const LoginPage       = lazy(lazyImport(() => import('@/pages/LoginPage')));
+const SignupPage      = lazy(lazyImport(() => import('@/pages/SignupPage')));
+const UserDashboard   = lazy(lazyImport(() => import('@/pages/UserDashboard')));
+const AdminDashboard  = lazy(lazyImport(() => import('@/pages/AdminDashboard')));
+const ValidatePage    = lazy(lazyImport(() => import('@/pages/ValidatePage')));
+const EventPublicPage = lazy(lazyImport(() => import('@/pages/EventPublicPage')));
+const VercelTelemetry = lazy(lazyImport(() => import('@/components/VercelTelemetry')));
 
 function RouteLoader() {
   return (
