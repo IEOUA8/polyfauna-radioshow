@@ -164,7 +164,10 @@ function BuyModal({ event, onClose }) {
       try {
         const emails = Array.from({ length: quantity - 1 }, (_, i) => assignedEmails[i + 2] || null);
         const { data, error } = await supabase.functions.invoke('create-payment', {
-          body: { event_id: event.id, ticket_type: selectedTicket.name, quantity, assigned_emails: emails },
+          body: {
+            event_id: event.id, ticket_type: selectedTicket.name, quantity, assigned_emails: emails,
+            seller_ref: sessionStorage.getItem(`pf_seller_ref_${event.id}`) || undefined,
+          },
         });
         if (error) throw new Error(await getFunctionErrorMessage(error, 'Error al crear el pago'));
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');

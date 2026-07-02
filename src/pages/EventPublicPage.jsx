@@ -86,6 +86,14 @@ export default function EventPublicPage() {
       });
   }, [eventId]);
 
+  // Link de un co-promotor (?ref=...) — se guarda para que la compra, aunque
+  // el comprador navegue dentro de la app antes de pagar, se atribuya a él.
+  useEffect(() => {
+    if (!eventId) return;
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) sessionStorage.setItem(`pf_seller_ref_${eventId}`, ref);
+  }, [eventId]);
+
   useEffect(() => {
     supabase
       .from('artists')
@@ -182,7 +190,10 @@ export default function EventPublicPage() {
     } else {
       try {
         const { data, error } = await supabase.functions.invoke('create-payment', {
-          body: { event_id: event.id, ticket_type: selectedTicket.name, quantity: 1, assigned_emails: [] },
+          body: {
+            event_id: event.id, ticket_type: selectedTicket.name, quantity: 1, assigned_emails: [],
+            seller_ref: sessionStorage.getItem(`pf_seller_ref_${event.id}`) || undefined,
+          },
         });
         if (error) throw new Error(await getFunctionErrorMessage(error, 'Error al crear el pago'));
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');

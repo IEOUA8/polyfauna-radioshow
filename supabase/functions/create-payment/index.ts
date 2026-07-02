@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
       ticket_type = 'General',
       quantity = 1,
       assigned_emails = [],
+      seller_ref = null,
     } = await req.json();
 
     if (!event_id)
@@ -164,10 +165,25 @@ Deno.serve(async (req) => {
 
     const reference = `PF-${event_id.slice(0, 8)}-${user.id.slice(0, 8)}-${Date.now()}`;
 
+    // Compra vía link de un co-promotor: acredita la venta a su wallet en
+    // vez del dueño del evento. seller_ref inválido/revocado/ausente cae
+    // al comportamiento de siempre — cambio 100% retrocompatible.
+    let sellerPromoterId = event.owner_id;
+    if (typeof seller_ref === 'string' && seller_ref.trim()) {
+      const { data: seller } = await supabase
+        .from('event_co_promoters')
+        .select('promoter_id')
+        .eq('event_id', event_id)
+        .eq('ref_code', seller_ref.trim())
+        .eq('status', 'active')
+        .maybeSingle();
+      if (seller?.promoter_id) sellerPromoterId = seller.promoter_id;
+    }
+
     const { error: txErr } = await supabase.from('transactions').insert({
       event_id,
       buyer_id:        user.id,
-      promoter_id:     event.owner_id,
+      promoter_id:     sellerPromoterId,
       amount_total:    amount_cop,
       platform_fee,
       promoter_amount,

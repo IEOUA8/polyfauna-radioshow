@@ -1126,12 +1126,27 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const [courtesyEvent, setCourtesyEvent] = useState(null);
 
   useEffect(() => {
-    let query = supabase
-      .from('events')
-      .select('id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued')
-      .order('date', { ascending: true });
-    if (ownerId) query = query.eq('owner_id', ownerId);
-    query.then(({ data }) => { setEvents(data || []); setLoading(false); });
+    const load = async () => {
+      let query = supabase
+        .from('events')
+        .select('id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued')
+        .order('date', { ascending: true });
+      if (ownerId) {
+        const { data: linked } = await supabase
+          .from('event_co_promoters')
+          .select('event_id')
+          .eq('promoter_id', ownerId)
+          .eq('status', 'active');
+        const linkedIds = (linked || []).map(row => row.event_id);
+        const filters = [`owner_id.eq.${ownerId}`];
+        if (linkedIds.length) filters.push(`id.in.(${linkedIds.join(',')})`);
+        query = query.or(filters.join(','));
+      }
+      const { data } = await query;
+      setEvents(data || []);
+      setLoading(false);
+    };
+    load();
   }, [ownerId]);
 
   const loadBuyers = async (eventId) => {

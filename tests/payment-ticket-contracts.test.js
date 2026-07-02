@@ -38,6 +38,8 @@ const uploadField = readFileSync('src/components/admin/UploadField.jsx', 'utf8')
 const sidebar = readFileSync('src/components/Sidebar.jsx', 'utf8');
 const mobileMenu = readFileSync('src/components/MobileMenu.jsx', 'utf8');
 const ticketIdentity = readFileSync('src/lib/ticketIdentity.js', 'utf8');
+const eventsDuplicateGuard = readFileSync('supabase/migrations/20260702180107_events_duplicate_guard.sql', 'utf8');
+const eventCoPromoters = readFileSync('supabase/migrations/20260702180108_event_co_promoters.sql', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -190,7 +192,7 @@ test('panel operativo unifica edición completa de eventos y tickets', () => {
   assert.match(adminDashboard, /<EventManager ownerId=\{isAdmin \? null : currentUser\?\.id\} isAdmin=\{isAdmin\}/);
   assert.match(eventManager, /function EventManager|const EventManager = \(\{ ownerId = null/);
   assert.match(eventManager, /\{isAdmin && \(/);
-  assert.match(eventManager, /query = query\.eq\('owner_id', ownerId\)/);
+  assert.match(eventManager, /filters = \[`owner_id\.eq\.\$\{ownerId\}`\]/);
   assert.match(eventManager, /ticket_types: normalizedTicketTypes/);
   assert.match(eventManager, /setTicketTypes\(existingTicketTypes/);
   assert.match(eventManager, /Editar evento/);
@@ -279,4 +281,57 @@ test('panel admin usa RPCs auditadas para roles, perfiles y soporte', () => {
   assert.match(adminDashboard, /id: 'support'/);
   assert.match(adminDashboard, /function SupportCasesSection/);
   assert.match(adminDashboard, /supabase\.rpc\('update_support_case'/);
+});
+
+test('eventos duplicados quedan bloqueados por título y día para el mismo dueño', () => {
+  assert.match(eventsDuplicateGuard, /CREATE UNIQUE INDEX IF NOT EXISTS events_owner_title_day_unique/);
+  assert.match(eventsDuplicateGuard, /CREATE OR REPLACE FUNCTION public\.events_dup_day\(ts TIMESTAMPTZ\)/);
+  assert.match(eventsDuplicateGuard, /IMMUTABLE/);
+  assert.match(eventsDuplicateGuard, /owner_id, lower\(trim\(title\)\), public\.events_dup_day\(date\)/);
+  assert.match(eventsDuplicateGuard, /WHERE status <> 'cancelled'/);
+  assert.match(eventManager, /err\.code === '23505'/);
+  assert.match(eventManager, /events_owner_title_day_unique/);
+});
+
+test('co-promotores venden sin poder editar el evento y se acreditan en su propio wallet', () => {
+  // Esquema y autorización de escritura solo vía funciones SECURITY DEFINER
+  assert.match(eventCoPromoters, /CREATE TABLE IF NOT EXISTS public\.event_co_promoters/);
+  assert.match(eventCoPromoters, /ref_code\s+TEXT NOT NULL UNIQUE DEFAULT substr\(md5\(gen_random_uuid\(\)::text\), 1, 12\)/);
+  assert.match(eventCoPromoters, /REVOKE ALL ON public\.event_co_promoters FROM PUBLIC, anon, authenticated/);
+  assert.match(eventCoPromoters, /CREATE OR REPLACE FUNCTION public\.add_event_co_promoter/);
+  assert.match(eventCoPromoters, /v_target_role NOT IN \('promoter', 'club'\)/);
+  assert.match(eventCoPromoters, /CREATE OR REPLACE FUNCTION public\.revoke_event_co_promoter/);
+
+  // El co-promotor puede leer el evento aunque no esté publicado
+  assert.match(eventCoPromoters, /DROP POLICY IF EXISTS "events_visible_read" ON public\.events/);
+  assert.match(eventCoPromoters, /FROM public\.event_co_promoters\s+WHERE event_id = events\.id/);
+
+  // Asistentes y ticket manual: dueño O co-promotor activo
+  assert.match(eventCoPromoters, /DROP FUNCTION IF EXISTS public\.get_event_attendees\(UUID\)/);
+  assert.match(eventCoPromoters, /CREATE FUNCTION public\.get_event_attendees/);
+  assert.match(eventCoPromoters, /FROM public\.event_co_promoters\s+WHERE event_id = event\.id AND promoter_id = auth\.uid\(\) AND status = 'active'/);
+  assert.match(eventCoPromoters, /CREATE OR REPLACE FUNCTION public\.issue_manual_transfer_ticket/);
+  assert.match(eventCoPromoters, /v_event\.owner_id <> p_actor_id/);
+  // La venta manual se acredita a quien la emite, no siempre al dueño
+  assert.match(eventCoPromoters, /p_actor_id,\s*\n\s*v_tier_price,/);
+
+  // create-payment resuelve el promoter_id por ref_code, sin romper el flujo normal
+  assert.match(createPayment, /seller_ref = null/);
+  assert.match(createPayment, /from\('event_co_promoters'\)/);
+  assert.match(createPayment, /eq\('ref_code', seller_ref\.trim\(\)\)/);
+  assert.match(createPayment, /let sellerPromoterId = event\.owner_id/);
+
+  // El link se captura en la página pública y se reenvía al checkout
+  assert.match(eventPublicPage, /pf_seller_ref_\$\{eventId\}/);
+  assert.match(eventPublicPage, /seller_ref: sessionStorage\.getItem/);
+  assert.match(eventTerminal, /seller_ref: sessionStorage\.getItem/);
+
+  // UI: invitar/gestionar co-promotores, y ocultar edición para no-dueños
+  assert.match(eventManager, /function CoPromotersManager/);
+  assert.match(eventManager, /supabase\.rpc\('add_event_co_promoter'/);
+  assert.match(eventManager, /supabase\.rpc\('revoke_event_co_promoter'/);
+  assert.match(eventManager, /const canEdit = isAdmin \|\| event\.owner_id === currentUser\?\.id/);
+
+  // Tickets: el listado/emisión manual también incluye eventos co-promovidos
+  assert.match(adminDashboard, /from\('event_co_promoters'\)/);
 });

@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 import ArtistMentionInput from '@/components/ArtistMentionInput';
@@ -226,6 +226,120 @@ function AttendeesModal({ event, onClose }) {
   );
 }
 
+/* ── Co-promotores ────────────────────────────────────────── */
+const CO_PROMOTER_ERRORS = {
+  user_not_found: 'No hay ninguna cuenta con ese correo',
+  invalid_role: 'Ese usuario no tiene rol de Promotor o Club',
+  cannot_link_owner: 'No puedes vincularte a ti mismo como co-promotor',
+  not_authorized: 'No tienes permiso para vincular co-promotores en este evento',
+};
+
+function CoPromotersManager({ eventId }) {
+  const { toast } = useToast();
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('event_co_promoters')
+      .select('id, promoter_id, ref_code')
+      .eq('event_id', eventId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+    const rows = data || [];
+    if (rows.length) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', rows.map(row => row.promoter_id));
+      const byId = Object.fromEntries((profs || []).map(p => [p.id, p.display_name]));
+      setList(rows.map(row => ({ ...row, display_name: byId[row.promoter_id] || null })));
+    } else {
+      setList([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [eventId]);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setAdding(true);
+    try {
+      const { error } = await supabase.rpc('add_event_co_promoter', { p_event_id: eventId, p_email: email.trim() });
+      if (error) throw error;
+      toast({ title: 'Co-promotor vinculado' });
+      setEmail('');
+      load();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: CO_PROMOTER_ERRORS[err.message] || err.message });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRevoke = async (id) => {
+    try {
+      const { error } = await supabase.rpc('revoke_event_co_promoter', { p_id: id });
+      if (error) throw error;
+      toast({ title: 'Co-promotor revocado' });
+      load();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+  };
+
+  const copyLink = (refCode) => {
+    const url = `${window.location.origin}/e/${eventId}?ref=${refCode}`;
+    navigator.clipboard?.writeText(url);
+    toast({ title: 'Link copiado' });
+  };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid hsl(var(--border))' }}>
+      <div>
+        <Label>Co-promotores</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Vincula promotores o clubes que puedan vender tickets de este evento y emitir tickets manuales, sin poder editarlo.
+        </p>
+      </div>
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="correo@ejemplo.com" className="bg-background border-border text-foreground" />
+        <Button type="submit" disabled={adding} className="shrink-0">
+          {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Vincular'}
+        </Button>
+      </form>
+      {loading ? (
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      ) : list.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Aún no hay co-promotores vinculados.</p>
+      ) : (
+        <div className="space-y-2">
+          {list.map(row => (
+            <div key={row.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span className="text-sm text-foreground truncate">{row.display_name || 'Promotor'}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button type="button" variant="ghost" size="sm" onClick={() => copyLink(row.ref_code)} className="text-xs h-7 px-2 gap-1.5">
+                  <Copy className="w-3 h-3" /> Copiar link
+                </Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => handleRevoke(row.id)}
+                  className="text-destructive hover:text-destructive/80 h-7 w-7" title="Revocar">
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Event Manager ───────────────────────────────────────── */
 const EventManager = ({ ownerId = null, isAdmin = false }) => {
   const { currentUser } = useAuth();
@@ -246,11 +360,26 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
 
   const fetchEvents = async () => {
     try {
+      const coPromotedRefs = {};
+      if (ownerId) {
+        const { data: linked } = await supabase
+          .from('event_co_promoters')
+          .select('event_id, ref_code')
+          .eq('promoter_id', ownerId)
+          .eq('status', 'active');
+        (linked || []).forEach(row => { coPromotedRefs[row.event_id] = row.ref_code; });
+      }
+
       let query = supabase.from('events').select('*').order('date', { ascending: false });
-      if (ownerId) query = query.eq('owner_id', ownerId);
+      if (ownerId) {
+        const linkedIds = Object.keys(coPromotedRefs);
+        const filters = [`owner_id.eq.${ownerId}`];
+        if (linkedIds.length) filters.push(`id.in.(${linkedIds.join(',')})`);
+        query = query.or(filters.join(','));
+      }
       const { data, error } = await query;
       if (error) throw error;
-      setEvents(data || []);
+      setEvents((data || []).map(event => ({ ...event, _coPromoterRef: coPromotedRefs[event.id] || null })));
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
@@ -327,7 +456,14 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
       resetForm();
       fetchEvents();
     } catch (err) {
-      setFormError(err.message || 'Error al guardar el evento');
+      if (err.code === '23505' && err.message?.includes('events_owner_title_day_unique')) {
+        const dateLabel = formData.date
+          ? new Date(formData.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
+          : 'esa fecha';
+        setFormError(`Ya tienes un evento llamado "${formData.title}" programado el ${dateLabel}. Si es una reedición, cambia el título o edita el evento existente en vez de crear uno nuevo.`);
+      } else {
+        setFormError(err.message || 'Error al guardar el evento');
+      }
     } finally {
       setSaving(false);
     }
@@ -645,6 +781,8 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                   {loadingTicketSales ? 'Cargando inventario…' : editingEvent ? 'Guardar todos los cambios' : 'Crear Evento'}
                 </Button>
               </form>
+
+              {editingEvent && <CoPromotersManager eventId={editingEvent.id} />}
             </DialogContent>
           </Dialog>
         </CardHeader>
@@ -658,7 +796,9 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
             <p className="text-muted-foreground text-center py-12">No hay eventos aún</p>
           ) : (
             <div className="space-y-3">
-              {events.map((event) => (
+              {events.map((event) => {
+                const canEdit = isAdmin || event.owner_id === currentUser?.id;
+                return (
                 <div key={event.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-background rounded-xl border border-border">
                   {event.image_url && (
                     <img src={event.image_url} alt={event.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -672,6 +812,14 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                           style={{ background: 'rgba(255,138,31,0.15)', color: 'rgba(255,138,31,0.90)', border: '1px solid rgba(255,138,31,0.25)' }}
                         >
                           Banner {event.featured_order != null ? `#${event.featured_order}` : ''}
+                        </span>
+                      )}
+                      {!canEdit && (
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                          style={{ background: 'rgba(96,165,250,0.15)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.25)' }}
+                        >
+                          Co-promotor
                         </span>
                       )}
                     </div>
@@ -697,17 +845,33 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                       <Users className="w-3.5 h-3.5" />
                       Ver lista
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(event)}
-                      className="text-xs gap-1.5 text-secondary hover:text-secondary/80 border-secondary/25">
-                      <Edit className="w-4 h-4" />
-                      Editar evento
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-destructive hover:text-destructive/80">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {canEdit ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(event)}
+                          className="text-xs gap-1.5 text-secondary hover:text-secondary/80 border-secondary/25">
+                          <Edit className="w-4 h-4" />
+                          Editar evento
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-destructive hover:text-destructive/80">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm"
+                        onClick={() => {
+                          const url = `${window.location.origin}/e/${event.id}?ref=${event._coPromoterRef}`;
+                          navigator.clipboard?.writeText(url);
+                          toast({ title: 'Link copiado' });
+                        }}
+                        className="text-xs gap-1.5 text-secondary hover:text-secondary/80 border-secondary/25">
+                        <Copy className="w-3.5 h-3.5" />
+                        Copiar mi link
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
