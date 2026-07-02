@@ -23,7 +23,6 @@ const UserManager      = lazy(() => import('@/components/admin/UserManager'));
 const ArtistManager    = lazy(() => import('@/components/admin/ArtistManager'));
 const AlbumManager     = lazy(() => import('@/components/admin/AlbumManager'));
 const TrackManager     = lazy(() => import('@/components/admin/TrackManager'));
-const PromoterDashboard = lazy(() => import('@/components/PromoterDashboard'));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
 const NAV_GROUPS = [
@@ -2031,7 +2030,7 @@ const AdminDashboard = () => {
       case 'analytics':   return isAdmin ? <UsageMetricsSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
-      case 'events':      return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos</p></div><EventManager /></div> : <PromoterDashboard />;
+      case 'events':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos, artistas y tipos de entrada</p></div><EventManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
       case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} onConfigureCourtesy={() => setActiveSection('events')} />;
       case 'refunds':     return <RefundRequestsSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'qr':          return <QRSection ownerId={isAdmin ? null : currentUser?.id} />;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  CalendarDays, Disc3, Dna, FileText, Gauge, Headphones,
+  CalendarDays, Disc3, Dna, FileText, Headphones,
   Lock, LogIn, MessageSquare, Music, Radio,
   Shield, SlidersHorizontal, Ticket, UserPlus, X,
 } from 'lucide-react';
@@ -82,10 +82,9 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
   const role            = profile?.role || 'citizen';
   const displayName     = profile?.display_name || currentUser?.email?.split('@')[0] || 'Invitado';
 
-  const PROMOTER_ITEM = { id: 'promoter', label: 'Gestor', icon: Gauge, public: false, requiresLogin: true };
   const OPERATIONS_ITEM = { id: 'operations', label: 'Panel operativo', icon: Shield, public: false, requiresLogin: true, href: '/admin' };
-  const showPromoter  = isLoggedIn && (role === 'promoter' || role === 'club' || role === 'admin');
-  const allItems      = showPromoter ? [...NAV_ITEMS, PROMOTER_ITEM, OPERATIONS_ITEM] : NAV_ITEMS;
+  const showOperations = isLoggedIn && (role === 'promoter' || role === 'club' || role === 'admin');
+  const allItems = showOperations ? [...NAV_ITEMS, OPERATIONS_ITEM] : NAV_ITEMS;
 
   return (
     <AnimatePresence>

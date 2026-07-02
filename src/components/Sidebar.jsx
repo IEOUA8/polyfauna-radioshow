@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, CalendarDays, Disc3, Dna, FileText, Gauge,
+  ArrowRight, CalendarDays, Disc3, Dna, FileText,
   Headphones, Lock, MessageSquare, Music, Radio,
   SlidersHorizontal, Ticket,
 } from 'lucide-react';
@@ -106,24 +106,6 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
         {/* Pending role banner */}
         {isLoggedIn && role === 'citizen' && (
           <PendingRoleBanner userId={currentUser?.id} />
-        )}
-
-        {/* Gestor de Eventos — promotor / club / admin */}
-        {isLoggedIn && (role === 'promoter' || role === 'club' || role === 'admin') && (
-          <>
-            <div className="my-2 mx-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }} />
-            <button type="button" onClick={() => navigate('promoter', false)}
-              className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
-                currentSection === 'promoter' ? 'text-white bg-white/8' : 'text-white/40 hover:text-white/75 hover:bg-white/4'
-              }`}
-            >
-              {currentSection === 'promoter' && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full bg-white/80" />
-              )}
-              <Gauge className={`w-4 h-4 shrink-0 ${currentSection === 'promoter' ? 'text-white' : 'text-white/35 group-hover:text-white/60'}`} />
-              Gestor de Eventos
-            </button>
-          </>
         )}
 
       </nav>
