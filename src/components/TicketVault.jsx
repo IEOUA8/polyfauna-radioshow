@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Download, MapPin, RefreshCw, Send, Ticket, X, XCircle } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -151,13 +152,30 @@ function QRModal({ ticket, qrValue, onClose }) {
     }
   };
 
-  return (
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    // Oculta el reproductor global mientras el QR está en pantalla — la
+    // lectura del ticket a la entrada no debe competir con su barra flotante.
+    window.dispatchEvent(new CustomEvent('pf:ticket-modal', { detail: { open: true } }));
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+      window.dispatchEvent(new CustomEvent('pf:ticket-modal', { detail: { open: false } }));
+    };
+  }, []);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[220] flex items-center justify-center p-3 sm:p-4"
         style={{ background: 'rgba(4,7,7,0.92)', backdropFilter: 'blur(12px)' }}
         onClick={onClose}
       >
@@ -166,12 +184,12 @@ function QRModal({ ticket, qrValue, onClose }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.92, y: 20 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-          className="relative max-w-sm w-full rounded-3xl overflow-hidden"
+          className="relative max-w-sm w-full max-h-[calc(100dvh-24px)] sm:max-h-[calc(100dvh-48px)] rounded-3xl overflow-hidden flex flex-col"
           style={{ background: 'rgba(8, 13, 9, 0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header image */}
-          <div className="relative h-32 overflow-hidden">
+          <div className="relative h-32 overflow-hidden shrink-0">
             <img src={event?.image_url || FALLBACK} alt={event?.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
             <button
@@ -185,7 +203,10 @@ function QRModal({ ticket, qrValue, onClose }) {
           </div>
 
           {/* Body */}
-          <div className="px-6 pb-6 pt-4 flex flex-col items-center gap-5">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pb-6 pt-4 flex flex-col items-center gap-5"
+            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.16) transparent' }}
+          >
             {/* Event info */}
             <div className="w-full text-center">
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
@@ -271,7 +292,8 @@ function QRModal({ ticket, qrValue, onClose }) {
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

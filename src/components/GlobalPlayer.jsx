@@ -65,7 +65,14 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
   const [repeat, setRepeat] = useState(false);
   const [playbackQueue, setPlaybackQueue] = useState(null);
   const [streamUrl, setStreamUrl] = useState(getStreamUrl);
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
+
+  useEffect(() => {
+    const handler = (e) => setTicketModalOpen(!!e.detail?.open);
+    window.addEventListener('pf:ticket-modal', handler);
+    return () => window.removeEventListener('pf:ticket-modal', handler);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -323,7 +330,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
-        className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 flex flex-col sm:flex-row sm:items-center px-3 sm:px-4 md:px-6 pt-3 pb-2 sm:py-0 sm:h-[76px]"
+        className={`fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 flex flex-col sm:flex-row sm:items-center px-3 sm:px-4 md:px-6 pt-3 pb-2 sm:py-0 sm:h-[76px]${ticketModalOpen ? ' max-lg:hidden' : ''}`}
         style={{
           background: 'rgba(8, 12, 11, 0.75)',
           backdropFilter: 'blur(48px) saturate(220%) brightness(1.1)',
