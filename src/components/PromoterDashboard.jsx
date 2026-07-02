@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle, ArrowUpRight, Banknote, Calendar, CheckCircle,
-  CreditCard, ExternalLink, Loader2, Plus, QrCode, Ticket, Trash2, TrendingUp, Users, Wallet,
+  CreditCard, ExternalLink, Gift, Loader2, Plus, QrCode, Send, Ticket, Trash2, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '@/lib/customSupabaseClient';
@@ -12,9 +12,10 @@ import { useProfile } from '@/hooks/useProfile';
 import { LoadingSkeleton, EmptyState, LoginRequired } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import FormModal, { FField, FInput, FTextarea, FImageZone, FSubmit } from '@/components/ui/FormModal';
+import ArtistMentionInput from '@/components/ArtistMentionInput';
 
-const TICKET_TYPE_OPTIONS = ['General', 'VIP', 'Early', 'Anytime', 'Gratis', 'Cortesía'];
-const FREE_TICKET_TYPES = new Set(['Gratis', 'Cortesía']);
+const TICKET_TYPE_OPTIONS = ['General', 'VIP', 'Early', 'Anytime', 'Gratis'];
+const FREE_TICKET_TYPES = new Set(['Gratis']);
 const DEFAULT_TICKET_TYPES = [{ name: 'General', price: '', capacity: '100' }];
 const BANKS = [
   'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA', 'Banco Popular',
@@ -34,7 +35,7 @@ function CreateEventModal({ onClose, onCreated }) {
   const [saving, setSaving] = useState(false);
   const [coverFile, setCoverFile] = useState(null);
   const [form, setForm] = useState({
-    title: '', description: '', date: '', venue: '', city: '',
+    title: '', description: '', date: '', ends_at: '', venue: '', city: '', lineup: [], courtesy_limit: '0',
   });
   const [ticketTypes, setTicketTypes] = useState(DEFAULT_TICKET_TYPES);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -64,7 +65,13 @@ function CreateEventModal({ onClose, onCreated }) {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.date || !ticketTypesValid) return;
+    if (
+      !form.title
+      || !form.date
+      || !form.ends_at
+      || new Date(form.ends_at) <= new Date(form.date)
+      || !ticketTypesValid
+    ) return;
     setSaving(true);
 
     let image_url = null;
@@ -87,17 +94,21 @@ function CreateEventModal({ onClose, onCreated }) {
       image_url = publicUrl;
     }
 
-    const ticketsTotal = normalizedTicketTypes.reduce((sum, ticket) => sum + ticket.capacity, 0);
+    const courtesyLimit = Math.max(0, parseInt(form.courtesy_limit, 10) || 0);
+    const ticketsTotal = normalizedTicketTypes.reduce((sum, ticket) => sum + ticket.capacity, 0) + courtesyLimit;
     const startingPrice = Math.min(...normalizedTicketTypes.map(ticket => ticket.price));
     const { data, error } = await supabase.from('events').insert({
       title: form.title,
       description: form.description || null,
       date: form.date,
+      ends_at: form.ends_at,
       venue: form.venue || null,
       city: form.city || null,
       price: startingPrice,
       tickets_total: ticketsTotal,
       ticket_types: normalizedTicketTypes,
+      courtesy_limit: courtesyLimit,
+      lineup: form.lineup,
       owner_id: currentUser.id,
       status: 'upcoming',
       image_url,
@@ -122,7 +133,7 @@ function CreateEventModal({ onClose, onCreated }) {
         <FSubmit
           form="create-event-form"
           loading={saving}
-          disabled={!form.title || !form.date || !ticketTypesValid}
+          disabled={!form.title || !form.date || !form.ends_at || new Date(form.ends_at) <= new Date(form.date) || !ticketTypesValid}
         >
           <Plus className="w-4 h-4" />
           {saving ? 'Publicando…' : 'Publicar Evento'}
@@ -141,14 +152,20 @@ function CreateEventModal({ onClose, onCreated }) {
           <FField label="Nombre del evento" required span={2}>
             <FInput value={form.title} onChange={e => set('title', e.target.value)} placeholder="PolyFauna: Opening Night" />
           </FField>
-          <FField label="Fecha y hora" required>
+          <FField label="Inicio del evento" required>
             <FInput type="datetime-local" value={form.date} onChange={e => set('date', e.target.value)} />
+          </FField>
+          <FField label="Final del evento" required>
+            <FInput type="datetime-local" value={form.ends_at} min={form.date || undefined} onChange={e => set('ends_at', e.target.value)} />
           </FField>
           <FField label="Venue / Lugar">
             <FInput value={form.venue} onChange={e => set('venue', e.target.value)} placeholder="Club Razzmatazz" />
           </FField>
           <FField label="Ciudad">
             <FInput value={form.city} onChange={e => set('city', e.target.value)} placeholder="Bogotá" />
+          </FField>
+          <FField label="Cupos de cortesía">
+            <FInput type="number" min="0" value={form.courtesy_limit} onChange={e => set('courtesy_limit', e.target.value)} placeholder="0" />
           </FField>
           <FField label="Tipos de entrada" span={2}>
             <div className="space-y-3">
@@ -216,12 +233,15 @@ function CreateEventModal({ onClose, onCreated }) {
                 </div>
               ))}
               <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                Puedes combinar entradas pagas, gratis y cortesías. Cada tipo tiene cupo independiente y las de valor $0 se emiten sin Wompi.
+                Puedes combinar entradas pagas y gratis. Las cortesías se reservan arriba y se asignan desde la gestión del evento.
               </p>
             </div>
           </FField>
           <FField label="Descripción" span={2}>
             <FTextarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe el evento, artistas, rooms…" rows={3} />
+          </FField>
+          <FField label="DJs / Artistas" span={2}>
+            <ArtistMentionInput value={form.lineup} onChange={lineup => set('lineup', lineup)} />
           </FField>
         </div>
       </form>
@@ -229,8 +249,62 @@ function CreateEventModal({ onClose, onCreated }) {
   );
 }
 
+function CourtesyModal({ event, onClose, onIssued }) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const submit = async (submitEvent) => {
+    submitEvent.preventDefault();
+    if (!email.trim()) return;
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke('issue-courtesy-ticket', {
+      body: { eventId: event.id, userEmail: email.trim() },
+    });
+    setSending(false);
+    if (error || !data?.ok) {
+      toast({
+        title: 'No se pudo emitir la cortesía',
+        description: data?.error || error?.message || 'Verifica el correo e intenta nuevamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: data.alreadyProcessed ? 'El usuario ya tenía entrada' : 'Cortesía enviada',
+      description: `#${data.ticketNumber}${data.emailSent ? ' · correo enviado' : ''}${data.pushSent ? ' · push enviado' : ''}`,
+    });
+    onIssued(data);
+  };
+
+  return (
+    <FormModal
+      title="Enviar cortesía"
+      subtitle={`${event.title} · ${(event.courtesy_limit || 0) - (event.courtesies_issued || 0)} disponibles`}
+      onClose={onClose}
+      footer={(
+        <FSubmit form="courtesy-ticket-form" loading={sending} disabled={!email.trim()}>
+          <Send className="w-4 h-4" />
+          Enviar cortesía
+        </FSubmit>
+      )}
+    >
+      <form id="courtesy-ticket-form" onSubmit={submit} className="space-y-4">
+        <FField label="Correo del usuario" required>
+          <FInput type="email" value={email} onChange={eventChange => setEmail(eventChange.target.value)}
+            placeholder="usuario@correo.com" autoFocus />
+        </FField>
+        <div className="rounded-xl p-3 text-xs leading-relaxed text-white/45"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          El usuario debe estar registrado y tener nombre completo y documento en su perfil. Recibirá el ticket en su Vault, correo y notificación push.
+        </div>
+      </form>
+    </FormModal>
+  );
+}
+
 // ── Event Card ────────────────────────────────────────────────
-function EventCard({ event }) {
+function EventCard({ event, onCourtesy }) {
   const navigate = useNavigate();
   const sold = event.tickets_sold || 0;
   const total = event.tickets_total || 100;
@@ -279,18 +353,29 @@ function EventCard({ event }) {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => navigate(`/validate?event=${event.id}`)}
-        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors"
-        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.11)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-      >
-        <QrCode className="w-3.5 h-3.5" />
-        Validar entradas en puerta
-        <ExternalLink className="w-3 h-3 opacity-50" />
-      </button>
+      <div className="grid grid-cols-1 gap-2">
+        {(event.courtesy_limit || 0) > 0 && (
+          <button type="button" onClick={() => onCourtesy(event)}
+            disabled={(event.courtesies_issued || 0) >= event.courtesy_limit}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold disabled:opacity-35"
+            style={{ background: 'rgba(167,139,250,0.10)', color: '#C4B5FD', border: '1px solid rgba(167,139,250,0.22)' }}>
+            <Gift className="w-3.5 h-3.5" />
+            Cortesías {event.courtesies_issued || 0}/{event.courtesy_limit}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate(`/validate?event=${event.id}`)}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.11)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+        >
+          <QrCode className="w-3.5 h-3.5" />
+          Validar entradas en puerta
+          <ExternalLink className="w-3 h-3 opacity-50" />
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -652,6 +737,7 @@ export default function PromoterDashboard() {
   const { profile } = useProfile();
   const [activeTab, setActiveTab] = useState('events');
   const [showCreate, setShowCreate] = useState(false);
+  const [courtesyEvent, setCourtesyEvent] = useState(null);
 
   const { data: myEvents, loading, refetch } = useSupabaseQuery(
     () => currentUser
@@ -677,13 +763,26 @@ export default function PromoterDashboard() {
 
   const totalSold    = (myEvents || []).reduce((s, e) => s + (e.tickets_sold || 0), 0);
   const totalRevenue = (myEvents || []).reduce((s, e) => s + ((e.tickets_sold || 0) * (e.price || 0)), 0);
+  const dashboardTitle = profile?.organizer_type === 'collective' ? 'Panel del Colectivo' : 'Promoter Dashboard';
 
   return (
     <div className="p-5 space-y-5">
+      <AnimatePresence>
+        {courtesyEvent && (
+          <CourtesyModal
+            event={courtesyEvent}
+            onClose={() => setCourtesyEvent(null)}
+            onIssued={() => {
+              setCourtesyEvent(null);
+              refetch();
+            }}
+          />
+        )}
+      </AnimatePresence>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-white">Promoter Dashboard</h1>
+          <h1 className="text-xl font-black text-white">{dashboardTitle}</h1>
           <p className="text-sm text-white/40 mt-1">Gestiona eventos, wallet y cuenta bancaria.</p>
         </div>
         {activeTab === 'events' && (
@@ -750,7 +849,7 @@ export default function PromoterDashboard() {
               {!loading && myEvents && myEvents.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {myEvents.map(event => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard key={event.id} event={event} onCourtesy={setCourtesyEvent} />
                   ))}
                 </div>
               )}

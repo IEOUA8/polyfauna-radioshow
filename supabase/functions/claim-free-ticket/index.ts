@@ -14,6 +14,15 @@ Deno.serve(async (req) => {
     const { admin, user } = await requireUser(req);
     if (!user) return json({ error: 'No autenticado' }, 401);
 
+    const { data: identity } = await admin
+      .from('user_identity')
+      .select('full_name, document_number')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!identity?.full_name || !identity?.document_number) {
+      return json({ error: 'Completa tu nombre y documento en el Control Center antes de adquirir tickets' }, 400);
+    }
+
     const { eventId, ticketType } = await req.json();
     if (
       typeof eventId !== 'string'
@@ -28,6 +37,9 @@ Deno.serve(async (req) => {
     const normalizedType = ['ga', 'general admission'].includes(ticketType.trim().toLowerCase())
       ? 'General'
       : ticketType.trim();
+    if (normalizedType.toLowerCase() === 'cortesía' || normalizedType.toLowerCase() === 'cortesia') {
+      return json({ error: 'Las cortesías solo pueden ser emitidas por el organizador' }, 403);
+    }
 
     const { data: event } = await admin
       .from('events')

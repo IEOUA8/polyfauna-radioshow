@@ -24,7 +24,9 @@ function RequestCard({ req, onAction }) {
   const [reason, setReason]     = useState('');
   const { toast } = useToast();
 
-  const roleInfo   = ROLE_LABELS[req.requested_role] || { label: req.requested_role, color: '#888' };
+  const roleInfo = req.form_data?.organizer_type === 'collective'
+    ? { label: 'Colectivo', color: '#FB923C' }
+    : ROLE_LABELS[req.requested_role] || { label: req.requested_role, color: '#888' };
   const statusInfo = STATUS_LABELS[req.status]       || { label: req.status, color: '#888' };
 
   const handle = async (action) => {

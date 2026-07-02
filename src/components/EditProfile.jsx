@@ -1,15 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { Camera, Loader2, Save, X } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Camera, IdCard, Loader2, Save, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-
-const ROLES = [
-  { value: 'citizen',  label: 'Wave Citizen',  desc: 'Fan y oyente de la comunidad' },
-  { value: 'artist',   label: 'Artista',        desc: 'DJ, productor o live act' },
-  { value: 'promoter', label: 'Promotor',       desc: 'Organizo eventos y shows' },
-  { value: 'club',     label: 'Club / Venue',   desc: 'Espacio de música electrónica' },
-];
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
@@ -20,15 +13,27 @@ export default function EditProfile({ profile, onSave, onClose }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || null);
+  const [identity, setIdentity] = useState({ full_name: '', document_type: 'CC', document_number: '' });
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
     username:     profile?.username || '',
     bio:          profile?.bio || '',
     city:         profile?.city || '',
     website:      profile?.website || '',
-    role:         profile?.role || 'citizen',
     social_links: profile?.social_links || { instagram: '', bandcamp: '', soundcloud: '', twitter: '' },
   });
+
+  useEffect(() => {
+    supabase
+      .from('user_identity')
+      .select('full_name, document_type, document_number')
+      .eq('user_id', currentUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setIdentity(data);
+        else setIdentity(current => ({ ...current, full_name: profile?.display_name || '' }));
+      });
+  }, [currentUser.id, profile?.display_name]);
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
   const setSocial = (key, val) => setForm(prev => ({
@@ -57,6 +62,14 @@ export default function EditProfile({ profile, onSave, onClose }) {
   };
 
   const handleSave = async () => {
+    if (!identity.full_name.trim() || !identity.document_number.trim()) {
+      toast({
+        title: 'Completa tu identidad',
+        description: 'Nombre completo y número de documento son necesarios para validar tickets.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSaving(true);
     const updates = { ...form };
     if (avatarPreview && avatarPreview !== profile?.avatar_url) {
@@ -66,8 +79,17 @@ export default function EditProfile({ profile, onSave, onClose }) {
       .upsert({ id: currentUser.id, ...updates })
       .select().single();
 
-    if (error) {
-      toast({ title: 'Error al guardar', description: error.message, variant: 'destructive' });
+    const { error: identityError } = error ? { error: null } : await supabase
+      .from('user_identity')
+      .upsert({
+        user_id: currentUser.id,
+        full_name: identity.full_name.trim(),
+        document_type: identity.document_type,
+        document_number: identity.document_number.trim(),
+      });
+
+    if (error || identityError) {
+      toast({ title: 'Error al guardar', description: error?.message || identityError?.message, variant: 'destructive' });
     } else {
       toast({ title: 'Perfil actualizado', description: 'Tus cambios se guardaron correctamente.' });
       onSave?.();
@@ -113,23 +135,47 @@ export default function EditProfile({ profile, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Rol */}
-          <div>
-            <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-2">Tipo de cuenta</label>
-            <div className="grid grid-cols-2 gap-2">
-              {ROLES.map(r => (
-                <button key={r.value} type="button" onClick={() => set('role', r.value)}
-                  className="p-3 rounded-xl text-left transition-all"
-                  style={{
-                    background: form.role === r.value ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${form.role === r.value ? 'rgba(32,199,232,0.4)' : 'rgba(255,255,255,0.07)'}`,
-                  }}>
-                  <p className="text-xs font-bold" style={{ color: form.role === r.value ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.7)' }}>
-                    {r.label}
-                  </p>
-                  <p className="text-[10px] text-white/30 mt-0.5">{r.desc}</p>
-                </button>
-              ))}
+          <div className="rounded-xl p-4 space-y-3"
+            style={{ background: 'rgba(32,199,232,0.05)', border: '1px solid rgba(32,199,232,0.16)' }}>
+            <div className="flex items-center gap-2">
+              <IdCard className="w-4 h-4 text-cyan-300" />
+              <div>
+                <p className="text-xs font-black text-white">Identidad para acceso a eventos</p>
+                <p className="text-[10px] text-white/35">Solo tú y el personal autorizado del evento pueden verla.</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Nombre completo *</label>
+              <input
+                value={identity.full_name}
+                onChange={event => setIdentity(current => ({ ...current, full_name: event.target.value }))}
+                placeholder="Como aparece en tu documento"
+                className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              />
+            </div>
+            <div className="grid grid-cols-[110px_1fr] gap-2">
+              <div>
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Tipo *</label>
+                <select
+                  value={identity.document_type}
+                  onChange={event => setIdentity(current => ({ ...current, document_type: event.target.value }))}
+                  className="w-full text-sm px-3 py-2.5 rounded-lg outline-none [color-scheme:dark]"
+                  style={{ background: '#111817', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                >
+                  {['CC', 'CE', 'TI', 'PP', 'PEP', 'NIT'].map(type => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Número de documento *</label>
+                <input
+                  value={identity.document_number}
+                  onChange={event => setIdentity(current => ({ ...current, document_number: event.target.value }))}
+                  placeholder="Número sin puntos"
+                  className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                />
+              </div>
             </div>
           </div>
 

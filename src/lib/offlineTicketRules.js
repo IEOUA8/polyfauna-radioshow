@@ -18,5 +18,8 @@ export function evaluateOfflineTicket({ verified, eventId, pack, locallyUsed }) 
     event_title: pack.eventTitle,
     ticket_type: ticket.type,
     ticket_number: ticket.number,
+    full_name: ticket.full_name,
+    document_type: ticket.document_type,
+    document_number: ticket.document_number,
   };
 }

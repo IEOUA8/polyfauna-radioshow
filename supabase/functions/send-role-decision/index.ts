@@ -20,7 +20,9 @@ serve(async (req) => {
     if (!target?.email) return json({ error: 'Usuario sin correo' }, 404);
 
     const approved = roleRequest.status === 'approved';
-    const roleLabel = ROLE_LABELS[roleRequest.requested_role] || 'Perfil';
+    const roleLabel = roleRequest.form_data?.organizer_type === 'collective'
+      ? 'Colectivo'
+      : ROLE_LABELS[roleRequest.requested_role] || 'Perfil';
     const userName = escapeHtml(roleRequest.form_data?.name || target.user_metadata?.name || 'Usuario');
     const reason = escapeHtml(roleRequest.rejection_reason || '');
     const appUrl = Deno.env.get('APP_URL') || 'https://www.polyfauna.com';

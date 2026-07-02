@@ -34,7 +34,7 @@ function formatDateLong(str) {
 function getTicketTypes(event) {
   const configured = Array.isArray(event?.ticket_types)
     ? event.ticket_types
-      .filter(ticket => ticket?.name && Number(ticket?.capacity) > 0)
+      .filter(ticket => ticket?.name && !/^cortes[ií]a$/i.test(ticket.name) && Number(ticket?.capacity) > 0)
       .map(ticket => ({
         name: String(ticket.name),
         price: Math.max(0, Number(ticket.price) || 0),
@@ -256,6 +256,7 @@ export default function EventPublicPage() {
           description: seoDescription,
           image: [seoImage],
           startDate: event.date,
+          endDate: event.ends_at || undefined,
           eventStatus: event.status === 'cancelled'
             ? 'https://schema.org/EventCancelled'
             : 'https://schema.org/EventScheduled',
@@ -354,6 +355,11 @@ export default function EventPublicPage() {
                   <div>
                     <p className="text-[10px] text-white/35 uppercase tracking-wider mb-0.5">Fecha</p>
                     <p className="text-sm font-bold text-white leading-snug capitalize">{formatDateLong(event.date)}</p>
+                    {event.ends_at && (
+                      <p className="text-[11px] text-white/40 mt-1">
+                        Hasta {new Date(event.ends_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

@@ -28,11 +28,19 @@ const ROLES = [
   },
   {
     id: 'promoter',
-    label: 'Promotor / Colectivo',
+    label: 'Promotor',
     icon: Megaphone,
-    description: 'Cura escena, organiza eventos y vende tickets.',
+    description: 'Organiza eventos, vende tickets y gestiona accesos.',
     approval: true,
     color: '#F97316',
+  },
+  {
+    id: 'collective',
+    label: 'Colectivo',
+    icon: Megaphone,
+    description: 'Organiza comunidad y eventos con permisos de promotor.',
+    approval: true,
+    color: '#FB923C',
   },
   {
     id: 'club',

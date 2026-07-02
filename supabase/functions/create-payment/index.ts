@@ -37,6 +37,17 @@ Deno.serve(async (req) => {
     if (authErr || !user)
       return new Response(JSON.stringify({ error: 'No autenticado' }), { status: 401, headers: CORS });
 
+    const { data: identity } = await supabase
+      .from('user_identity')
+      .select('full_name, document_number')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!identity?.full_name || !identity?.document_number)
+      return new Response(
+        JSON.stringify({ error: 'Completa tu nombre y documento en el Control Center antes de adquirir tickets' }),
+        { status: 400, headers: CORS },
+      );
+
     const {
       event_id,
       ticket_type = 'General',
