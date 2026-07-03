@@ -307,8 +307,8 @@ function DashboardSection({ ownerId }) {
       // directa para que PostgREST anide profiles(...) aqui (siempre fallaba
       // con 400 y "Sin ventas aun"). Se trae el nombre en una segunda consulta.
       let recentTicketsQuery = ownerId
-        ? supabase.from('user_tickets').select('id, user_id, created_at, events!inner(title, price, owner_id)').eq('events.owner_id', ownerId)
-        : supabase.from('user_tickets').select('id, user_id, created_at, events(title, price)');
+        ? supabase.from('user_tickets').select('id, user_id, ticket_type, created_at, events!inner(title, price, owner_id)').eq('events.owner_id', ownerId)
+        : supabase.from('user_tickets').select('id, user_id, ticket_type, created_at, events(title, price)');
       recentTicketsQuery = recentTicketsQuery.order('created_at', { ascending: false }).limit(50);
 
       const [usersRes, eventsRes, ticketsRes, ticketsAggRes] = await Promise.all([
@@ -386,7 +386,7 @@ function DashboardSection({ ownerId }) {
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                    ${(t.events?.price || 0).toLocaleString('es-CO')}
+                    ${(t.ticket_type === 'Cortesía' ? 0 : (t.events?.price || 0)).toLocaleString('es-CO')}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">
                     {new Date(t.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
@@ -1314,7 +1314,8 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
             const sold = ev.tickets_sold || 0;
             const total = ev.tickets_total || 0;
             const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
-            const revenue = sold * (ev.price || 0);
+            // Las cortesías no generan ingreso real, se descuentan del estimado.
+            const revenue = Math.max(0, sold - (ev.courtesies_issued || 0)) * (ev.price || 0);
             const isOpen = expanded === ev.id;
 
             return (
