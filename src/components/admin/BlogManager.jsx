@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirmDialog } from './ConfirmDialog';
 
@@ -41,7 +41,7 @@ const BlogManager = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error fetching articles",
+        title: "Error al cargar artículos",
         description: error.message,
       });
     } finally {
@@ -54,7 +54,7 @@ const BlogManager = () => {
     
     try {
       if (editingArticle && currentUser?.role !== 'admin') {
-        toast({ variant: "destructive", title: "Unauthorized", description: "Only admins can update articles." });
+        toast({ variant: "destructive", title: "No autorizado", description: "Solo los administradores pueden actualizar artículos." });
         return;
       }
 
@@ -70,14 +70,14 @@ const BlogManager = () => {
           .eq('id', editingArticle.id);
 
         if (error) throw error;
-        toast({ title: "Article updated successfully" });
+        toast({ title: "Artículo actualizado" });
       } else {
         const { error } = await supabase
           .from('blog_articles')
           .insert([articleData]);
 
         if (error) throw error;
-        toast({ title: "Article created successfully" });
+        toast({ title: "Artículo creado" });
       }
 
       setIsDialogOpen(false);
@@ -86,7 +86,7 @@ const BlogManager = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error saving article",
+        title: "Error al guardar el artículo",
         description: error.message,
       });
     }
@@ -105,7 +105,7 @@ const BlogManager = () => {
 
   const handleDelete = async (id) => {
     if (currentUser?.role !== 'admin') {
-      toast({ variant: "destructive", title: "Unauthorized", description: "Only admins can delete articles." });
+      toast({ variant: "destructive", title: "No autorizado", description: "Solo los administradores pueden eliminar artículos." });
       return;
     }
 
@@ -119,12 +119,12 @@ const BlogManager = () => {
     try {
       const { error } = await supabase.from('blog_articles').delete().eq('id', id);
       if (error) throw error;
-      toast({ title: "Article deleted successfully" });
+      toast({ title: "Artículo eliminado" });
       fetchArticles();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error deleting article",
+        title: "Error al eliminar el artículo",
         description: error.message,
       });
     }
@@ -145,7 +145,7 @@ const BlogManager = () => {
     {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-foreground">Blog Articles Management</CardTitle>
+        <CardTitle className="text-foreground">Gestión de Blog</CardTitle>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
@@ -153,16 +153,27 @@ const BlogManager = () => {
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0">
               <Plus className="w-4 h-4 mr-2" />
-              Add Article
+              Nuevo Artículo
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            className="text-foreground max-w-2xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+            style={{ background: '#0B1110', borderColor: 'rgba(32,199,232,0.25)' }}
+          >
             <DialogHeader>
-              <DialogTitle>{editingArticle ? 'Edit Article' : 'Create Article'}</DialogTitle>
+              <DialogTitle className="flex items-center gap-3">
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(32,199,232,0.08)', border: '1px solid rgba(32,199,232,0.19)' }}
+                >
+                  <FileText className="w-4 h-4" style={{ color: '#20C7E8' }} />
+                </span>
+                {editingArticle ? 'Editar artículo' : 'Crear artículo'}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">Título</Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -172,7 +183,7 @@ const BlogManager = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">Categoría</Label>
                 <Input
                   id="category"
                   value={formData.category}
@@ -181,7 +192,7 @@ const BlogManager = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="content">Content</Label>
+                <Label htmlFor="content">Contenido</Label>
                 <textarea
                   id="content"
                   value={formData.content}
@@ -191,7 +202,7 @@ const BlogManager = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="featured_image_url">Featured Image URL</Label>
+                <Label htmlFor="featured_image_url">URL de imagen destacada</Label>
                 <Input
                   id="featured_image_url"
                   value={formData.featured_image_url}
@@ -200,7 +211,7 @@ const BlogManager = () => {
                 />
               </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0">
-                {editingArticle ? 'Update Article' : 'Create Article'}
+                {editingArticle ? 'Actualizar artículo' : 'Crear artículo'}
               </Button>
             </form>
           </DialogContent>
@@ -212,7 +223,7 @@ const BlogManager = () => {
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : articles.length === 0 ? (
-          <p className="text-muted-foreground text-center py-12">No articles yet</p>
+          <p className="text-muted-foreground text-center py-12">No hay artículos aún</p>
         ) : (
           <div className="space-y-3">
             {articles.map((article) => (

@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard, Copy, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 import ArtistMentionInput from '@/components/ArtistMentionInput';
@@ -688,9 +688,20 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                 Nuevo Evento
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card border-border text-foreground max-w-3xl w-[calc(100vw-2rem)] sm:w-full max-h-[90dvh] overflow-y-auto overflow-x-hidden pb-28">
+            <DialogContent
+              className="text-foreground max-w-3xl w-[calc(100vw-2rem)] sm:w-full sm:rounded-3xl max-h-[90dvh] overflow-y-auto overflow-x-hidden pb-28"
+              style={{ background: '#0B1110', borderColor: 'rgba(32,199,232,0.25)' }}
+            >
               <DialogHeader>
-                <DialogTitle>{editingEvent ? 'Editar Evento' : 'Crear Evento'}</DialogTitle>
+                <DialogTitle className="flex items-center gap-3">
+                  <span
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(32,199,232,0.08)', border: '1px solid rgba(32,199,232,0.19)' }}
+                  >
+                    <Calendar className="w-4 h-4" style={{ color: '#20C7E8' }} />
+                  </span>
+                  {editingEvent ? 'Editar Evento' : 'Crear Evento'}
+                </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Portada */}

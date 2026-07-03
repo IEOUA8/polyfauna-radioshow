@@ -241,9 +241,6 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
             </span>
           )}
           <h1 className="text-xl font-black text-white leading-tight">{artist.name}</h1>
-          {artist.city && (
-            <p className="text-xs text-white/40 mt-0.5">{artist.city}</p>
-          )}
           {/* Social icons inline */}
           {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
             <div className="flex gap-1.5 mt-2.5 flex-wrap">
