@@ -802,3 +802,37 @@ Resultado:
 
 - Notificacion dentro de la plataforma (no solo por correo) cuando una cortesia pendiente se activa al registrarse.
 - Prueba controlada end-to-end: emitir cortesia a un correo sin cuenta, confirmar recepcion del correo, registrarse con ese correo, confirmar que el ticket aparece activo en Ticket Vault y que el QR valida correctamente en puerta.
+
+## Fase 7.10 - Modales de confirmacion propios en el panel operativo
+
+Fecha: 2026-07-02 / 2026-07-03 (commits `a053ae1`, `3a9a239`)
+
+### Objetivo
+
+Eliminar los dialogos nativos del navegador (`window.confirm`/`window.prompt`/`window.alert`) del panel admin: no llevan marca, no se pueden estilizar y su posicion/tamano varia entre navegadores. Reemplazarlos por un modal propio con la identidad visual de Polyfauna en todos los flujos de confirmacion (eliminar, anular, transferir, rechazar).
+
+### Implementacion
+
+- `src/components/admin/AdminModal.jsx` (nuevo): `ModalShell` + `ModalHeader` compartidos — tarjeta oscura (`#0B1110`), borde con color de acento al 25% de opacidad, overlay con blur (`rgba(2,5,5,0.84)` + `blur(14px)`), entrada/salida animada (fade + scale via `framer-motion`), simbolo de Polyfauna en el header cuando no hay icono especifico.
+- `src/components/admin/ConfirmDialog.jsx` (nuevo): hook `useConfirmDialog()` basado en promesas — `const { confirm, ConfirmDialogElement } = useConfirmDialog(); if (!(await confirm({ title, message, variant }))) return;`. Variante `destructive` usa acento rojo coral (`#FF6B6B`) con icono de papelera; el resto usa el acento cian de marca (`#20C7E8`) con icono de alerta.
+- `src/components/admin/TicketActionModals.jsx`: `TransferTicketModal` y `VoidTicketModal` migrados al mismo `ModalShell`/`ModalHeader` (antes usaban `window.prompt`/`window.confirm`). El boton de confirmar en transferir dice "Enviar QR". Compartidos entre `EventManager.jsx` (Eventos -> Ver lista) y `AdminDashboard.jsx` (Tickets -> Compradores).
+- `useConfirmDialog()` adoptado en los 9 gestores admin que aun usaban dialogos nativos: `ArtistManager.jsx`, `AlbumManager.jsx`, `PodcastManager.jsx`, `BlogManager.jsx`, `ShowManager.jsx`, `InterviewManager.jsx`, `UserManager.jsx`, `EventManager.jsx` (eliminar evento/tipo de entrada) y `AdminDashboard.jsx` (rechazo de retiros). De paso se unificaron mensajes que mezclaban espanol e ingles entre gestores.
+- Responsividad y accesibilidad del panel operativo: fila de asistentes/compradores con `flex-wrap`/`min-w-0`/`truncate` para no romperse en pantallas angostas; formulario de editar asistente a 1 columna en movil; botones de transferir/anular/editar agrandados para uso tactil con `aria-label` (el atributo `title` solo no funciona en touch).
+- Ya no queda ningun `window.confirm`/`window.prompt`/`window.alert` en `src/`.
+
+### Verificacion
+
+```bash
+npm run verify
+```
+
+Resultado:
+
+- Suite automatizada: 88 pruebas OK.
+- Performance budget: JS inicial gzip 91.0 KiB / 190 KiB, CSS inicial gzip 17.8 KiB / 30 KiB, chunk lazy mayor 125.7 KiB / 260 KiB, JS total gzip 618.8 KiB / 720 KiB — dentro de presupuesto.
+- Verificacion visual manual del modal de "Eliminar evento" en navegador (render aislado del componente): tarjeta oscura, icono de papelera en badge coral, CTA destructivo rojo, boton cancelar sutil, overlay con blur — reemplaza correctamente el `window.confirm` generico.
+
+### Pendientes para Fase 7.11
+
+- El commit `3a9a239` ya esta en `main` en GitHub; falta que el proveedor de hosting tome ese commit y redespliegue produccion (el sitio en vivo mostraba el dialogo nativo viejo al momento de escribir esta fase).
+- Aplicar el mismo `ModalShell`/`ModalHeader` a los formularios grandes del panel (editar evento, editar articulo) que hoy usan paneles propios inconsistentes, para unificar el sistema de modales por completo.
