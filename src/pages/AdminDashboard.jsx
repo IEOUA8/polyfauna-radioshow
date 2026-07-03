@@ -13,6 +13,7 @@ import { parseTicketQRPayload } from '@/lib/tickets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import Logo from '@/components/Logo';
+import { TransferTicketModal, VoidTicketModal } from '@/components/admin/TicketActionModals';
 import { lazyImport } from '@/lib/lazyImport';
 
 const EventManager     = lazy(lazyImport(() => import('@/components/admin/EventManager')));
@@ -1150,7 +1151,8 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const [loadingBuyers, setLoadingBuyers] = useState(false);
   const [manualEvent, setManualEvent] = useState(null);
   const [courtesyEvent, setCourtesyEvent] = useState(null);
-  const [actioningTicket, setActioningTicket] = useState(null);
+  const [transferTarget, setTransferTarget] = useState(null);
+  const [voidTarget, setVoidTarget] = useState(null);
 
   useEffect(() => {
     const EVENT_COLUMNS = 'id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued, tickets_voided';
@@ -1199,10 +1201,8 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   // el flujo de devoluciones.
   const isVoidable = (t) => !t.wompi_reference || t.wompi_reference.startsWith('BANK-');
 
-  const voidTicket = async (eventId, t) => {
-    if (!confirm(`¿Anular el ticket #${t.ticket_number?.slice(0, 12)}? Se liberará el cupo del evento.`)) return;
-    const reason = prompt('Motivo de la anulación (opcional):') || undefined;
-    setActioningTicket(t.ticket_id);
+  const submitVoid = async (reason) => {
+    const { eventId, ticket: t } = voidTarget;
     try {
       const { data, error } = await supabase.functions.invoke('void-ticket', {
         body: { ticketId: t.ticket_id, reason },
@@ -1213,20 +1213,17 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
       setEvents(current => current.map(item => item.id === eventId
         ? { ...item, tickets_sold: Math.max(0, (item.tickets_sold || 0) - 1), tickets_voided: data.ticketsVoidedTotal }
         : item));
+      setVoidTarget(null);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
-    } finally {
-      setActioningTicket(null);
     }
   };
 
-  const transferTicket = async (eventId, t) => {
-    const newEmail = prompt('Correo del nuevo destinatario:');
-    if (!newEmail?.trim()) return;
-    setActioningTicket(t.ticket_id);
+  const submitTransfer = async (newEmail) => {
+    const { eventId, ticket: t } = transferTarget;
     try {
       const { data, error } = await supabase.functions.invoke('transfer-ticket', {
-        body: { ticketId: t.ticket_id, newEmail: newEmail.trim() },
+        body: { ticketId: t.ticket_id, newEmail },
       });
       if (error || !data?.ok) throw new Error(data?.error || error?.message || 'No fue posible transferir el ticket');
       toast({
@@ -1236,10 +1233,9 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
           : `#${data.ticketNumber} · notificado por correo${data.notificationSent ? ' y dentro de la plataforma' : ''}`,
       });
       await refreshBuyers(eventId);
+      setTransferTarget(null);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
-    } finally {
-      setActioningTicket(null);
     }
   };
 
@@ -1298,6 +1294,22 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
               setCourtesyEvent(null);
               onConfigureCourtesy?.();
             }}
+          />
+        )}
+        {transferTarget && (
+          <TransferTicketModal
+            ticket={transferTarget.ticket}
+            eventTitle={events.find(e => e.id === transferTarget.eventId)?.title || ''}
+            onClose={() => setTransferTarget(null)}
+            onSubmit={submitTransfer}
+          />
+        )}
+        {voidTarget && (
+          <VoidTicketModal
+            ticket={voidTarget.ticket}
+            eventTitle={events.find(e => e.id === voidTarget.eventId)?.title || ''}
+            onClose={() => setVoidTarget(null)}
+            onSubmit={submitVoid}
           />
         )}
       </AnimatePresence>
@@ -1449,15 +1461,13 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
                                   </span>
                                   {isVoidable(t) && ['valid', 'pending_registration'].includes(t.ticket_status) && (
                                     <>
-                                      <button type="button" onClick={() => transferTicket(ev.id, t)}
-                                        disabled={actioningTicket === t.ticket_id}
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 disabled:opacity-40"
+                                      <button type="button" onClick={() => setTransferTarget({ eventId: ev.id, ticket: t })}
+                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/70"
                                         title="Transferir a otro correo">
-                                        {actioningTicket === t.ticket_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                                        <Mail className="w-3 h-3" />
                                       </button>
-                                      <button type="button" onClick={() => voidTicket(ev.id, t)}
-                                        disabled={actioningTicket === t.ticket_id}
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 disabled:opacity-40"
+                                      <button type="button" onClick={() => setVoidTarget({ eventId: ev.id, ticket: t })}
+                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-red-400"
                                         title="Anular ticket">
                                         <X className="w-3 h-3" />
                                       </button>

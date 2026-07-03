@@ -10,6 +10,7 @@ import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User,
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 import ArtistMentionInput from '@/components/ArtistMentionInput';
+import { TransferTicketModal, VoidTicketModal } from './TicketActionModals';
 
 const EMPTY = {
   title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
@@ -29,38 +30,32 @@ function AttendeesModal({ event, onClose }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ display_name: '', phone: '' });
   const [saving, setSaving] = useState(false);
-  const [actioningTicket, setActioningTicket] = useState(null);
+  const [transferTarget, setTransferTarget] = useState(null);
+  const [voidTarget, setVoidTarget] = useState(null);
 
   // Solo tickets manuales/cortesia (sin referencia Wompi real) pueden
   // anularse o transferirse desde aqui; los pagados por pasarela usan
   // el flujo de devoluciones.
   const isVoidable = (a) => !a.wompi_reference || a.wompi_reference.startsWith('BANK-');
 
-  const voidTicket = async (a) => {
-    if (!confirm(`¿Anular el ticket #${a.ticket_number?.slice(0, 12)}? Se liberará el cupo del evento.`)) return;
-    const reason = prompt('Motivo de la anulación (opcional):') || undefined;
-    setActioningTicket(a.ticket_id);
+  const submitVoid = async (reason) => {
     try {
       const { data, error } = await supabase.functions.invoke('void-ticket', {
-        body: { ticketId: a.ticket_id, reason },
+        body: { ticketId: voidTarget.ticket_id, reason },
       });
       if (error || !data?.ok) throw new Error(data?.error || error?.message || 'No fue posible anular el ticket');
       toast({ title: 'Ticket anulado', description: `#${data.ticketNumber} · total anulados: ${data.ticketsVoidedTotal}` });
+      setVoidTarget(null);
       fetchAttendees();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
-    } finally {
-      setActioningTicket(null);
     }
   };
 
-  const transferTicket = async (a) => {
-    const newEmail = prompt('Correo del nuevo destinatario:');
-    if (!newEmail?.trim()) return;
-    setActioningTicket(a.ticket_id);
+  const submitTransfer = async (newEmail) => {
     try {
       const { data, error } = await supabase.functions.invoke('transfer-ticket', {
-        body: { ticketId: a.ticket_id, newEmail: newEmail.trim() },
+        body: { ticketId: transferTarget.ticket_id, newEmail },
       });
       if (error || !data?.ok) throw new Error(data?.error || error?.message || 'No fue posible transferir el ticket');
       toast({
@@ -69,11 +64,10 @@ function AttendeesModal({ event, onClose }) {
           ? `#${data.ticketNumber} · el destinatario debe crear su cuenta para activarlo`
           : `#${data.ticketNumber} · notificado por correo${data.notificationSent ? ' y dentro de la plataforma' : ''}`,
       });
+      setTransferTarget(null);
       fetchAttendees();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
-    } finally {
-      setActioningTicket(null);
     }
   };
 
@@ -260,18 +254,16 @@ function AttendeesModal({ event, onClose }) {
                               variant="ghost"
                               size="icon"
                               className="w-7 h-7 text-muted-foreground hover:text-foreground"
-                              onClick={() => transferTicket(a)}
-                              disabled={actioningTicket === a.ticket_id}
+                              onClick={() => setTransferTarget(a)}
                               title="Transferir a otro correo"
                             >
-                              {actioningTicket === a.ticket_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                              <Mail className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="w-7 h-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => voidTicket(a)}
-                              disabled={actioningTicket === a.ticket_id}
+                              onClick={() => setVoidTarget(a)}
                               title="Anular ticket"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -303,6 +295,23 @@ function AttendeesModal({ event, onClose }) {
           )}
         </div>
       </div>
+
+      {transferTarget && (
+        <TransferTicketModal
+          ticket={transferTarget}
+          eventTitle={event.title}
+          onClose={() => setTransferTarget(null)}
+          onSubmit={submitTransfer}
+        />
+      )}
+      {voidTarget && (
+        <VoidTicketModal
+          ticket={voidTarget}
+          eventTitle={event.title}
+          onClose={() => setVoidTarget(null)}
+          onSubmit={submitVoid}
+        />
+      )}
     </div>
   );
 }
