@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 import ArtistMentionInput from '@/components/ArtistMentionInput';
 import { TransferTicketModal, VoidTicketModal } from './TicketActionModals';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const EMPTY = {
   title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
@@ -167,7 +169,7 @@ function AttendeesModal({ event, onClose }) {
                   {editingId === a.user_id ? (
                     /* ── Edit mode ── */
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs text-muted-foreground mb-1 block">Nombre completo</Label>
                           <Input
@@ -200,8 +202,8 @@ function AttendeesModal({ event, onClose }) {
                     </div>
                   ) : (
                     /* ── View mode ── */
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
+                    <div className="flex flex-col sm:flex-row items-start gap-4">
+                      <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
                         <div className="flex items-center gap-2 min-w-0">
                           <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm text-foreground font-medium truncate">
@@ -230,7 +232,7 @@ function AttendeesModal({ event, onClose }) {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
                           style={{
                             background: ['used', 'cancelled'].includes(a.ticket_status)
@@ -253,18 +255,20 @@ function AttendeesModal({ event, onClose }) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                              className="w-8 h-8 text-muted-foreground hover:text-foreground"
                               onClick={() => setTransferTarget(a)}
                               title="Transferir a otro correo"
+                              aria-label="Transferir a otro correo"
                             >
                               <Mail className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                              className="w-8 h-8 text-muted-foreground hover:text-destructive"
                               onClick={() => setVoidTarget(a)}
                               title="Anular ticket"
+                              aria-label="Anular ticket"
                             >
                               <X className="w-3.5 h-3.5" />
                             </Button>
@@ -273,9 +277,10 @@ function AttendeesModal({ event, onClose }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                          className="w-8 h-8 text-muted-foreground hover:text-foreground"
                           onClick={() => startEdit(a)}
                           title="Editar datos"
+                          aria-label="Editar datos"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </Button>
@@ -296,22 +301,24 @@ function AttendeesModal({ event, onClose }) {
         </div>
       </div>
 
-      {transferTarget && (
-        <TransferTicketModal
-          ticket={transferTarget}
-          eventTitle={event.title}
-          onClose={() => setTransferTarget(null)}
-          onSubmit={submitTransfer}
-        />
-      )}
-      {voidTarget && (
-        <VoidTicketModal
-          ticket={voidTarget}
-          eventTitle={event.title}
-          onClose={() => setVoidTarget(null)}
-          onSubmit={submitVoid}
-        />
-      )}
+      <AnimatePresence>
+        {transferTarget && (
+          <TransferTicketModal
+            ticket={transferTarget}
+            eventTitle={event.title}
+            onClose={() => setTransferTarget(null)}
+            onSubmit={submitTransfer}
+          />
+        )}
+        {voidTarget && (
+          <VoidTicketModal
+            ticket={voidTarget}
+            eventTitle={event.title}
+            onClose={() => setVoidTarget(null)}
+            onSubmit={submitVoid}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -368,7 +375,7 @@ function CoPromotersManager({ eventId }) {
       if (data?.promoter_id) {
         supabase.functions.invoke('notify-co-promoter-linked', {
           body: { eventId, promoterId: data.promoter_id },
-        }).catch(() => {});
+        }).catch((notifyError) => console.error('notify-co-promoter-linked failed', notifyError));
       }
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: CO_PROMOTER_ERRORS[err.message] || err.message });
@@ -439,6 +446,7 @@ function CoPromotersManager({ eventId }) {
 const EventManager = ({ ownerId = null, isAdmin = false }) => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -551,7 +559,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
             url: `${window.location.origin}/?section=events&event=${createdEvent?.id}`,
             image: createdEvent?.image_url || undefined,
           },
-        }).catch(() => {});
+        }).catch((notifyError) => console.error('send-push failed', notifyError));
         toast({ title: '¡Evento publicado!' });
       }
       setIsDialogOpen(false);
@@ -616,7 +624,12 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este evento? Se eliminarán también sus entradas.')) return;
+    if (!(await confirm({
+      title: 'Eliminar evento',
+      message: 'Se eliminarán también todas sus entradas. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar evento',
+      variant: 'destructive',
+    }))) return;
     try {
       const { error } = await supabase.from('events').delete().eq('id', id);
       if (error) throw error;
@@ -664,6 +677,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
 
   return (
     <>
+      {ConfirmDialogElement}
       <Card className="bg-card border-border">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-foreground">Gestión de Eventos</CardTitle>

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2, ChevronRight, Music } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const EMPTY_ALBUM = { title: '', artist_id: '', cover_url: '', release_year: '', genre: '', description: '' };
 const EMPTY_TRACK = { title: '', artist_id: '', audio_url: '', duration: '', track_number: '', genre: '' };
@@ -21,6 +22,7 @@ function secondsToMMSS(secs) {
 
 const AlbumManager = () => {
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [albums, setAlbums] = useState([]);
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,12 @@ const AlbumManager = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este álbum? Se eliminarán también todos sus tracks.')) return;
+    if (!(await confirm({
+      title: 'Eliminar álbum',
+      message: 'Se eliminarán también todos sus tracks. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar álbum',
+      variant: 'destructive',
+    }))) return;
     try {
       const { error } = await supabase.from('albums').delete().eq('id', id);
       if (error) throw error;
@@ -192,7 +199,12 @@ const AlbumManager = () => {
   };
 
   const handleDeleteTrack = async (albumId, trackId) => {
-    if (!confirm('¿Eliminar este track?')) return;
+    if (!(await confirm({
+      title: 'Eliminar track',
+      message: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar track',
+      variant: 'destructive',
+    }))) return;
     try {
       const { error } = await supabase.from('tracks').delete().eq('id', trackId);
       if (error) throw error;
@@ -204,6 +216,8 @@ const AlbumManager = () => {
   };
 
   return (
+    <>
+    {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-foreground">Gestión de Álbumes</CardTitle>
@@ -462,6 +476,7 @@ const AlbumManager = () => {
         </DialogContent>
       </Dialog>
     </Card>
+    </>
   );
 };
 

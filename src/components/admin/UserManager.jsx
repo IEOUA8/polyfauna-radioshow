@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Trash2, Loader2, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const ROLES = ['citizen', 'artist', 'promoter', 'club', 'sello', 'admin'];
 const ROLE_COLOR = {
@@ -13,6 +14,7 @@ const ROLE_COLOR = {
 
 const UserManager = () => {
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,7 +55,12 @@ const UserManager = () => {
   };
 
   const handleDelete = async (userId) => {
-    if (!confirm('¿Seguro que quieres eliminar este perfil? El usuario perderá acceso.')) return;
+    if (!(await confirm({
+      title: 'Eliminar perfil',
+      message: 'El usuario perderá acceso a la plataforma. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar perfil',
+      variant: 'destructive',
+    }))) return;
     try {
       const { error } = await supabase.rpc('delete_profile_admin', {
         p_user_id: userId,
@@ -72,6 +79,8 @@ const UserManager = () => {
   };
 
   return (
+    <>
+    {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Gestión de Usuarios ({users.length})</CardTitle>
@@ -139,6 +148,7 @@ const UserManager = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 

@@ -8,10 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const BlogManager = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -107,7 +109,12 @@ const BlogManager = () => {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this article?')) return;
+    if (!(await confirm({
+      title: 'Eliminar artículo',
+      message: 'Esta acción no se puede deshacer. El artículo dejará de estar disponible en el blog.',
+      confirmLabel: 'Eliminar artículo',
+      variant: 'destructive',
+    }))) return;
 
     try {
       const { error } = await supabase.from('blog_articles').delete().eq('id', id);
@@ -134,6 +141,8 @@ const BlogManager = () => {
   };
 
   return (
+    <>
+    {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-foreground">Blog Articles Management</CardTitle>
@@ -239,6 +248,7 @@ const BlogManager = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 

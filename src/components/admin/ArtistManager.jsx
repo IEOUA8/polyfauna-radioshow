@@ -10,6 +10,7 @@ import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 import { slugifyArtist } from '@/lib/artistIdentity';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const ARTIST_TYPES = [
   'artist',
@@ -30,6 +31,7 @@ function parseGenres(value) {
 const ArtistManager = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -145,7 +147,12 @@ const ArtistManager = () => {
       return;
     }
 
-    if (!confirm('¿Eliminar este artista?')) return;
+    if (!(await confirm({
+      title: 'Eliminar artista',
+      message: 'Esta acción no se puede deshacer. El perfil del artista dejará de estar disponible.',
+      confirmLabel: 'Eliminar artista',
+      variant: 'destructive',
+    }))) return;
 
     try {
       const { error } = await supabase.from('artists').delete().eq('id', id);
@@ -175,6 +182,8 @@ const ArtistManager = () => {
   };
 
   return (
+    <>
+    {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-foreground">Gestión de Artistas</CardTitle>
@@ -329,6 +338,7 @@ const ArtistManager = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 

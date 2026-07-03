@@ -8,10 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const InterviewManager = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -109,7 +111,12 @@ const InterviewManager = () => {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this interview?')) return;
+    if (!(await confirm({
+      title: 'Eliminar entrevista',
+      message: 'Esta acción no se puede deshacer. La entrevista dejará de estar disponible.',
+      confirmLabel: 'Eliminar entrevista',
+      variant: 'destructive',
+    }))) return;
 
     try {
       const { error } = await supabase.from('interviews').delete().eq('id', id);
@@ -137,6 +144,8 @@ const InterviewManager = () => {
   };
 
   return (
+    <>
+    {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-foreground">Interviews Management</CardTitle>
@@ -253,6 +262,7 @@ const InterviewManager = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 

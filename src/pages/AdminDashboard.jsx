@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import Logo from '@/components/Logo';
 import { TransferTicketModal, VoidTicketModal } from '@/components/admin/TicketActionModals';
+import { useConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { lazyImport } from '@/lib/lazyImport';
 
 const EventManager     = lazy(lazyImport(() => import('@/components/admin/EventManager')));
@@ -1030,6 +1031,7 @@ function ManualTicketModal({ event, onClose, onIssued }) {
         </label>
 
         <button type="submit" disabled={saving || !email.trim() || !reference.trim()}
+          title={!email.trim() || !reference.trim() ? 'Completa correo y referencia bancaria para continuar' : undefined}
           className="w-full rounded-xl py-3 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
           style={{ background: '#EAF0ED', color: '#07100D' }}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
@@ -1118,6 +1120,7 @@ function CourtesyTicketModal({ event, onClose, onIssued, onConfigure }) {
               </span>
             </label>
             <button type="submit" disabled={saving || !email.trim()}
+              title={!email.trim() ? 'Ingresa el correo del destinatario para continuar' : undefined}
               className="w-full rounded-xl py-3 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
               style={{ background: '#DDD6FE', color: '#21143F' }}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
@@ -1423,19 +1426,22 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
                             <Loader2 className="w-5 h-5 animate-spin text-white/30" />
                           </div>
                         ) : (buyers[ev.id] || []).length === 0 ? (
-                          <p className="text-xs text-white/30 py-2">Sin compradores aún</p>
+                          <div className="flex items-center gap-2 py-3">
+                            <Users className="w-4 h-4 text-white/20" />
+                            <p className="text-xs text-white/30">Sin compradores aún</p>
+                          </div>
                         ) : (
                           <div className="space-y-2">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">Compradores</p>
                             {(buyers[ev.id] || []).map((t) => (
-                              <div key={t.ticket_id} className="flex items-center justify-between py-1.5">
-                                <div>
-                                  <p className="text-xs font-bold text-white">
+                              <div key={t.ticket_id} className="flex items-center justify-between flex-wrap gap-2 py-1.5">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-white truncate">
                                     {t.display_name || t.email || 'Usuario'}
                                   </p>
-                                  <p className="text-[10px] font-mono text-white/30">#{t.ticket_number} · {t.ticket_type}</p>
+                                  <p className="text-[10px] font-mono text-white/30 truncate">#{t.ticket_number} · {t.ticket_type}</p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                   <span
                                     className="text-[10px] font-bold px-2 py-0.5 rounded"
                                     style={{
@@ -1462,14 +1468,14 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
                                   {isVoidable(t) && ['valid', 'pending_registration'].includes(t.ticket_status) && (
                                     <>
                                       <button type="button" onClick={() => setTransferTarget({ eventId: ev.id, ticket: t })}
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/70"
-                                        title="Transferir a otro correo">
-                                        <Mail className="w-3 h-3" />
+                                        className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-white/70"
+                                        title="Transferir a otro correo" aria-label="Transferir a otro correo">
+                                        <Mail className="w-3.5 h-3.5" />
                                       </button>
                                       <button type="button" onClick={() => setVoidTarget({ eventId: ev.id, ticket: t })}
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-red-400"
-                                        title="Anular ticket">
-                                        <X className="w-3 h-3" />
+                                        className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-red-400"
+                                        title="Anular ticket" aria-label="Anular ticket">
+                                        <X className="w-3.5 h-3.5" />
                                       </button>
                                     </>
                                   )}
@@ -1852,6 +1858,7 @@ function PayoutsSection() {
   const [processing, setProcessing] = useState(null);
   const [refInput, setRefInput] = useState({});
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const load = async () => {
     setLoading(true);
@@ -1868,7 +1875,7 @@ function PayoutsSection() {
   const handleApprove = async (payout) => {
     const ref = refInput[payout.id]?.trim();
     if (!ref) {
-      alert('Ingresa la referencia bancaria de la transferencia');
+      toast({ variant: 'destructive', title: 'Referencia requerida', description: 'Ingresa la referencia bancaria de la transferencia.' });
       return;
     }
     setProcessing(payout.id);
@@ -1877,7 +1884,7 @@ function PayoutsSection() {
       p_transfer_reference: ref,
     });
     if (error) {
-      alert('Error: ' + error.message);
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
     } else {
       setPayouts(prev => prev.map(p => p.id === payout.id
         ? { ...p, status: 'completed', transfer_reference: ref, processed_at: new Date().toISOString() }
@@ -1888,7 +1895,12 @@ function PayoutsSection() {
   };
 
   const handleReject = async (payout) => {
-    if (!confirm(`¿Rechazar retiro de $${payout.amount.toLocaleString('es-CO')} COP?`)) return;
+    if (!(await confirm({
+      title: 'Rechazar retiro',
+      message: `Se rechazará la solicitud de retiro por $${payout.amount.toLocaleString('es-CO')} COP.`,
+      confirmLabel: 'Rechazar retiro',
+      variant: 'destructive',
+    }))) return;
     setProcessing(payout.id);
     const { error } = await supabase.from('payouts')
       .update({ status: 'rejected', processed_at: new Date().toISOString() })
@@ -1903,6 +1915,8 @@ function PayoutsSection() {
   const done    = payouts.filter(p => p.status !== 'pending');
 
   return (
+    <>
+    {ConfirmDialogElement}
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -2005,6 +2019,7 @@ function PayoutsSection() {
         </>
       )}
     </div>
+    </>
   );
 }
 

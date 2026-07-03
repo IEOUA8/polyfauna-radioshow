@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
+import { useConfirmDialog } from './ConfirmDialog';
 
 const PodcastManager = ({ ownerId = null }) => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [podcasts, setPodcasts] = useState([]);
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +114,12 @@ const PodcastManager = ({ ownerId = null }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this podcast?')) return;
+    if (!(await confirm({
+      title: 'Eliminar podcast',
+      message: 'Esta acción no se puede deshacer. El podcast dejará de estar disponible para los oyentes.',
+      confirmLabel: 'Eliminar podcast',
+      variant: 'destructive',
+    }))) return;
 
     try {
       const { error } = await supabase.from('podcasts').delete().eq('id', id);
@@ -142,6 +149,8 @@ const PodcastManager = ({ ownerId = null }) => {
   };
 
   return (
+    <>
+    {ConfirmDialogElement}
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-foreground">Podcasts Management</CardTitle>
@@ -280,6 +289,7 @@ const PodcastManager = ({ ownerId = null }) => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 
