@@ -303,22 +303,36 @@ function DashboardSection({ ownerId }) {
       let ticketsAggQuery = supabase.from('user_tickets').select('id, events!inner(price, owner_id)', { count: 'exact' });
       if (ownerId) ticketsAggQuery = ticketsAggQuery.eq('events.owner_id', ownerId);
 
+      // user_tickets.user_id referencia auth.users, no profiles: no hay FK
+      // directa para que PostgREST anide profiles(...) aqui (siempre fallaba
+      // con 400 y "Sin ventas aun"). Se trae el nombre en una segunda consulta.
+      let recentTicketsQuery = ownerId
+        ? supabase.from('user_tickets').select('id, user_id, created_at, events!inner(title, price, owner_id)').eq('events.owner_id', ownerId)
+        : supabase.from('user_tickets').select('id, user_id, created_at, events(title, price)');
+      recentTicketsQuery = recentTicketsQuery.order('created_at', { ascending: false }).limit(50);
+
       const [usersRes, eventsRes, ticketsRes, ticketsAggRes] = await Promise.all([
         ownerId ? Promise.resolve({ count: 0 }) : supabase.from('profiles').select('id', { count: 'exact', head: true }),
         eventsQuery,
-        supabase.from('user_tickets').select('id, user_id, created_at, events(title, price), profiles(display_name, email)').order('created_at', { ascending: false }).limit(50),
+        recentTicketsQuery,
         ticketsAggQuery,
       ]);
 
       const revenue = (ticketsAggRes.data || []).reduce((sum, t) => sum + (t.events?.price || 0), 0);
 
+      const buyerIds = [...new Set((ticketsRes.data || []).map(t => t.user_id).filter(Boolean))];
+      const { data: buyerProfiles } = buyerIds.length
+        ? await supabase.from('profiles').select('id, display_name').in('id', buyerIds)
+        : { data: [] };
+      const nameById = Object.fromEntries((buyerProfiles || []).map(p => [p.id, p.display_name]));
+
       setStats({
-        users: ownerId ? new Set((ticketsRes.data || []).map(t => t.user_id)).size : usersRes.count || 0,
+        users: ownerId ? buyerIds.length : usersRes.count || 0,
         events: eventsRes.count || 0,
         tickets: ticketsAggRes.count ?? ticketsAggRes.data?.length ?? 0,
         revenue,
       });
-      setRecentTickets(ticketsRes.data || []);
+      setRecentTickets((ticketsRes.data || []).map(t => ({ ...t, buyerName: t.user_id ? nameById[t.user_id] : null })));
       setLoading(false);
     };
     load();
@@ -364,7 +378,7 @@ function DashboardSection({ ownerId }) {
                 <div>
                   <p className="text-xs font-bold text-white">{t.events?.title || 'Evento'}</p>
                   <p className="text-[10px] text-white/35 mt-0.5">
-                    {t.profiles?.display_name || t.profiles?.email || 'Usuario'}
+                    {t.buyerName || 'Usuario'}
                   </p>
                 </div>
                 <div className="text-right">
