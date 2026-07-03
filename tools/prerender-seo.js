@@ -6,6 +6,14 @@ import path from 'node:path';
 const SITE_URL = 'https://www.polyfauna.com';
 const DEFAULT_COVER = `${SITE_URL}/icons/og-cover.png`;
 
+const SOCIAL_BUILDERS = {
+  instagram:  (h) => `https://instagram.com/${h}`,
+  twitter:    (h) => `https://x.com/${h}`,
+  bandcamp:   (h) => h.includes('.') ? `https://${h}` : `https://${h}.bandcamp.com`,
+  soundcloud: (h) => `https://soundcloud.com/${h}`,
+  website:    (h) => h.startsWith('http') ? h : `https://${h}`,
+};
+
 function loadLocalEnv() {
   const envPath = path.join(process.cwd(), '.env');
   if (!fs.existsSync(envPath)) return;
@@ -70,7 +78,7 @@ async function main() {
   const template = fs.readFileSync(templatePath, 'utf8');
 
   const events = await fetchRows('events', 'id,title,description,date,venue,city,image_url,price,lineup,status,tickets_total,tickets_sold');
-  const artists = await fetchRows('artists', 'slug');
+  const artists = await fetchRows('artists', 'name,slug,type,bio,genres,image_url,social_links');
 
   if (events.length === 0 && artists.length === 0) {
     console.log('SEO prerender: sin datos remotos, se conserva dist/index.html');
@@ -97,7 +105,29 @@ async function main() {
     writePage(`e/${event.id}`, pageHtml(template, { title: `${event.title} — POLYFAUNA`, description, canonical, image, type: 'website', schema }));
   }
 
-  console.log(`SEO prerender: ${events.length} eventos · ${artists.length} artistas internos`);
+  for (const artist of artists) {
+    if (!artist.slug) continue;
+    const canonical = `${SITE_URL}/profiles/${artist.slug}`;
+    const image = artist.image_url || DEFAULT_COVER;
+    const description = artist.bio
+      ? String(artist.bio).slice(0, 300)
+      : `${artist.name} en POLYFAUNA — música electrónica underground de Colombia.`;
+    const genres = artist.genres
+      ? (Array.isArray(artist.genres) ? artist.genres : String(artist.genres).split(','))
+      : [];
+    const links = typeof artist.social_links === 'object' && artist.social_links ? artist.social_links : {};
+    const sameAs = Object.entries(SOCIAL_BUILDERS)
+      .map(([key, build]) => (links[key] ? build(links[key]) : null))
+      .filter(Boolean);
+    const schema = {
+      '@context': 'https://schema.org', '@type': 'MusicGroup', name: artist.name,
+      description, image, url: canonical, genre: genres,
+      ...(sameAs.length > 0 ? { sameAs } : {}),
+    };
+    writePage(`profiles/${artist.slug}`, pageHtml(template, { title: `${artist.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
+  }
+
+  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas`);
 }
 
 main().catch(error => {

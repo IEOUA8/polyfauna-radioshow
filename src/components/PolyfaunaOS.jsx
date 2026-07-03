@@ -27,7 +27,7 @@ const SignalInbox           = lazy(lazyImport(() => import('@/components/SignalI
 const TicketVault           = lazy(lazyImport(() => import('@/components/TicketVault')));
 const ControlCenter         = lazy(lazyImport(() => import('@/components/ControlCenter')));
 
-const PUBLIC_SECTIONS  = ['radio-console', 'podcasts'];
+const PUBLIC_SECTIONS  = ['radio-console', 'podcasts', 'events'];
 const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'blog', 'inbox', 'tickets', 'settings']);
 
 function useMediaQuery(query) {

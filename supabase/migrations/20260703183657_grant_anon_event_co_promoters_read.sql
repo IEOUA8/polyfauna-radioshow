@@ -1,0 +1,20 @@
+-- POLYFAUNA — corrige lectura anónima de eventos rota en producción.
+--
+-- events_visible_read (20260702180108_event_co_promoters.sql) evalúa
+-- EXISTS (SELECT 1 FROM event_co_promoters ...) para CUALQUIER lector,
+-- incluido anon. Esa misma migración revocó todos los privilegios sobre
+-- event_co_promoters y solo los volvió a otorgar a authenticated, nunca a
+-- anon. Postgres corta la consulta completa con "permission denied for
+-- table event_co_promoters" (42501, expuesto por PostgREST como 401)
+-- antes de llegar a filtrar filas — rompe la lectura de /e/:eventId y de
+-- la sección de eventos para cualquier visitante sin sesión, y explica el
+-- HTTP 401 visto en los builds de Vercel al generar sitemap/prerender.
+--
+-- Fix: otorgar SELECT a anon sobre event_co_promoters. No expone datos de
+-- co-promotores a anónimos — la política "event_co_promoters_select"
+-- sigue siendo FOR SELECT TO authenticated, así que una consulta directa
+-- de anon a esa tabla sigue devolviendo 0 filas; este GRANT solo permite
+-- que la subconsulta anidada de events_visible_read se evalúe (y
+-- correctamente resuelva a false para anon, dejando pasar el resto de
+-- condiciones del OR: status IN ('published','upcoming','live')).
+GRANT SELECT ON public.event_co_promoters TO anon;

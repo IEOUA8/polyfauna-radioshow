@@ -14,8 +14,9 @@ const SignupPage      = lazy(lazyImport(() => import('@/pages/SignupPage')));
 const UserDashboard   = lazy(lazyImport(() => import('@/pages/UserDashboard')));
 const AdminDashboard  = lazy(lazyImport(() => import('@/pages/AdminDashboard')));
 const ValidatePage    = lazy(lazyImport(() => import('@/pages/ValidatePage')));
-const EventPublicPage = lazy(lazyImport(() => import('@/pages/EventPublicPage')));
-const VercelTelemetry = lazy(lazyImport(() => import('@/components/VercelTelemetry')));
+const EventPublicPage  = lazy(lazyImport(() => import('@/pages/EventPublicPage')));
+const ArtistPublicPage = lazy(lazyImport(() => import('@/pages/ArtistPublicPage')));
+const VercelTelemetry  = lazy(lazyImport(() => import('@/components/VercelTelemetry')));
 
 function RouteLoader() {
   return (
@@ -56,9 +57,9 @@ function DeferredTelemetry({ beforeSend }) {
   );
 }
 
-function ArtistRouteRedirect() {
+function ArtistAliasRedirect() {
   const { slug } = useParams();
-  return <Navigate to={`/?section=artists&artist=${encodeURIComponent(slug || '')}`} replace />;
+  return <Navigate to={`/profiles/${encodeURIComponent(slug || '')}`} replace />;
 }
 
 function InternalRouteRedirect({ section, param }) {
@@ -92,8 +93,8 @@ function App() {
                 <Route path="/login"    element={<LoginPage />} />
                 <Route path="/signup"   element={<SignupPage />} />
                 <Route path="/validate" element={<ValidatePage />} />
-                <Route path="/artist/:slug" element={<ArtistRouteRedirect />} />
-                <Route path="/profiles/:slug" element={<ArtistRouteRedirect />} />
+                <Route path="/artist/:slug" element={<ArtistAliasRedirect />} />
+                <Route path="/profiles/:slug" element={<ArtistPublicPage />} />
                 <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
                 <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
                 <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
