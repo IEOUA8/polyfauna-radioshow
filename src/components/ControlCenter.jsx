@@ -295,15 +295,17 @@ export default function ControlCenter({ setCurrentSection }) {
           <TextModal title="Términos y Condiciones" onClose={() => setTermsOpen(false)}>
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Última actualización: Junio 2026</p>
             <p className="text-sm text-white/60 leading-relaxed">
-              POLYFAUNA es una plataforma de streaming de radio en vivo, podcasts y contenido musical. Al usar este servicio aceptas las condiciones descritas a continuación.
+              POLYFAUNA es una plataforma de streaming de radio en vivo, podcasts, contenido musical y venta de entradas para eventos de música electrónica en Colombia. Al usar este servicio aceptas las condiciones descritas a continuación.
             </p>
             <div className="space-y-4 mt-2">
               {[
                 { h: 'Uso aceptable', b: 'Debes utilizar la plataforma de forma legal y respetuosa. Está prohibido distribuir contenido sin los derechos correspondientes, realizar ingeniería inversa del sistema, interferir con el servicio o suplantar la identidad de otros usuarios.' },
                 { h: 'Contenido de usuarios', b: 'El contenido subido por artistas, promotores y sellos es responsabilidad exclusiva de quien lo publica. POLYFAUNA actúa como proveedor técnico sin editorial. Nos reservamos el derecho de retirar contenido que infrinja derechos de terceros o viole estas condiciones.' },
                 { h: 'Propiedad intelectual', b: 'El diseño, marca, código y contenido propio de POLYFAUNA están protegidos por derechos de autor. El contenido de los artistas registrados pertenece a sus respectivos titulares.' },
+                { h: 'Compra de tickets', b: 'Las entradas a eventos se venden a través de nuestro aliado de pagos Wompi, en pesos colombianos (COP). El precio mostrado incluye el valor total a pagar. Al completarse el pago recibes un ticket digital con código QR único, asociado a tu cuenta, válido exclusivamente para el evento y la fecha indicados. Es tu responsabilidad verificar los datos del evento antes de comprar; POLYFAUNA no se hace responsable por compras realizadas para la fecha o el evento equivocado.' },
+                { h: 'Devoluciones y cancelaciones', b: 'Al tratarse de entradas para espectáculos con fecha y hora determinadas, las compras no admiten retracto una vez emitido el ticket, salvo en los siguientes casos: (1) cancelación del evento por parte del organizador — reembolso total en un plazo máximo de 15 días hábiles al medio de pago original; (2) reprogramación del evento — el ticket queda vigente para la nueva fecha, o puedes solicitar reembolso dentro de los 5 días hábiles siguientes al anuncio del cambio; (3) cobro duplicado o error verificado en el monto — reembolso del valor cobrado de más en un plazo máximo de 15 días hábiles; (4) uso fraudulento reportado en tu cuenta — el ticket puede anularse mientras se investiga. Toda solicitud de devolución debe enviarse a info@polyfauna.com indicando el número de ticket o referencia de pago. Gestionamos las devoluciones aprobadas conforme a la normativa de protección al consumidor vigente en Colombia (Ley 1480 de 2011) y a las políticas del procesador de pagos Wompi.' },
                 { h: 'Modificaciones', b: 'Nos reservamos el derecho de modificar estos términos con un aviso previo de 15 días. El uso continuado de la plataforma tras los cambios implica aceptación de los nuevos términos.' },
-                { h: 'Contacto', b: 'Para consultas legales escribe a legal@polyfauna.com.' },
+                { h: 'Contacto', b: 'Para soporte, compras y devoluciones escribe a info@polyfauna.com. Para consultas legales escribe a legal@polyfauna.com.' },
               ].map(({ h, b }) => (
                 <div key={h}>
                   <p className="text-xs font-bold text-white/80 mb-1">{h}</p>
@@ -584,6 +586,9 @@ export default function ControlCenter({ setCurrentSection }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Plataforma</p>
           <div className="space-y-2">
+            <SettingsTile icon={Mail} label="Soporte"
+              description="info@polyfauna.com — dudas, pagos y reembolsos"
+              onClick={() => { window.location.href = 'mailto:info@polyfauna.com'; }} delay={0.27} />
             <SettingsTile icon={FileText} label="Términos y Condiciones"
               description="Condiciones de uso de la plataforma"
               onClick={() => setTermsOpen(true)} delay={0.28} />
