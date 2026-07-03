@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle, AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
-  ChevronRight, CreditCard, Disc3, FileText, Headphones, Home, Loader2, Menu,
+  ChevronRight, CreditCard, Disc3, FileText, Headphones, Home, Loader2, Mail, Menu,
   Gift, MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
   Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle,
 } from 'lucide-react';
@@ -300,7 +300,7 @@ function DashboardSection({ ownerId }) {
       // Tickets + ingresos en una sola consulta agregada, escopeada al dueño
       // cuando aplica (antes eran 2 consultas extra sin límite y SIN filtrar
       // por ownerId, así que un promotor veía el total de toda la plataforma).
-      let ticketsAggQuery = supabase.from('user_tickets').select('id, events!inner(price, owner_id)', { count: 'exact' });
+      let ticketsAggQuery = supabase.from('user_tickets').select('id, ticket_type, events!inner(price, owner_id)', { count: 'exact' });
       if (ownerId) ticketsAggQuery = ticketsAggQuery.eq('events.owner_id', ownerId);
 
       // user_tickets.user_id referencia auth.users, no profiles: no hay FK
@@ -318,7 +318,10 @@ function DashboardSection({ ownerId }) {
         ticketsAggQuery,
       ]);
 
-      const revenue = (ticketsAggRes.data || []).reduce((sum, t) => sum + (t.events?.price || 0), 0);
+      // Las cortesías no generan ingreso real (son regalos del organizador),
+      // así que no se suman al total aunque el evento tenga precio de lista.
+      const revenue = (ticketsAggRes.data || [])
+        .reduce((sum, t) => sum + (t.ticket_type === 'Cortesía' ? 0 : (t.events?.price || 0)), 0);
 
       const buyerIds = [...new Set((ticketsRes.data || []).map(t => t.user_id).filter(Boolean))];
       const { data: buyerProfiles } = buyerIds.length
@@ -1139,6 +1142,7 @@ function CourtesyTicketModal({ event, onClose, onIssued, onConfigure }) {
 }
 
 function TicketsSection({ ownerId, onConfigureCourtesy }) {
+  const { toast } = useToast();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
@@ -1146,9 +1150,10 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const [loadingBuyers, setLoadingBuyers] = useState(false);
   const [manualEvent, setManualEvent] = useState(null);
   const [courtesyEvent, setCourtesyEvent] = useState(null);
+  const [actioningTicket, setActioningTicket] = useState(null);
 
   useEffect(() => {
-    const EVENT_COLUMNS = 'id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued';
+    const EVENT_COLUMNS = 'id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued, tickets_voided';
     const load = async () => {
       // Propios en una consulta, co-promovidos en otra — sin filtro .or() armado a mano.
       const ownEventsQuery = ownerId
@@ -1182,6 +1187,60 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
     setBuyers(b => ({ ...b, [eventId]: data || [] }));
     setExpanded(eventId);
     setLoadingBuyers(false);
+  };
+
+  const refreshBuyers = async (eventId) => {
+    const { data } = await supabase.rpc('get_event_attendees', { p_event_id: eventId });
+    setBuyers(b => ({ ...b, [eventId]: data || [] }));
+  };
+
+  // Solo tickets manuales/cortesia (sin referencia Wompi real) pueden
+  // anularse o transferirse desde aqui; los pagados por pasarela usan
+  // el flujo de devoluciones.
+  const isVoidable = (t) => !t.wompi_reference || t.wompi_reference.startsWith('BANK-');
+
+  const voidTicket = async (eventId, t) => {
+    if (!confirm(`¿Anular el ticket #${t.ticket_number?.slice(0, 12)}? Se liberará el cupo del evento.`)) return;
+    const reason = prompt('Motivo de la anulación (opcional):') || undefined;
+    setActioningTicket(t.ticket_id);
+    try {
+      const { data, error } = await supabase.functions.invoke('void-ticket', {
+        body: { ticketId: t.ticket_id, reason },
+      });
+      if (error || !data?.ok) throw new Error(data?.error || error?.message || 'No fue posible anular el ticket');
+      toast({ title: 'Ticket anulado', description: `#${data.ticketNumber} · total anulados: ${data.ticketsVoidedTotal}` });
+      await refreshBuyers(eventId);
+      setEvents(current => current.map(item => item.id === eventId
+        ? { ...item, tickets_sold: Math.max(0, (item.tickets_sold || 0) - 1), tickets_voided: data.ticketsVoidedTotal }
+        : item));
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setActioningTicket(null);
+    }
+  };
+
+  const transferTicket = async (eventId, t) => {
+    const newEmail = prompt('Correo del nuevo destinatario:');
+    if (!newEmail?.trim()) return;
+    setActioningTicket(t.ticket_id);
+    try {
+      const { data, error } = await supabase.functions.invoke('transfer-ticket', {
+        body: { ticketId: t.ticket_id, newEmail: newEmail.trim() },
+      });
+      if (error || !data?.ok) throw new Error(data?.error || error?.message || 'No fue posible transferir el ticket');
+      toast({
+        title: 'Ticket transferido',
+        description: data.pending
+          ? `#${data.ticketNumber} · el destinatario debe crear su cuenta para activarlo`
+          : `#${data.ticketNumber} · notificado por correo${data.notificationSent ? ' y dentro de la plataforma' : ''}`,
+      });
+      await refreshBuyers(eventId);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setActioningTicket(null);
+    }
   };
 
   const toggle = (id) => expanded === id ? setExpanded(null) : loadBuyers(id);
@@ -1341,6 +1400,11 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
                             </button>
                           </div>
                         </div>
+                        {ev.tickets_voided > 0 && (
+                          <p className="text-[10px] text-white/30 mb-3">
+                            <span className="font-bold text-white/45">{ev.tickets_voided}</span> {ev.tickets_voided === 1 ? 'ticket anulado' : 'tickets anulados'} en este evento
+                          </p>
+                        )}
                         {loadingBuyers ? (
                           <div className="flex justify-center py-4">
                             <Loader2 className="w-5 h-5 animate-spin text-white/30" />
@@ -1362,12 +1426,42 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
                                   <span
                                     className="text-[10px] font-bold px-2 py-0.5 rounded"
                                     style={{
-                                      background: t.ticket_status === 'used' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
-                                      color: t.ticket_status === 'used' ? '#ef4444' : '#22c55e',
+                                      background: t.ticket_status === 'used'
+                                        ? 'rgba(239,68,68,0.1)'
+                                        : t.ticket_status === 'pending_registration'
+                                          ? 'rgba(167,139,250,0.14)'
+                                          : t.ticket_status === 'cancelled'
+                                            ? 'rgba(255,255,255,0.06)'
+                                            : 'rgba(34,197,94,0.1)',
+                                      color: t.ticket_status === 'used'
+                                        ? '#ef4444'
+                                        : t.ticket_status === 'pending_registration'
+                                          ? '#A78BFA'
+                                          : t.ticket_status === 'cancelled'
+                                            ? 'rgba(255,255,255,0.3)'
+                                            : '#22c55e',
                                     }}
                                   >
-                                    {t.ticket_status === 'used' ? 'Usado' : 'Activo'}
+                                    {t.ticket_status === 'used' ? 'Usado'
+                                      : t.ticket_status === 'pending_registration' ? 'Pendiente'
+                                        : t.ticket_status === 'cancelled' ? 'Anulado' : 'Activo'}
                                   </span>
+                                  {isVoidable(t) && ['valid', 'pending_registration'].includes(t.ticket_status) && (
+                                    <>
+                                      <button type="button" onClick={() => transferTicket(ev.id, t)}
+                                        disabled={actioningTicket === t.ticket_id}
+                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 disabled:opacity-40"
+                                        title="Transferir a otro correo">
+                                        {actioningTicket === t.ticket_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                                      </button>
+                                      <button type="button" onClick={() => voidTicket(ev.id, t)}
+                                        disabled={actioningTicket === t.ticket_id}
+                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 disabled:opacity-40"
+                                        title="Anular ticket">
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             ))}
