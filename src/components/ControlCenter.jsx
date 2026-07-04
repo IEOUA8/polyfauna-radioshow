@@ -116,6 +116,118 @@ function TextModal({ title, onClose, children }) {
   );
 }
 
+const REPORT_CATEGORIES = [
+  { value: 'payment',   label: 'Pago' },
+  { value: 'ticket',    label: 'Ticket / QR' },
+  { value: 'refund',    label: 'Devolución' },
+  { value: 'account',   label: 'Cuenta' },
+  { value: 'technical', label: 'Falla técnica' },
+  { value: 'general',   label: 'Otro' },
+];
+
+function ReportIssueModal({ onClose, currentUser }) {
+  const { toast } = useToast();
+  const [category, setCategory] = useState('technical');
+  const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSending(true);
+    try {
+      const { error } = await supabase.from('support_cases').insert({
+        user_id: currentUser.id,
+        category,
+        subject: subject.trim(),
+        description: description.trim() || null,
+      });
+      if (error) throw error;
+      setSent(true);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'No se pudo enviar el reporte', description: err.message });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <TextModal title="Reportar un problema" onClose={onClose}>
+      {sent ? (
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.12)' }}>
+            <Check className="w-6 h-6" style={{ color: '#22c55e' }} />
+          </div>
+          <p className="text-sm font-bold text-white">Reporte enviado</p>
+          <p className="text-xs text-white/40 leading-relaxed max-w-xs">
+            Nuestro equipo lo revisará pronto. Si necesitas seguimiento inmediato, escribe a info@polyfauna.com.
+          </p>
+          <button type="button" onClick={onClose}
+            className="mt-2 px-4 py-2 rounded-xl text-sm font-bold"
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'white' }}>
+            Cerrar
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <p className="text-xs text-white/40 leading-relaxed">
+            Cuéntanos qué pasó. Tu reporte queda asociado a tu cuenta ({currentUser.email}) para que podamos darle seguimiento.
+          </p>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Categoría</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none"
+              style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+            >
+              {REPORT_CATEGORIES.map(({ value, label }) => (
+                <option key={value} value={value} style={{ background: '#0B1110' }}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Asunto</label>
+            <input
+              type="text"
+              required
+              minLength={3}
+              maxLength={180}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Ej. No recibí el ticket después de pagar"
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
+              style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Descripción (opcional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="Fecha, evento, número de ticket o cualquier detalle que ayude"
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
+              style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.12)' }}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={sending || subject.trim().length < 3}
+            className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
+            style={{ background: '#20C7E8', color: '#031014' }}
+          >
+            {sending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Enviar reporte
+          </button>
+        </form>
+      )}
+    </TextModal>
+  );
+}
+
 function DeactivateModal({ onClose, onConfirm, email }) {
   return (
     <div
@@ -242,6 +354,7 @@ export default function ControlCenter({ setCurrentSection }) {
   const [qualityOpen, setQualityOpen]   = useState(false);
   const [termsOpen, setTermsOpen]       = useState(false);
   const [privacyOpen, setPrivacyOpen]   = useState(false);
+  const [reportOpen, setReportOpen]     = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
   const currentRole = profile?.role || 'citizen';
@@ -336,6 +449,9 @@ export default function ControlCenter({ setCurrentSection }) {
               ))}
             </div>
           </TextModal>
+        )}
+        {reportOpen && (
+          <ReportIssueModal currentUser={currentUser} onClose={() => setReportOpen(false)} />
         )}
         {deactivateOpen && (
           <DeactivateModal
@@ -588,7 +704,10 @@ export default function ControlCenter({ setCurrentSection }) {
           <div className="space-y-2">
             <SettingsTile icon={Mail} label="Soporte"
               description="info@polyfauna.com — dudas, pagos y reembolsos"
-              onClick={() => { window.location.href = 'mailto:info@polyfauna.com'; }} delay={0.27} />
+              onClick={() => { window.location.href = 'mailto:info@polyfauna.com'; }} delay={0.26} />
+            <SettingsTile icon={AlertTriangle} label="Reportar un problema"
+              description="Abre un caso de soporte con seguimiento en la plataforma"
+              onClick={() => setReportOpen(true)} delay={0.27} />
             <SettingsTile icon={FileText} label="Términos y Condiciones"
               description="Condiciones de uso de la plataforma"
               onClick={() => setTermsOpen(true)} delay={0.28} />
