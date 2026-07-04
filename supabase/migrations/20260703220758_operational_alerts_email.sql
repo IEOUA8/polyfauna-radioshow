@@ -232,13 +232,16 @@ SET search_path = public
 AS $$
 DECLARE
   v_secret  TEXT;
+  v_ref     TEXT;
   v_payload JSONB;
   v_count   INT;
 BEGIN
   SELECT decrypted_secret INTO v_secret
   FROM vault.decrypted_secrets WHERE name = 'cron_alert_secret';
+  SELECT decrypted_secret INTO v_ref
+  FROM vault.decrypted_secrets WHERE name = 'supabase_project_ref';
 
-  IF v_secret IS NULL THEN
+  IF v_secret IS NULL OR v_ref IS NULL THEN
     RETURN;
   END IF;
 
@@ -261,7 +264,7 @@ BEGIN
   END IF;
 
   PERFORM net.http_post(
-    url := 'https://gtusktqehukiizdfpdpm.supabase.co/functions/v1/send-operational-alert',
+    url := 'https://' || v_ref || '.supabase.co/functions/v1/send-operational-alert',
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', v_secret),
     body := jsonb_build_object('alerts', v_payload)
   );

@@ -319,11 +319,9 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
             border: `1px solid ${isOnline ? 'rgba(255,112,67,0.28)' : 'rgba(255,255,255,0.07)'}`,
           }}
         >
-          <motion.span
-            animate={isOnline ? { opacity: [1, 0.3, 1] } : { opacity: 0.35 }}
-            transition={{ duration: 1.2, repeat: Infinity }}
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ background: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.25)' }}
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'animate-pulse' : ''}`}
+            style={{ background: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.25)', opacity: isOnline ? undefined : 0.35 }}
           />
           <span className="text-sm font-semibold whitespace-nowrap" style={{ color: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.35)' }}>
             {isOnline ? (isLive ? `En vivo — ${streamerName || 'DJ'}` : 'Live') : 'Offline'}

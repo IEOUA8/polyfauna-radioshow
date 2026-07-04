@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   ArrowRight, CalendarDays, Disc3, Dna, FileText,
   Headphones, Lock, MessageSquare, Music, Radio,
@@ -145,9 +144,7 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
           {isOnline ? (
             <span className="flex items-center gap-1.5">
               <span className="relative flex h-1.5 w-1.5">
-                <motion.span animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
-                  transition={{ duration: 1.3, repeat: Infinity, ease: 'easeOut' }}
-                  className="absolute inline-flex h-full w-full rounded-full" style={{ background: '#FF8A1F' }} />
+                <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: '#FF8A1F' }} />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF8A1F' }} />
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#FF8A1F' }}>Live</span>

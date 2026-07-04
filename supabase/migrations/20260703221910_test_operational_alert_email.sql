@@ -12,6 +12,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_secret  TEXT;
+  v_ref     TEXT;
   v_payload JSONB;
 BEGIN
   IF auth.uid() IS NULL OR NOT EXISTS (
@@ -22,9 +23,11 @@ BEGIN
 
   SELECT decrypted_secret INTO v_secret
   FROM vault.decrypted_secrets WHERE name = 'cron_alert_secret';
+  SELECT decrypted_secret INTO v_ref
+  FROM vault.decrypted_secrets WHERE name = 'supabase_project_ref';
 
-  IF v_secret IS NULL THEN
-    RETURN 'error: cron_alert_secret no existe en Vault';
+  IF v_secret IS NULL OR v_ref IS NULL THEN
+    RETURN 'error: falta cron_alert_secret o supabase_project_ref en Vault';
   END IF;
 
   v_payload := jsonb_build_array(jsonb_build_object(
@@ -38,7 +41,7 @@ BEGIN
   ));
 
   PERFORM net.http_post(
-    url := 'https://gtusktqehukiizdfpdpm.supabase.co/functions/v1/send-operational-alert',
+    url := 'https://' || v_ref || '.supabase.co/functions/v1/send-operational-alert',
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', v_secret),
     body := jsonb_build_object('alerts', v_payload)
   );

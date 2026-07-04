@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, LayoutGrid, LayoutList, Link, Link2, Lock, MessageCircle, Pause, Play, Send } from 'lucide-react';
@@ -57,6 +57,204 @@ function fmtDuration(secs) {
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+
+/* ── Vista lista (memoizada: que cambie el track activo no debe re-renderizar
+   toda la lista, solo la fila que en verdad cambió) ── */
+const PodcastListItem = React.memo(function PodcastListItem({ pod, index, isActive, isCurrentlyPlaying, isLiked, onSelect, onPlay, onToggleLike }) {
+  const { toast } = useToast();
+  const gColor = getGenreColor(pod.genre);
+  const handleToggleLike = () => {
+    onToggleLike(pod.id);
+    if (!isLiked) toast({ title: pod.title, description: 'Guardado en tu biblioteca', style: { borderLeft: `3px solid ${gColor}` } });
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl group cursor-pointer"
+      style={{
+        background: isActive ? `${gColor}0C` : 'rgba(255,255,255,0.025)',
+        border: `1px solid ${isActive ? `${gColor}30` : 'rgba(255,255,255,0.06)'}`,
+        transition: 'background 0.2s, border-color 0.2s',
+      }}
+      onClick={() => onSelect(pod)}
+      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; } }}
+      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; } }}
+    >
+      {/* Thumb */}
+      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"
+        style={{ border: `1px solid ${isActive ? `${gColor}40` : 'rgba(255,255,255,0.07)'}` }}>
+        <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+        {isCurrentlyPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: `${gColor}55` }}>
+            <div className="flex items-end gap-px h-4">
+              {[4, 7, 5, 6].map((h, j) => (
+                <motion.div key={j} className="w-0.5 rounded-t-sm"
+                  style={{ background: '#fff' }}
+                  animate={{ height: [`${h}px`, `${h * 2}px`] }}
+                  transition={{ duration: 0.35 + j * 0.07, repeat: Infinity, repeatType: 'reverse' }} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold leading-tight truncate" style={{ color: isActive ? gColor : 'white' }}>
+          {pod.title}
+        </p>
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          {pod.artists?.name || 'PolyFauna'}
+          {pod.duration ? ` · ${fmtDuration(pod.duration)}` : ''}
+        </p>
+      </div>
+
+      {/* Like */}
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); handleToggleLike(); }}
+        className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/5"
+      >
+        <Heart className="w-4 h-4" style={{ fill: isLiked ? gColor : 'none', color: isLiked ? gColor : 'rgba(255,255,255,0.25)' }} />
+      </button>
+
+      {/* Play */}
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); onPlay(pod); }}
+        aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
+        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all"
+        style={{
+          background: isCurrentlyPlaying ? gColor : 'rgba(255,255,255,0.08)',
+          border: `1px solid ${isCurrentlyPlaying ? 'transparent' : 'rgba(255,255,255,0.10)'}`,
+        }}
+      >
+        {isCurrentlyPlaying
+          ? <Pause className="w-4 h-4 fill-current" style={{ color: '#080B14' }} />
+          : <Play className="w-4 h-4 fill-current ml-0.5" style={{ color: 'rgba(255,255,255,0.75)' }} />
+        }
+      </button>
+    </motion.div>
+  );
+});
+
+/* ── Vista cuadrícula (mismo motivo de memoización que la lista) ── */
+const PodcastGridCard = React.memo(function PodcastGridCard({ pod, index, isActive, isCurrentlyPlaying, isLiked, onSelect, onPlay, onToggleLike }) {
+  const { toast } = useToast();
+  const gColor = getGenreColor(pod.genre);
+  const handleToggleLike = () => {
+    onToggleLike(pod.id);
+    if (!isLiked) toast({ title: pod.title, description: 'Guardado en tu biblioteca', style: { borderLeft: `3px solid ${gColor}` } });
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="rounded-xl overflow-hidden flex flex-col group cursor-pointer"
+      style={{
+        background: 'rgba(11, 16, 15, 0.90)',
+        border: `1px solid ${isActive ? `${gColor}40` : 'rgba(255,255,255,0.07)'}`,
+        boxShadow: isActive ? `0 0 20px ${gColor}18` : 'none',
+        transition: 'border-color 0.3s, box-shadow 0.3s',
+      }}
+      whileHover={{ y: -4, transition: { type: 'spring', stiffness: 350, damping: 22 } }}
+      onClick={() => onSelect(pod)}
+    >
+      <div className="relative aspect-square overflow-hidden">
+        <img
+          src={pod.cover_url || FALLBACK_IMG}
+          alt={pod.title}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+
+        {pod.genre && (
+          <span
+            className="absolute top-2 left-2 text-[9px] font-bold px-1.5 py-0.5 rounded"
+            style={{
+              background: `${gColor}22`,
+              color: gColor,
+              border: `1px solid ${gColor}40`,
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            {pod.genre}
+          </span>
+        )}
+
+        {isActive && (
+          <motion.span
+            animate={{ opacity: [1, 0.4, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+            className="absolute top-2 right-2 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
+            style={{ background: gColor, color: '#080B14' }}
+          >
+            {isCurrentlyPlaying ? 'ON AIR' : '⏸'}
+          </motion.span>
+        )}
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onPlay(pod); }}
+          aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
+          className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        >
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center shadow-2xl"
+            style={{ background: gColor, boxShadow: `0 0 24px ${gColor}80` }}
+          >
+            {isCurrentlyPlaying
+              ? <Pause className="w-5 h-5 fill-current" style={{ color: '#080B14' }} />
+              : <Play className="w-5 h-5 ml-0.5 fill-current" style={{ color: '#080B14' }} />
+            }
+          </div>
+        </button>
+
+        {isCurrentlyPlaying && (
+          <div className="absolute bottom-2.5 left-2.5 flex items-end gap-px h-4">
+            {[5, 9, 6, 8, 4].map((h, j) => (
+              <motion.div
+                key={j}
+                className="w-0.5 rounded-t-sm"
+                style={{ background: gColor }}
+                animate={{ height: [`${h * 1.5}px`, `${h * 3}px`] }}
+                transition={{ duration: 0.4 + j * 0.08, repeat: Infinity, repeatType: 'reverse' }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="p-2.5 flex flex-col gap-1">
+        <p className="text-xs font-bold leading-tight line-clamp-2" style={{ color: isActive ? gColor : 'white' }}>
+          {pod.title}
+        </p>
+        <p className="text-[10px] text-white/40 truncate">{pod.artists?.name || 'PolyFauna'}</p>
+        <div className="flex items-center justify-between mt-0.5">
+          {pod.duration ? (
+            <span className="text-[10px] text-white/25">{fmtDuration(pod.duration)}</span>
+          ) : <span />}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); handleToggleLike(); }}
+            className="p-1 rounded-full transition-colors hover:bg-white/5"
+          >
+            <Heart
+              className="w-3 h-3"
+              style={{ fill: isLiked ? gColor : 'none', color: isLiked ? gColor : 'rgba(255,255,255,0.3)' }}
+            />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
 
 /* ─────────────────────────────────────────
    Podcast detail view
@@ -435,7 +633,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
-  const handlePlay = (pod) => {
+  const handlePlay = useCallback((pod) => {
     if (!currentUser) {
       setShowLoginPrompt(true);
       return;
@@ -461,7 +659,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
       });
       setIsPlaying(true);
     }
-  };
+  }, [currentUser, currentTrack?.id, isPlaying, toast, setCurrentTrack, setIsPlaying]);
 
   if (loading) {
     return (
@@ -597,208 +795,36 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
             ) : viewMode === 'list' ? (
               /* ── Vista lista (SoundCloud style) ── */
               <div className="space-y-1.5">
-                {filtered.map((pod, i) => {
-                  const isActive = currentTrack?.id === pod.id;
-                  const isCurrentlyPlaying = isActive && isPlaying;
-                  const gColor = getGenreColor(pod.genre);
-                  return (
-                    <motion.div
-                      key={pod.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl group cursor-pointer"
-                      style={{
-                        background: isActive ? `${gColor}0C` : 'rgba(255,255,255,0.025)',
-                        border: `1px solid ${isActive ? `${gColor}30` : 'rgba(255,255,255,0.06)'}`,
-                        transition: 'background 0.2s, border-color 0.2s',
-                      }}
-                      onClick={() => setSelectedPod(pod)}
-                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; } }}
-                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; } }}
-                    >
-                      {/* Thumb */}
-                      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"
-                        style={{ border: `1px solid ${isActive ? `${gColor}40` : 'rgba(255,255,255,0.07)'}` }}>
-                        <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                        {isCurrentlyPlaying && (
-                          <div className="absolute inset-0 flex items-center justify-center"
-                            style={{ background: `${gColor}55` }}>
-                            <div className="flex items-end gap-px h-4">
-                              {[4, 7, 5, 6].map((h, j) => (
-                                <motion.div key={j} className="w-0.5 rounded-t-sm"
-                                  style={{ background: '#fff' }}
-                                  animate={{ height: [`${h}px`, `${h * 2}px`] }}
-                                  transition={{ duration: 0.35 + j * 0.07, repeat: Infinity, repeatType: 'reverse' }} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold leading-tight truncate" style={{ color: isActive ? gColor : 'white' }}>
-                          {pod.title}
-                        </p>
-                        <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>
-                          {pod.artists?.name || 'PolyFauna'}
-                          {pod.duration ? ` · ${fmtDuration(pod.duration)}` : ''}
-                        </p>
-                      </div>
-
-                      {/* Like */}
-                      <button
-                        type="button"
-                        onClick={e => {
-                          e.stopPropagation();
-                          toggleLike(pod.id);
-                          if (!isLiked(pod.id)) toast({ title: pod.title, description: 'Guardado en tu biblioteca', style: { borderLeft: `3px solid ${gColor}` } });
-                        }}
-                        className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/5"
-                      >
-                        <Heart className="w-4 h-4" style={{ fill: isLiked(pod.id) ? gColor : 'none', color: isLiked(pod.id) ? gColor : 'rgba(255,255,255,0.25)' }} />
-                      </button>
-
-                      {/* Play */}
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); handlePlay(pod); }}
-                        aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
-                        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all"
-                        style={{
-                          background: isCurrentlyPlaying ? gColor : 'rgba(255,255,255,0.08)',
-                          border: `1px solid ${isCurrentlyPlaying ? 'transparent' : 'rgba(255,255,255,0.10)'}`,
-                        }}
-                      >
-                        {isCurrentlyPlaying
-                          ? <Pause className="w-4 h-4 fill-current" style={{ color: '#080B14' }} />
-                          : <Play className="w-4 h-4 fill-current ml-0.5" style={{ color: 'rgba(255,255,255,0.75)' }} />
-                        }
-                      </button>
-                    </motion.div>
-                  );
-                })}
+                {filtered.map((pod, i) => (
+                  <PodcastListItem
+                    key={pod.id}
+                    pod={pod}
+                    index={i}
+                    isActive={currentTrack?.id === pod.id}
+                    isCurrentlyPlaying={currentTrack?.id === pod.id && isPlaying}
+                    isLiked={isLiked(pod.id)}
+                    onSelect={setSelectedPod}
+                    onPlay={handlePlay}
+                    onToggleLike={toggleLike}
+                  />
+                ))}
               </div>
             ) : (
               /* ── Vista cuadrícula ── */
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {filtered.map((pod, i) => {
-                  const isActive = currentTrack?.id === pod.id;
-                  const isCurrentlyPlaying = isActive && isPlaying;
-                  const gColor = getGenreColor(pod.genre);
-
-                  return (
-                    <motion.div
-                      key={pod.id}
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="rounded-xl overflow-hidden flex flex-col group cursor-pointer"
-                      style={{
-                        background: 'rgba(11, 16, 15, 0.90)',
-                        border: `1px solid ${isActive ? `${gColor}40` : 'rgba(255,255,255,0.07)'}`,
-                        boxShadow: isActive ? `0 0 20px ${gColor}18` : 'none',
-                        transition: 'border-color 0.3s, box-shadow 0.3s',
-                      }}
-                      whileHover={{ y: -4, transition: { type: 'spring', stiffness: 350, damping: 22 } }}
-                      onClick={() => setSelectedPod(pod)}
-                    >
-                      <div className="relative aspect-square overflow-hidden">
-                        <img
-                          src={pod.cover_url || FALLBACK_IMG}
-                          alt={pod.title}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-
-                        {pod.genre && (
-                          <span
-                            className="absolute top-2 left-2 text-[9px] font-bold px-1.5 py-0.5 rounded"
-                            style={{
-                              background: `${gColor}22`,
-                              color: gColor,
-                              border: `1px solid ${gColor}40`,
-                              backdropFilter: 'blur(8px)',
-                            }}
-                          >
-                            {pod.genre}
-                          </span>
-                        )}
-
-                        {isActive && (
-                          <motion.span
-                            animate={{ opacity: [1, 0.4, 1] }}
-                            transition={{ duration: 1.2, repeat: Infinity }}
-                            className="absolute top-2 right-2 text-[8px] font-black uppercase px-1.5 py-0.5 rounded"
-                            style={{ background: gColor, color: '#080B14' }}
-                          >
-                            {isCurrentlyPlaying ? 'ON AIR' : '⏸'}
-                          </motion.span>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handlePlay(pod); }}
-                          aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
-                          className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                        >
-                          <div
-                            className="w-11 h-11 rounded-full flex items-center justify-center shadow-2xl"
-                            style={{ background: gColor, boxShadow: `0 0 24px ${gColor}80` }}
-                          >
-                            {isCurrentlyPlaying
-                              ? <Pause className="w-5 h-5 fill-current" style={{ color: '#080B14' }} />
-                              : <Play className="w-5 h-5 ml-0.5 fill-current" style={{ color: '#080B14' }} />
-                            }
-                          </div>
-                        </button>
-
-                        {isCurrentlyPlaying && (
-                          <div className="absolute bottom-2.5 left-2.5 flex items-end gap-px h-4">
-                            {[5, 9, 6, 8, 4].map((h, j) => (
-                              <motion.div
-                                key={j}
-                                className="w-0.5 rounded-t-sm"
-                                style={{ background: gColor }}
-                                animate={{ height: [`${h * 1.5}px`, `${h * 3}px`] }}
-                                transition={{ duration: 0.4 + j * 0.08, repeat: Infinity, repeatType: 'reverse' }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-2.5 flex flex-col gap-1">
-                        <p className="text-xs font-bold leading-tight line-clamp-2" style={{ color: isActive ? gColor : 'white' }}>
-                          {pod.title}
-                        </p>
-                        <p className="text-[10px] text-white/40 truncate">{pod.artists?.name || 'PolyFauna'}</p>
-                        <div className="flex items-center justify-between mt-0.5">
-                          {pod.duration ? (
-                            <span className="text-[10px] text-white/25">{fmtDuration(pod.duration)}</span>
-                          ) : <span />}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleLike(pod.id);
-                              if (!isLiked(pod.id)) toast({ title: pod.title, description: 'Guardado en tu biblioteca', style: { borderLeft: `3px solid ${gColor}` } });
-                            }}
-                            className="p-1 rounded-full transition-colors hover:bg-white/5"
-                          >
-                            <Heart
-                              className="w-3 h-3"
-                              style={{ fill: isLiked(pod.id) ? gColor : 'none', color: isLiked(pod.id) ? gColor : 'rgba(255,255,255,0.3)' }}
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                {filtered.map((pod, i) => (
+                  <PodcastGridCard
+                    key={pod.id}
+                    pod={pod}
+                    index={i}
+                    isActive={currentTrack?.id === pod.id}
+                    isCurrentlyPlaying={currentTrack?.id === pod.id && isPlaying}
+                    isLiked={isLiked(pod.id)}
+                    onSelect={setSelectedPod}
+                    onPlay={handlePlay}
+                    onToggleLike={toggleLike}
+                  />
+                ))}
               </div>
             )}
           </motion.div>
