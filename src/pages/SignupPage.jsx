@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Mail, Lock, User, Loader2, Check, ChevronLeft, ChevronRight, Headphones, Mic2, Megaphone, Building2, Disc } from 'lucide-react';
 import Logo from '@/components/Logo';
@@ -236,7 +237,7 @@ function DetailsStep({ formData, onChange, onBack, onSubmit, isLoading, formErro
           <Label htmlFor="password" className="text-white/40 font-bold uppercase tracking-wider text-[10px]">Contraseña</Label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <Input id="password" name="password" type="password" placeholder="Mínimo 8 caracteres"
+            <PasswordInput id="password" name="password" placeholder="Mínimo 8 caracteres"
               value={formData.password} onChange={onChange}
               className="pl-11 h-12 bg-white/5 border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-white/30 text-sm"
               disabled={isLoading} />
@@ -249,13 +250,11 @@ function DetailsStep({ formData, onChange, onBack, onSubmit, isLoading, formErro
           <Label htmlFor="confirmPassword" className="text-white/40 font-bold uppercase tracking-wider text-[10px]">Confirmar contraseña</Label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Repite tu contraseña"
+            <PasswordInput id="confirmPassword" name="confirmPassword" placeholder="Repite tu contraseña"
               value={formData.confirmPassword} onChange={onChange}
               className="pl-11 h-12 bg-white/5 border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-white/30 text-sm"
-              disabled={isLoading} />
-            {passwordsMatch && (
-              <Check className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-green-400" />
-            )}
+              disabled={isLoading}
+              rightSlot={passwordsMatch && <Check className="w-4 h-4 text-green-400" />} />
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Mail, Lock, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Logo from '@/components/Logo';
@@ -54,7 +55,7 @@ function ResetPasswordView() {
           <Label className="text-muted-foreground font-bold uppercase tracking-wider text-xs">Nueva contraseña</Label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input type="password" placeholder="Mínimo 8 caracteres" value={password}
+            <PasswordInput placeholder="Mínimo 8 caracteres" value={password}
               onChange={e => setPassword(e.target.value)}
               className="pl-12 h-14 bg-[#121212] border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base"
               disabled={isLoading} />
@@ -64,7 +65,7 @@ function ResetPasswordView() {
           <Label className="text-muted-foreground font-bold uppercase tracking-wider text-xs">Confirmar contraseña</Label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input type="password" placeholder="Repite la contraseña" value={confirm}
+            <PasswordInput placeholder="Repite la contraseña" value={confirm}
               onChange={e => setConfirm(e.target.value)}
               className="pl-12 h-14 bg-[#121212] border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base"
               disabled={isLoading} />
@@ -303,9 +304,8 @@ const LoginPage = () => {
                     </div>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input
+                      <PasswordInput
                         id="password"
-                        type="password"
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
