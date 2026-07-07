@@ -836,3 +836,55 @@ Resultado:
 
 - El commit `3a9a239` ya esta en `main` en GitHub; falta que el proveedor de hosting tome ese commit y redespliegue produccion (el sitio en vivo mostraba el dialogo nativo viejo al momento de escribir esta fase).
 - Aplicar el mismo `ModalShell`/`ModalHeader` a los formularios grandes del panel (editar evento, editar articulo) que hoy usan paneles propios inconsistentes, para unificar el sistema de modales por completo.
+
+## Fase 7.11 - Capa de organizadores (Colonia) y contenido multidimensional de artistas
+
+Fecha: 2026-07-07
+
+### Objetivo
+
+Ejecutar `POLYFAUNA_EVENTOS_ORGANIZADORES_MASTER.md`: dar identidad publica navegable a clubes, promotores y colectivos (hoy solo texto libre en `events.venue`), agregar contenido multidimensional (Eventos/Musica/Podcast/Entrevistas) al perfil de artista, y distinguir co-organizacion real de reventa de boletas en la capa financiera existente.
+
+### Implementacion
+
+- Migraciones aplicadas al Supabase enlazado (`gtusktqehukiizdfpdpm`):
+  - `20260707084906_organizers_core.sql`: tablas `organizers` y `event_organizers` (relacion curatorial evento-organizador), columna `events.venue_organizer_id`. RLS: lectura publica total, escritura por `owner_id` o admin, insercion por roles `admin/promoter/club`.
+  - `20260707085500_interviews_artist_link.sql`: `interviews.subject_artist_id` (se conserva `subject` TEXT para entrevistas grupales/tematicas sin artista unico).
+  - `20260707091200_co_promoters_collaboration_type_and_collective_role.sql`: `event_co_promoters.collaboration_type` (`co_organizer` vs `ticket_reseller`, default `ticket_reseller`). Reemplaza `add_event_co_promoter` con un tercer parametro `p_collaboration_type` — elimina explicitamente la firma anterior de 2 argumentos antes de crear la de 3 para evitar ambiguedad de sobrecarga en Postgres/PostgREST (una llamada con solo 2 argumentos habria fallado con "function name is not unique" si ambas firmas coexistieran). Solo los vinculos `co_organizer` puentean hacia `event_organizers`; los de `ticket_reseller` nunca aparecen en el perfil publico del organizador.
+  - `20260707091300_organizers_admin_insert_drop_collective_role.sql`: ajuste de la politica `organizers_admin_insert` (ver nota de diseno abajo).
+  - `20260707092654_user_favorites_organizer_type.sql`: agrega `'organizer'` al CHECK de `user_favorites.item_type` para que el boton "Seguir" funcione en organizadores.
+- `src/components/ProfileContentTabs.jsx` (nuevo): tabs Eventos/Musica/Podcast/Entrevistas reutilizables por `artistId` u `organizerId`, con estados vacios y carga por pestana bajo demanda.
+- `src/pages/ArtistPublicPage.jsx`: el bloque fijo "Proximos eventos" se reemplaza por `<ProfileContentTabs artistId={artist.id} />`.
+- `src/components/OrganizersPage.jsx` + `src/pages/OrganizerPublicPage.jsx` (nuevos): fork de `ArtistsPage.jsx`/`ArtistPublicPage.jsx` preservando favoritos, compartir, SEO/Helmet y animaciones. Ruta publica `/organizadores/:slug`. `OrganizerPublicPage` resuelve una posible fila espejo en `artists` por coincidencia de slug para mostrar tambien Musica/Podcast/Entrevistas cuando el organizador sube contenido propio.
+- Navegacion: "Colonia" (nombre elegido para conservar la identidad comunicacional de Polyfauna en vez de "Organizadores") agregada a `Sidebar.jsx` y `MobileMenu.jsx`; seccion `organizers` cableada en `PolyfaunaOS.jsx` (`VALID_SECTIONS`, `GuestGate`, limpieza de query params). No se agrego a `BottomNav.jsx` (reservado a las 5 acciones primarias, igual que "Artists & Labels" tampoco esta ahi).
+- `src/App.jsx`: rutas `/organizadores/:slug` y `/entrevistas/:interview` (mismo patron `InternalRouteRedirect` que `/music/:album`).
+- `src/components/BlogInterviewsSection.jsx`: listener de `?interview=` para deep-link, mismo patron que `MusicPage.jsx`.
+- `src/components/EventTerminal.jsx`: faceta de tipo de organizador (club/promotor/colectivo/hibrido) en el buscador, resuelta via `event_organizers.organizers(type)`. Solo se muestra si existe al menos un evento con organizador vinculado.
+- `src/components/admin/EventManager.jsx`: dos acciones distintas para vincular colaboradores ("Agregar co-organizador" / "Agregar co-promotor de boletas") y badge de tipo por fila (mayor jerarquia visual para co-organizador).
+- `tests/add-event-co-promoter-collaboration-type-contract.test.js` (nuevo): fija que la firma de 2 argumentos se elimina antes de crear la de 3, permisos de la nueva firma, que el CHECK de `collaboration_type` solo acepta los dos valores validos, que el puente a `event_organizers` ocurre unicamente para `co_organizer`, y que `EventManager.jsx` siempre pasa `p_collaboration_type` explicito.
+- `supabase/scripts/populate_venue_organizer_id.sql` (nuevo, no es una migracion): guia paso a paso para poblar `venue_organizer_id` desde `events.venue` en despliegues futuros con datos reales, con revision manual obligatoria de duplicados/variantes antes de crear cada organizador. No se ejecuto en esta fase: los dos unicos valores de `venue` en produccion ("SOSO", "Locacion secreta") resultaron ser datos de prueba/placeholder, no venues reales.
+
+### Nota de diseno: se descarto el rol `collective` nuevo
+
+El documento maestro proponia agregar `'collective'` como valor nuevo de `profiles.role`. Se descarto tras confirmar que `src/contexts/AuthContext.jsx` ya implementaba, en produccion, un mecanismo completo para colectivos via `profiles.organizer_type = 'collective'` con `role = 'promoter'` — con paridad total en toda la RLS existente (`events_insert_access`, `issue_courtesy_ticket`, `event_covers_organizer_insert`, etc.) porque el `role` sigue siendo `'promoter'`. Agregar un `role='collective'` distinto habria creado un segundo mecanismo paralelo sin esa paridad, requiriendo duplicar ~8 chequeos de rol en frontend y RLS para igualar lo que ya funcionaba. `docs/GOVERNANCE_MODEL.md` no requirio cambios: la lista de roles permitidos ahi (`citizen, artist, promoter, club, sello, admin`) sigue siendo correcta.
+
+### Verificacion
+
+```bash
+npm run verify
+supabase db push --linked
+```
+
+Resultado:
+
+- Suite automatizada: 94 pruebas OK (fue 88 antes de esta fase).
+- 5 migraciones aplicadas correctamente al proyecto Supabase enlazado.
+- `npm run verify`: lint 0 errores, build y presupuesto de performance OK.
+- Verificacion visual en navegador (con credenciales reales): tabs de perfil de artista, estado "no encontrado" y vacio de `OrganizerPublicPage`/`OrganizersPage`, faceta de Event Terminal, "Colonia" en Sidebar/MobileMenu — todo probado en 360px/375px/430px sin layout shift.
+- Deploy: PR [#9](https://github.com/IEOUA8/polyfauna-radioshow/pull/9) fusionado a `main`, CI y deploy de Vercel en produccion en verde.
+
+### Pendientes para Fase 7.12
+
+- QA funcional con datos reales: confirmar que un evento co-organizado aparece en el tab "Eventos" de ambos perfiles publicos sin duplicarse, y que un evento de solo-reventa no aparece en el perfil del revendedor. Garantizado por diseno (el puente a `event_organizers` solo se crea para `co_organizer`, PK compuesta evita duplicados) pero sin verificar end-to-end porque no hay organizadores reales creados aun en produccion.
+- Ejecutar `supabase/scripts/populate_venue_organizer_id.sql` cuando existan venues reales en `events.venue`.
+- Evaluar si "Colonia" necesita aparecer tambien en `BottomNav.jsx` una vez haya organizadores reales y trafico hacia esa seccion.
