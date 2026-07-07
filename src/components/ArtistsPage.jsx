@@ -182,107 +182,107 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
         </button>
       </div>
 
-      {/* Cover banner — outer wrapper sin overflow:hidden para no clipear el row */}
-      <div className="relative" style={{ height: 170 }}>
-        {/* Inner clip: solo contiene la imagen blureada */}
-        <div className="absolute inset-0 overflow-hidden">
+      {/* Header: avatar + info + acciones, con banner difuminado de fondo */}
+      <div className="relative px-5 pt-4 pb-6 overflow-hidden">
+        <div className="absolute inset-0" aria-hidden>
           <img
             src={img}
             alt=""
-            aria-hidden
             className="w-full h-full object-cover scale-110"
-            style={{ filter: 'blur(6px) brightness(0.38) saturate(0.7)' }}
+            style={{ filter: 'blur(18px) brightness(0.42) saturate(0.85)' }}
           />
           <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, rgba(5,9,10,0.08) 0%, rgba(5,9,10,0.50) 65%, #05090A 100%)',
+            background: 'linear-gradient(to bottom, rgba(5,9,10,0.20) 0%, rgba(5,9,10,0.72) 65%, #05090A 100%)',
           }} />
         </div>
-        {/* Action buttons: share + favorite */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-          <button
-            type="button"
-            onClick={handleShare}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-            style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
-          >
-            <Link2 className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.65)' }} />
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleFav('artist', artist.id)}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-            style={{ background: 'rgba(0,0,0,0.50)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
-          >
-            <Heart
-              className="w-4 h-4 transition-colors"
-              style={{ fill: favoured ? '#F87171' : 'none', color: favoured ? '#F87171' : 'rgba(255,255,255,0.65)' }}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* Avatar (left) + Info (right) — items-end: ambos alineados abajo */}
-      <div className="px-5 flex items-end gap-4 relative" style={{ marginTop: -64, zIndex: 2 }}>
-        {/* Avatar circle grande */}
-        <div
-          className="rounded-full overflow-hidden shrink-0"
-          style={{
-            width: 120,
-            height: 120,
-            border: '3px solid #05090A',
-            boxShadow: '0 0 0 1px rgba(255,255,255,0.13), 0 10px 32px rgba(0,0,0,0.75)',
-            position: 'relative',
-            zIndex: 10,
-          }}
-        >
-          <img src={img} alt={artist.name} className="w-full h-full object-cover" />
-        </div>
-
-        {/* Info column */}
-        <div className="flex-1 min-w-0 pb-1">
-          {artist.type && (
-            <span
-              className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1"
-              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start gap-5">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 flex-1 min-w-0 text-center sm:text-left">
+            {/* Avatar grande */}
+            <div
+              className="rounded-full overflow-hidden shrink-0"
+              style={{
+                width: 140,
+                height: 140,
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 12px 34px rgba(0,0,0,0.55)',
+              }}
             >
-              {artist.type}
-            </span>
-          )}
-          <h1 className="text-xl font-black text-white leading-tight">{artist.name}</h1>
-          {(artist.city || genres.length > 0) && (
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              {artist.city && (
-                <span className="text-xs font-medium text-white/50 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {artist.city}
-                </span>
-              )}
-              {genres.map((g) => (
+              <img src={img} alt={artist.name} className="w-full h-full object-cover" />
+            </div>
+
+            {/* Info column */}
+            <div className="flex-1 min-w-0 flex flex-col items-center sm:items-start">
+              {artist.type && (
                 <span
-                  key={g}
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  className="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }}
                 >
-                  {g.trim()}
+                  {artist.type}
                 </span>
-              ))}
-            </div>
-          )}
-          {/* Social icons inline */}
-          {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
-            <div className="flex gap-1.5 mt-2.5 flex-wrap">
-              {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
-                links[key] ? (
-                  <SocialButton
-                    key={key}
-                    href={build(links[key])}
-                    icon={icon}
-                    label={label}
-                    color={color}
-                  />
-                ) : null
+              )}
+              <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">{artist.name}</h1>
+              {artist.city && (
+                <span className="text-sm font-medium text-white/50 flex items-center gap-1.5 mt-2">
+                  <MapPin className="w-3.5 h-3.5" /> {artist.city}
+                </span>
+              )}
+              {genres.length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-3 justify-center sm:justify-start">
+                  {genres.map((g) => (
+                    <span
+                      key={g}
+                      className="text-xs font-bold px-3 py-1.5 rounded-full"
+                      style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    >
+                      {g.trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Social icons inline */}
+              {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
+                <div className="flex gap-1.5 mt-3.5 flex-wrap justify-center sm:justify-start">
+                  {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
+                    links[key] ? (
+                      <SocialButton
+                        key={key}
+                        href={build(links[key])}
+                        icon={icon}
+                        label={label}
+                        color={color}
+                      />
+                    ) : null
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
+
+          {/* Acciones: seguir + compartir */}
+          <div className="flex items-center justify-center sm:justify-end gap-2 sm:shrink-0 sm:pt-1">
+            <button
+              type="button"
+              onClick={handleShare}
+              title="Compartir"
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}
+            >
+              <Link2 className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.65)' }} />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleFav('artist', artist.id)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all shrink-0"
+              style={{
+                background: favoured ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${favoured ? 'rgba(248,113,113,0.35)' : 'rgba(255,255,255,0.10)'}`,
+                color: favoured ? '#F87171' : 'rgba(255,255,255,0.85)',
+              }}
+            >
+              <Heart className="w-4 h-4" style={{ fill: favoured ? '#F87171' : 'none' }} />
+              {favoured ? 'Siguiendo' : 'Seguir'}
+            </button>
+          </div>
         </div>
       </div>
 
