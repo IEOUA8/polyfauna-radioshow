@@ -137,6 +137,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
           bio: updates.bio,
           image_url: updates.avatar_url,
           genres: genresArray,
+          city: updates.city,
           social_links: updates.social_links,
         })
         .eq('user_id', currentUser.id);

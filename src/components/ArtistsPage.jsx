@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Heart, Instagram, Link2, Music, Twitter } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Heart, Instagram, Link2, MapPin, Music, Twitter, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -36,14 +37,20 @@ function SocialButton({ href, icon: Icon, label, color }) {
   );
 }
 
+const BIO_EXCERPT_LENGTH = 220;
+
 function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
   const { toast } = useToast();
+  const [bioModalOpen, setBioModalOpen] = useState(false);
   const links = typeof artist.social_links === 'object' && artist.social_links ? artist.social_links : {};
   const genres = artist.genres
     ? (Array.isArray(artist.genres) ? artist.genres : String(artist.genres).split(','))
     : [];
   const favoured = isFav('artist', artist.id);
   const img = artist.image_url || FALLBACK;
+  const bio = artist.bio || '';
+  const bioIsLong = bio.length > BIO_EXCERPT_LENGTH;
+  const bioExcerpt = bioIsLong ? `${bio.slice(0, BIO_EXCERPT_LENGTH).trim()}…` : bio;
 
   const profileUrl = artist.slug
     ? `${window.location.origin}/profiles/${artist.slug}`
@@ -154,6 +161,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
   };
 
   return (
+    <>
     <motion.div
       key="artist-detail"
       initial={{ opacity: 0, x: 40 }}
@@ -241,6 +249,24 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
             </span>
           )}
           <h1 className="text-xl font-black text-white leading-tight">{artist.name}</h1>
+          {(artist.city || genres.length > 0) && (
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              {artist.city && (
+                <span className="text-xs font-medium text-white/50 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> {artist.city}
+                </span>
+              )}
+              {genres.map((g) => (
+                <span
+                  key={g}
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
+                >
+                  {g.trim()}
+                </span>
+              ))}
+            </div>
+          )}
           {/* Social icons inline */}
           {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
             <div className="flex gap-1.5 mt-2.5 flex-wrap">
@@ -260,28 +286,22 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
         </div>
       </div>
 
-      {/* Bio + Genres */}
+      {/* Bio */}
       <div className="px-5 pt-5 pb-6 space-y-4">
         {artist.bio && (
           <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Biografía</h2>
-            <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{artist.bio}</p>
-          </div>
-        )}
-        {genres.length > 0 && (
-          <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Géneros</h2>
-            <div className="flex flex-wrap gap-2">
-              {genres.map((g) => (
-                <span
-                  key={g}
-                  className="text-xs font-bold px-3 py-1.5 rounded-lg"
-                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}
-                >
-                  {g.trim()}
-                </span>
-              ))}
-            </div>
+            <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{bioExcerpt}</p>
+            {bioIsLong && (
+              <button
+                type="button"
+                onClick={() => setBioModalOpen(true)}
+                className="text-xs font-bold mt-2.5 hover:underline"
+                style={{ color: 'rgba(255,255,255,0.85)' }}
+              >
+                Leer más...
+              </button>
+            )}
           </div>
         )}
 
@@ -417,6 +437,44 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
         )}
       </div>
     </motion.div>
+
+    {createPortal(
+      <AnimatePresence>
+        {bioModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[220] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)' }}
+            onClick={() => setBioModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl p-6"
+              style={{ background: '#0B1110', border: '1px solid rgba(255,255,255,0.10)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-black text-white">{artist.name} · Biografía</h2>
+                <button
+                  type="button"
+                  onClick={() => setBioModalOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{bio}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body
+    )}
+    </>
   );
 }
 

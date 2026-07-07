@@ -41,6 +41,7 @@ const ArtistManager = () => {
     slug: '',
     type: 'artist',
     genres: '',
+    city: '',
     bio: '',
     image_url: '',
     social_links: '',
@@ -93,6 +94,7 @@ const ArtistManager = () => {
         slug: slugifyArtist(formData.slug || formData.name),
         type: formData.type || 'artist',
         genres: parseGenres(formData.genres),
+        city: formData.city || null,
         bio: formData.bio,
         image_url: formData.image_url,
         social_links: socialLinks,
@@ -134,6 +136,7 @@ const ArtistManager = () => {
       slug: artist.slug || slugifyArtist(artist.name),
       type: artist.type || 'artist',
       genres: Array.isArray(artist.genres) ? artist.genres.join(', ') : (artist.genres || ''),
+      city: artist.city || '',
       bio: artist.bio || '',
       image_url: artist.image_url || '',
       social_links: JSON.stringify(artist.social_links || {}),
@@ -175,6 +178,7 @@ const ArtistManager = () => {
       slug: '',
       type: 'artist',
       genres: '',
+      city: '',
       bio: '',
       image_url: '',
       social_links: '',
@@ -257,6 +261,16 @@ const ArtistManager = () => {
                   onChange={(e) => setFormData({ ...formData, genres: e.target.value })}
                   className="bg-background border-border text-foreground"
                   placeholder="Techno, Ambient, Live act"
+                />
+              </div>
+              <div>
+                <Label htmlFor="city">Ciudad</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="bg-background border-border text-foreground"
+                  placeholder="Pereira, Colombia"
                 />
               </div>
               <div>
