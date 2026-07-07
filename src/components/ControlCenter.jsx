@@ -20,8 +20,6 @@ const ROLE_META = {
   admin:    { label: 'Admin',              description: 'Acceso operativo exclusivo de plataforma.', color: '#F87171', icon: Shield },
 };
 
-const CREATOR_ROLES = ['artist', 'club', 'promoter', 'sello', 'admin'];
-
 function SettingsTile({ icon: Icon, label, description, onClick, badge, delay = 0, danger = false }) {
   return (
     <motion.button
@@ -358,7 +356,6 @@ export default function ControlCenter({ setCurrentSection }) {
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
   const currentRole = profile?.role || 'citizen';
-  const currentIsCreator = CREATOR_ROLES.includes(currentRole);
 
   if (authLoading) {
     return <div className="p-5"><PulseLoader label="Verificando sesión..." /></div>;
@@ -390,7 +387,6 @@ export default function ControlCenter({ setCurrentSection }) {
   const displayName = profile?.display_name || currentUser.email?.split('@')[0] || 'Usuario';
   const avatar = profile?.avatar_url;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const isCreator = currentIsCreator;
   const hasPromoterHub = ['promoter', 'club', 'artist', 'sello', 'admin'].includes(role);
 
   return (
@@ -556,47 +552,6 @@ export default function ControlCenter({ setCurrentSection }) {
               onClick={() => setCurrentSection?.('organism')} delay={0.08} />
           </div>
         </div>
-
-        {isCreator && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Identidad pública</p>
-            <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="p-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.18)' }}>
-                    <Disc3 className="w-4 h-4" style={{ color: '#A78BFA' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-white">Perfil artístico separado de la cuenta</p>
-                    <p className="text-xs text-white/38 leading-relaxed mt-1">
-                      Tu rol operativo puede ser Admin, promotor o club; tu música y tus eventos viven en perfiles públicos de artista.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate('/admin')}
-                className="w-full px-5 py-4 text-left flex items-center gap-3 transition-colors"
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.035)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  <Edit3 className="w-4 h-4 text-white/55" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white">{isAdmin ? 'Gestionar perfiles de artista' : 'Gestionar identidad pública'}</p>
-                  <p className="text-xs text-white/35 truncate">{isAdmin ? 'Crear y editar desde el panel operativo' : 'Subir contenido asociado a tu perfil'}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-white/18 shrink-0" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {hasPromoterHub && (
           <div>

@@ -7,6 +7,8 @@ import { useToast } from '@/components/ui/use-toast';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
+const ARTIST_LIKE_ROLES = ['artist', 'sello'];
+
 export default function EditProfile({ profile, onSave, onClose }) {
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -15,6 +17,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
   const [uploading, setUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || null);
   const [identity, setIdentity] = useState({ full_name: '', document_type: 'CC', document_number: '' });
+  const [genres, setGenres] = useState('');
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
     username:     profile?.username || '',
@@ -23,6 +26,9 @@ export default function EditProfile({ profile, onSave, onClose }) {
     website:      profile?.website || '',
     social_links: profile?.social_links || { instagram: '', bandcamp: '', soundcloud: '', twitter: '' },
   });
+
+  const isArtistLike = ARTIST_LIKE_ROLES.includes(currentUser.role)
+    || (currentUser.role === 'promoter' && currentUser.organizer_type === 'collective');
 
   useEffect(() => {
     supabase
@@ -35,6 +41,18 @@ export default function EditProfile({ profile, onSave, onClose }) {
         else setIdentity(current => ({ ...current, full_name: profile?.display_name || '' }));
       });
   }, [currentUser.id, profile?.display_name]);
+
+  useEffect(() => {
+    if (!isArtistLike) return;
+    supabase
+      .from('artists')
+      .select('genres')
+      .eq('user_id', currentUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (Array.isArray(data?.genres)) setGenres(data.genres.join(', '));
+      });
+  }, [currentUser.id, isArtistLike]);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -106,8 +124,27 @@ export default function EditProfile({ profile, onSave, onClose }) {
         document_number: identity.document_number.trim(),
       });
 
-    if (error || identityError) {
-      toast({ title: 'Error al guardar', description: error?.message || identityError?.message, variant: 'destructive' });
+    // Tu ficha publica en Artists & Labels se mantiene sincronizada con este
+    // mismo formulario (no hay un editor separado): mismo nombre, bio, foto,
+    // redes y ahora el genero/estilo.
+    let artistSyncError = null;
+    if (!error && isArtistLike) {
+      const genresArray = genres.split(',').map(g => g.trim()).filter(Boolean);
+      const { error: syncError } = await supabase
+        .from('artists')
+        .update({
+          name: updates.display_name || undefined,
+          bio: updates.bio,
+          image_url: updates.avatar_url,
+          genres: genresArray,
+          social_links: updates.social_links,
+        })
+        .eq('user_id', currentUser.id);
+      artistSyncError = syncError;
+    }
+
+    if (error || identityError || artistSyncError) {
+      toast({ title: 'Error al guardar', description: error?.message || identityError?.message || artistSyncError?.message, variant: 'destructive' });
     } else {
       toast({ title: 'Perfil actualizado', description: 'Tus cambios se guardaron correctamente.' });
       onSave?.();
@@ -254,6 +291,23 @@ export default function EditProfile({ profile, onSave, onClose }) {
               onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
             />
           </div>
+
+          {/* Género / estilo (solo artist, sello o colectivo) */}
+          {isArtistLike && (
+            <div>
+              <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Género / Estilo</label>
+              <input
+                value={genres}
+                onChange={e => setGenres(e.target.value)}
+                placeholder="Techno, Ambient…"
+                className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                onFocus={e => (e.target.style.borderColor = 'rgba(32,199,232,0.4)')}
+                onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+              />
+              <p className="text-[10px] text-white/30 mt-1">Se muestra en tu ficha pública de Artists &amp; Labels.</p>
+            </div>
+          )}
 
           {/* Social links */}
           <div>

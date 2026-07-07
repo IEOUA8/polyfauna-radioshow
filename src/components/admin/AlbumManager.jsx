@@ -32,6 +32,8 @@ const AlbumManager = ({ ownerId = null }) => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_ALBUM);
   const [saving, setSaving] = useState(false);
+  const [pendingTracks, setPendingTracks] = useState([]);
+  const [trackDraft, setTrackDraft] = useState(EMPTY_TRACK);
 
   const [expandedId, setExpandedId] = useState(null);
   const [tracksByAlbum, setTracksByAlbum] = useState({});
@@ -69,20 +71,43 @@ const AlbumManager = ({ ownerId = null }) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const albumArtistId = ownerId ? (myArtist?.id || null) : (form.artist_id || null);
       const payload = {
         ...form,
         release_year: form.release_year ? parseInt(form.release_year) : null,
-        artist_id: ownerId ? (myArtist?.id || null) : (form.artist_id || null),
+        artist_id: albumArtistId,
       };
+      let albumId = editing?.id;
       if (editing) {
         const { error } = await supabase.from('albums').update(payload).eq('id', editing.id);
         if (error) throw error;
         toast({ title: 'Álbum actualizado' });
       } else {
-        const { error } = await supabase.from('albums').insert([{ ...payload, uploaded_by: currentUser.id }]);
+        const { data, error } = await supabase
+          .from('albums')
+          .insert([{ ...payload, uploaded_by: currentUser.id }])
+          .select()
+          .single();
         if (error) throw error;
+        albumId = data.id;
         toast({ title: 'Álbum creado' });
       }
+
+      if (pendingTracks.length > 0) {
+        const tracksPayload = pendingTracks.map((t, i) => ({
+          title: t.title,
+          audio_url: t.audio_url || null,
+          duration: t.duration ? parseInt(t.duration) : null,
+          track_number: t.track_number ? parseInt(t.track_number) : i + 1,
+          genre: t.genre || null,
+          album_id: albumId,
+          artist_id: albumArtistId,
+        }));
+        const { error: tracksError } = await supabase.from('tracks').insert(tracksPayload);
+        if (tracksError) throw tracksError;
+        setTracksByAlbum((prev) => ({ ...prev, [albumId]: undefined }));
+      }
+
       setIsDialogOpen(false);
       reset();
       fetchData();
@@ -91,6 +116,19 @@ const AlbumManager = ({ ownerId = null }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addPendingTrack = () => {
+    if (!trackDraft.title.trim()) {
+      toast({ variant: 'destructive', title: 'El track necesita un título' });
+      return;
+    }
+    setPendingTracks((prev) => [...prev, trackDraft]);
+    setTrackDraft(EMPTY_TRACK);
+  };
+
+  const removePendingTrack = (index) => {
+    setPendingTracks((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleEdit = (album) => {
@@ -103,6 +141,8 @@ const AlbumManager = ({ ownerId = null }) => {
       genre: album.genre || '',
       description: album.description || '',
     });
+    setPendingTracks([]);
+    setTrackDraft(EMPTY_TRACK);
     setIsDialogOpen(true);
   };
 
@@ -124,7 +164,7 @@ const AlbumManager = ({ ownerId = null }) => {
     }
   };
 
-  const reset = () => { setEditing(null); setForm(EMPTY_ALBUM); };
+  const reset = () => { setEditing(null); setForm(EMPTY_ALBUM); setPendingTracks([]); setTrackDraft(EMPTY_TRACK); };
 
   /* ── Tracks (siempre dentro de un álbum) ────────────────────── */
   const fetchTracks = async (albumId) => {
@@ -310,9 +350,57 @@ const AlbumManager = ({ ownerId = null }) => {
                   placeholder="Descripción del álbum… (para un sencillo, describe la canción)"
                 />
               </div>
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Tracks {editing && <span className="text-muted-foreground font-normal">(se agregan a los existentes)</span>}</Label>
+                </div>
+                {pendingTracks.length > 0 && (
+                  <div className="space-y-1.5">
+                    {pendingTracks.map((t, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-md bg-background border border-border">
+                        <Music className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="text-sm text-foreground flex-1 truncate">
+                          {t.track_number ? `${t.track_number}. ` : `${i + 1}. `}{t.title}
+                          {!t.audio_url && <span className="text-muted-foreground"> · sin audio</span>}
+                        </span>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removePendingTrack(i)} className="h-7 w-7 text-destructive hover:text-destructive/80">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Título del track"
+                    value={trackDraft.title}
+                    onChange={(e) => setTrackDraft({ ...trackDraft, title: e.target.value })}
+                    className="bg-background border-border text-foreground"
+                  />
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="N° track"
+                    value={trackDraft.track_number}
+                    onChange={(e) => setTrackDraft({ ...trackDraft, track_number: e.target.value })}
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+                <R2UploadField
+                  label="Audio del track"
+                  folder="tracks"
+                  accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/flac"
+                  value={trackDraft.audio_url}
+                  onChange={(url) => setTrackDraft({ ...trackDraft, audio_url: url })}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addPendingTrack} className="w-full gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Agregar track a la lista
+                </Button>
+              </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0" disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 {editing ? 'Guardar cambios' : 'Crear álbum'}
+                {pendingTracks.length > 0 && ` (+${pendingTracks.length} track${pendingTracks.length > 1 ? 's' : ''})`}
               </Button>
             </form>
           </DialogContent>

@@ -24,7 +24,6 @@ const InterviewManager = lazy(lazyImport(() => import('@/components/admin/Interv
 const ShowManager      = lazy(lazyImport(() => import('@/components/admin/ShowManager')));
 const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserManager')));
 const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
-const ArtistProfileEditor = lazy(lazyImport(() => import('@/components/admin/ArtistProfileEditor')));
 const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
@@ -444,7 +443,7 @@ function ContentDashboardSection({ ownerId }) {
         </div>
         {myArtist?.slug && (
           <a
-            href={`/profiles/${myArtist.slug}`}
+            href={`/?section=artists&artist=${myArtist.slug}`}
             target="_blank"
             rel="noreferrer"
             className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
@@ -2518,7 +2517,7 @@ const AdminDashboard = () => {
   const allowedSectionIds = [
     'dashboard',
     ...(canManageEvents ? ['events', 'tickets', 'refunds', 'qr', 'wallet'] : []),
-    ...(canManagePodcasts ? ['podcasts', 'albums', 'artists'] : []),
+    ...(canManagePodcasts ? ['podcasts', 'albums'] : []),
   ];
   const allNavItems = NAV_GROUPS.flatMap(group => group.items);
   const visibleGroups = isAdmin ? NAV_GROUPS : [{
@@ -2544,9 +2543,7 @@ const AdminDashboard = () => {
       case 'blog':        return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Blog</h2><p className="text-sm text-white/40 mt-0.5">Artículos y publicaciones</p></div><BlogManager /></div>;
       case 'interviews':  return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Interviews</h2><p className="text-sm text-white/40 mt-0.5">Entrevistas</p></div><InterviewManager /></div>;
       case 'shows':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Shows</h2><p className="text-sm text-white/40 mt-0.5">Programación de shows</p></div><ShowManager /></div>;
-      case 'artists':     return isAdmin
-        ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Artistas</h2><p className="text-sm text-white/40 mt-0.5">Perfiles de artistas y sellos</p></div><ArtistManager /></div>
-        : <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Mi perfil público</h2><p className="text-sm text-white/40 mt-0.5">Así apareces en Artists &amp; Labels</p></div><ArtistProfileEditor /></div>;
+      case 'artists':     return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Artistas</h2><p className="text-sm text-white/40 mt-0.5">Perfiles de artistas y sellos</p></div><ArtistManager /></div>;
       case 'albums':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Álbumes</h2><p className="text-sm text-white/40 mt-0.5">Discografía y tracks</p></div><AlbumManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
       case 'users':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Usuarios</h2><p className="text-sm text-white/40 mt-0.5">Gestión de cuentas y roles</p></div><UserManager /></div>;
       default:            return <DashboardSection />;
