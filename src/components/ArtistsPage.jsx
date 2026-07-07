@@ -227,12 +227,12 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
                 </span>
               )}
               {genres.length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-3 justify-center sm:justify-start">
+                <div className="flex gap-1.5 flex-wrap mt-2.5 justify-center sm:justify-start">
                   {genres.map((g) => (
                     <span
                       key={g}
-                      className="text-xs font-bold px-3 py-1.5 rounded-full"
-                      style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.10)' }}
                     >
                       {g.trim()}
                     </span>
