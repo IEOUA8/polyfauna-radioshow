@@ -2,7 +2,7 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarDays, Disc3, Dna, FileText, Headphones,
-  Lock, LogIn, MessageSquare, Music, Radio,
+  Lock, LogIn, MessageSquare, Music, Network, Radio,
   Shield, SlidersHorizontal, Ticket, UserPlus, X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { id: 'organism',      label: 'Organismo', icon: Dna,              public: false },
   { id: 'events',        label: 'Eventos',  icon: CalendarDays,      public: false },
   { id: 'artists',       label: 'Artistas', icon: Disc3,             public: false },
+  { id: 'organizers',    label: 'Colonia',  icon: Network,           public: false },
   { id: 'blog',          label: 'Blog',     icon: FileText,          public: false },
   { id: 'inbox',         label: 'Mensajes', icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Tickets',  icon: Ticket,            public: false },

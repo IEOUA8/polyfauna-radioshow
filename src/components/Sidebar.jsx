@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowRight, CalendarDays, Disc3, Dna, FileText,
-  Headphones, Lock, MessageSquare, Music, Radio,
+  Headphones, Lock, MessageSquare, Music, Network, Radio,
   SlidersHorizontal, Ticket,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
@@ -18,6 +18,7 @@ const ALL_NAV = [
   { id: 'organism',      label: 'Organismo',          icon: Dna,               public: false },
   { id: 'events',        label: 'Event Terminal',     icon: CalendarDays,      public: false },
   { id: 'artists',       label: 'Artists & Labels',   icon: Disc3,             public: false },
+  { id: 'organizers',    label: 'Colonia',            icon: Network,           public: false },
   { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: false },
   { id: 'inbox',         label: 'Signal Inbox',       icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Ticket Vault',       icon: Ticket,            public: false },

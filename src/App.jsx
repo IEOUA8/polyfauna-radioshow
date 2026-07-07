@@ -16,6 +16,7 @@ const AdminDashboard  = lazy(lazyImport(() => import('@/pages/AdminDashboard')))
 const ValidatePage    = lazy(lazyImport(() => import('@/pages/ValidatePage')));
 const EventPublicPage  = lazy(lazyImport(() => import('@/pages/EventPublicPage')));
 const ArtistPublicPage = lazy(lazyImport(() => import('@/pages/ArtistPublicPage')));
+const OrganizerPublicPage = lazy(lazyImport(() => import('@/pages/OrganizerPublicPage')));
 const VercelTelemetry  = lazy(lazyImport(() => import('@/components/VercelTelemetry')));
 
 function RouteLoader() {
@@ -95,9 +96,11 @@ function App() {
                 <Route path="/validate" element={<ValidatePage />} />
                 <Route path="/artist/:slug" element={<ArtistAliasRedirect />} />
                 <Route path="/profiles/:slug" element={<ArtistPublicPage />} />
+                <Route path="/organizadores/:slug" element={<OrganizerPublicPage />} />
                 <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
                 <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
                 <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
+                <Route path="/entrevistas/:interview" element={<InternalRouteRedirect section="blog" param="interview" />} />
                 <Route path="/e/:eventId"   element={<EventPublicPage />} />
                 <Route path="/dashboard" element={
                   <ProtectedRoute>

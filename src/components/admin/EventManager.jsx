@@ -331,6 +331,26 @@ const CO_PROMOTER_ERRORS = {
   not_authorized: 'No tienes permiso para vincular co-promotores en este evento',
 };
 
+const COLLABORATION_TYPE_LABEL = {
+  co_organizer: 'Co-organizador',
+  ticket_reseller: 'Co-promotor de boletas',
+};
+
+function CollaborationTypeBadge({ type }) {
+  const isCoOrganizer = type === 'co_organizer';
+  return (
+    <span
+      className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+      style={{
+        background: isCoOrganizer ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
+        color: isCoOrganizer ? 'white' : 'rgba(255,255,255,0.45)',
+      }}
+    >
+      {COLLABORATION_TYPE_LABEL[type] || COLLABORATION_TYPE_LABEL.ticket_reseller}
+    </span>
+  );
+}
+
 function CoPromotersManager({ eventId }) {
   const { toast } = useToast();
   const [list, setList] = useState([]);
@@ -342,7 +362,7 @@ function CoPromotersManager({ eventId }) {
     setLoading(true);
     const { data } = await supabase
       .from('event_co_promoters')
-      .select('id, promoter_id, ref_code')
+      .select('id, promoter_id, ref_code, collaboration_type')
       .eq('event_id', eventId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
@@ -362,14 +382,20 @@ function CoPromotersManager({ eventId }) {
 
   useEffect(() => { load(); }, [eventId]);
 
-  const handleAdd = async (e) => {
-    e.preventDefault();
+  const handleAdd = async (collaborationType) => {
     if (!email.trim()) return;
     setAdding(true);
     try {
-      const { data, error } = await supabase.rpc('add_event_co_promoter', { p_event_id: eventId, p_email: email.trim() });
+      const { data, error } = await supabase.rpc('add_event_co_promoter', {
+        p_event_id: eventId,
+        p_email: email.trim(),
+        p_collaboration_type: collaborationType,
+      });
       if (error) throw error;
-      toast({ title: 'Co-promotor vinculado', description: 'Se le notificó dentro de la plataforma y por correo.' });
+      toast({
+        title: collaborationType === 'co_organizer' ? 'Co-organizador vinculado' : 'Co-promotor de boletas vinculado',
+        description: 'Se le notificó dentro de la plataforma y por correo.',
+      });
       setEmail('');
       load();
       if (data?.promoter_id) {
@@ -404,27 +430,36 @@ function CoPromotersManager({ eventId }) {
   return (
     <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid hsl(var(--border))' }}>
       <div>
-        <Label>Co-promotores</Label>
+        <Label>Co-organizadores y co-promotores</Label>
         <p className="text-xs text-muted-foreground mt-1">
-          Vincula promotores o clubes que puedan vender tickets de este evento y emitir tickets manuales, sin poder editarlo.
+          Co-organizador: participó en la organización real del evento y aparece en su perfil público.
+          Co-promotor de boletas: solo vende tickets y emite tickets manuales, sin aparecer como organizador.
         </p>
       </div>
-      <form onSubmit={handleAdd} className="flex gap-2">
+      <div className="flex flex-col gap-2">
         <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
           placeholder="correo@ejemplo.com" className="bg-background border-border text-foreground" />
-        <Button type="submit" disabled={adding} className="shrink-0">
-          {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Vincular'}
-        </Button>
-      </form>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button type="button" disabled={adding || !email.trim()} onClick={() => handleAdd('co_organizer')} className="w-full sm:w-auto">
+            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Agregar co-organizador'}
+          </Button>
+          <Button type="button" variant="outline" disabled={adding || !email.trim()} onClick={() => handleAdd('ticket_reseller')} className="w-full sm:w-auto">
+            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Agregar co-promotor de boletas'}
+          </Button>
+        </div>
+      </div>
       {loading ? (
         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
       ) : list.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Aún no hay co-promotores vinculados.</p>
+        <p className="text-xs text-muted-foreground">Aún no hay co-organizadores ni co-promotores vinculados.</p>
       ) : (
         <div className="space-y-2">
           {list.map(row => (
             <div key={row.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
-              <span className="text-sm text-foreground truncate">{row.display_name || 'Promotor'}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm text-foreground truncate">{row.display_name || 'Promotor'}</span>
+                <CollaborationTypeBadge type={row.collaboration_type} />
+              </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <Button type="button" variant="ghost" size="sm" onClick={() => copyLink(row.ref_code)} className="text-xs h-7 px-2 gap-1.5">
                   <Copy className="w-3 h-3" /> Copiar link
