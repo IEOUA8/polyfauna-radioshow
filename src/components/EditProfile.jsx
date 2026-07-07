@@ -61,13 +61,19 @@ export default function EditProfile({ profile, onSave, onClose }) {
     }
     setUploading(true);
     const ext = file.name.split('.').pop();
-    const path = `${currentUser.id}/avatar.${ext}`;
-    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    // upsert:true dispara un rechazo RLS falso en el storage-api de Supabase
+    // para esta politica (probado: el mismo insert sin upsert funciona). Se
+    // usa un nombre unico por subida y se borra el archivo anterior aparte.
+    const { error } = await supabase.storage.from('avatars').upload(path, file);
     if (error) {
       toast({ title: 'Error al subir imagen', description: error.message, variant: 'destructive' });
     } else {
+      const prevMarker = '/object/public/avatars/';
+      const previousPath = avatarPreview?.includes(prevMarker) ? avatarPreview.split(prevMarker)[1] : null;
+      if (previousPath) supabase.storage.from('avatars').remove([previousPath]);
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      setAvatarPreview(publicUrl + '?t=' + Date.now());
+      setAvatarPreview(publicUrl);
       set('avatar_url', publicUrl);
     }
     setUploading(false);
