@@ -72,14 +72,22 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
 
+    // El SDK de supabase-js (auth.getUser) espera una sesion local que no
+    // existe en el runtime de una edge function ("Auth session missing!"
+    // incluso pasandole el jwt como argumento). Se valida el token llamando
+    // directo al endpoint de Auth, sin pasar por ese estado de sesion.
+    const userResp = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/user`, {
+      headers: { Authorization: authHeader, apikey: Deno.env.get('SUPABASE_ANON_KEY')! },
+    });
+    if (!userResp.ok) return json({ error: 'Unauthorized' }, 401);
+    const user = await userResp.json();
+    if (!user?.id) return json({ error: 'Unauthorized' }, 401);
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return json({ error: 'Unauthorized' }, 401);
 
     const { data: profile } = await supabase
       .from('profiles')
