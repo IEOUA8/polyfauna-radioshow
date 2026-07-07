@@ -19,7 +19,7 @@ const r2 = new AwsClient({
   service: 's3',
 });
 
-const ALLOWED_ROLES = ['artist', 'club', 'promoter', 'admin'];
+const ALLOWED_ROLES = ['artist', 'club', 'sello', 'promoter', 'admin'];
 
 const ALLOWED_AUDIO  = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/ogg'];
 const ALLOWED_IMAGE  = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -83,12 +83,14 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, organizer_type')
       .eq('id', user.id)
       .single();
 
-    if (!profile || !ALLOWED_ROLES.includes(profile.role)) {
-      return json({ error: 'Solo artistas, clubs y promotores pueden subir contenido.' }, 403);
+    const roleAllowed = !!profile && ALLOWED_ROLES.includes(profile.role)
+      && (profile.role !== 'promoter' || profile.organizer_type === 'collective');
+    if (!roleAllowed) {
+      return json({ error: 'Solo artistas, clubs, sellos y colectivos pueden subir contenido.' }, 403);
     }
 
     const { filename, contentType, folder = 'podcasts', fileSizeBytes } = await req.json();

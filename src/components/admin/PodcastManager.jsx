@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { UploadField } from './UploadField';
+import { R2UploadField } from './R2UploadField';
 import { useConfirmDialog } from './ConfirmDialog';
 
 const PodcastManager = ({ ownerId = null }) => {
@@ -224,16 +224,16 @@ const PodcastManager = ({ ownerId = null }) => {
                   ))}
                 </select>
               </div>
-              <UploadField
+              <R2UploadField
                 label="Portada"
-                bucket="podcast-covers"
+                folder="podcasts/covers"
                 accept="image/jpeg,image/png,image/webp"
                 value={formData.cover_url}
                 onChange={(url) => setFormData({ ...formData, cover_url: url })}
               />
-              <UploadField
+              <R2UploadField
                 label="Archivo de audio"
-                bucket="podcast-audio"
+                folder="podcasts/audio"
                 accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav"
                 value={formData.audio_url}
                 onChange={(url) => setFormData({ ...formData, audio_url: url })}

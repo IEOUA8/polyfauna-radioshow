@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Loader2, ChevronRight, Music } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { UploadField } from './UploadField';
+import { R2UploadField } from './R2UploadField';
 import { useConfirmDialog } from './ConfirmDialog';
 
 const EMPTY_ALBUM = { title: '', artist_id: '', cover_url: '', release_year: '', genre: '', description: '' };
@@ -278,9 +278,9 @@ const AlbumManager = () => {
                   />
                 </div>
               </div>
-              <UploadField
+              <R2UploadField
                 label="Portada"
-                bucket="album-covers"
+                folder="albums"
                 accept="image/jpeg,image/png,image/webp"
                 value={form.cover_url}
                 onChange={(url) => setForm({ ...form, cover_url: url })}
@@ -461,9 +461,9 @@ const AlbumManager = () => {
                 />
               </div>
             </div>
-            <UploadField
+            <R2UploadField
               label="Archivo de audio"
-              bucket="track-audio"
+              folder="tracks"
               accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/flac"
               value={trackForm.audio_url}
               onChange={(url) => setTrackForm({ ...trackForm, audio_url: url })}
