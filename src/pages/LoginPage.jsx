@@ -86,17 +86,19 @@ function ResetPasswordView() {
 }
 
 // ── Forgot Password view ──────────────────────────────────────────────────────
-function ForgotPasswordView({ onBack }) {
+function ForgotPasswordView({ onBack, initialError }) {
   const [email, setEmail]     = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent]       = useState(false);
   const [error, setError]     = useState('');
+  const [linkError, setLinkError] = useState(initialError || '');
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!email) { setError('Ingresa tu correo electrónico.'); return; }
     setLoading(true);
     setError('');
+    setLinkError('');
     const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/login`,
     });
@@ -157,6 +159,12 @@ function ForgotPasswordView({ onBack }) {
         Te enviaremos un enlace para restablecer tu contraseña.
       </p>
 
+      {linkError && (
+        <p className="text-destructive text-sm font-bold text-center bg-destructive/10 p-3 rounded-lg border border-destructive/20 mb-6">
+          {linkError}
+        </p>
+      )}
+
       <form onSubmit={handleSend} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="reset-email" className="text-muted-foreground font-bold uppercase tracking-wider text-xs">
@@ -207,6 +215,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
   const [mode, setMode]         = useState('login'); // 'login' | 'forgot'
+  const [recoveryLinkError, setRecoveryLinkError] = useState('');
 
   // PASSWORD_RECOVERY session detected → show reset form
   const effectiveMode = recoveryMode ? 'reset' : mode;
@@ -218,6 +227,25 @@ const LoginPage = () => {
   useEffect(() => {
     if (currentUser && !recoveryMode) navigate(nextPath, { replace: true });
   }, [currentUser, navigate, nextPath, recoveryMode]);
+
+  // Un enlace de recuperación vencido o ya usado (p.ej. abierto dos veces, o
+  // "previsualizado" por un escáner de seguridad del correo) hace que Supabase
+  // redirija con el error en el hash en vez de iniciar sesión de recuperación.
+  // Sin esto, el usuario solo veía el formulario de login normal, sin ninguna
+  // pista de qué pasó con su enlace.
+  useEffect(() => {
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+    const hashParams = new URLSearchParams(hash);
+    const errorCode = hashParams.get('error_code') || searchParams.get('error_code');
+    if (!errorCode) return;
+    setRecoveryLinkError(
+      errorCode === 'otp_expired'
+        ? 'Ese enlace de recuperación ya expiró o ya fue usado. Solicita uno nuevo.'
+        : 'Ese enlace de recuperación no es válido. Solicita uno nuevo.'
+    );
+    setMode('forgot');
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -254,7 +282,7 @@ const LoginPage = () => {
             {effectiveMode === 'reset' ? (
               <ResetPasswordView key="reset" />
             ) : effectiveMode === 'forgot' ? (
-              <ForgotPasswordView key="forgot" onBack={() => setMode('login')} />
+              <ForgotPasswordView key="forgot" onBack={() => setMode('login')} initialError={recoveryLinkError} />
             ) : (
               <motion.div key="login" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}>
 
