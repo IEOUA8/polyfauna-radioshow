@@ -778,6 +778,7 @@ export default function EventTerminal({ setCurrentSection }) {
   const [buyingEvent, setBuyingEvent] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [search, setSearch] = useState('');
+  const [organizerTypeFilter, setOrganizerTypeFilter] = useState(null);
   const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
@@ -788,18 +789,36 @@ export default function EventTerminal({ setCurrentSection }) {
     () => supabase.from('artists').select('id, name, slug'),
     []
   );
+  const { data: eventOrganizers } = useSupabaseQuery(
+    () => supabase.from('event_organizers').select('event_id, organizers(type)'),
+    []
+  );
+
+  const organizerTypeByEvent = useMemo(() => {
+    const map = new Map();
+    (eventOrganizers || []).forEach((row) => {
+      const type = row.organizers?.type;
+      if (!type) return;
+      if (!map.has(row.event_id)) map.set(row.event_id, new Set());
+      map.get(row.event_id).add(type);
+    });
+    return map;
+  }, [eventOrganizers]);
 
   const filteredEvents = useMemo(() => {
     if (!events) return [];
-    if (!search.trim()) return events;
-    const q = search.toLowerCase();
-    return events.filter(e =>
-      e.title?.toLowerCase().includes(q) ||
-      e.city?.toLowerCase().includes(q) ||
-      e.venue?.toLowerCase().includes(q) ||
-      e.description?.toLowerCase().includes(q)
-    );
-  }, [events, search]);
+    const q = search.trim().toLowerCase();
+    return events.filter(e => {
+      const matchesSearch = !q
+        || e.title?.toLowerCase().includes(q)
+        || e.city?.toLowerCase().includes(q)
+        || e.venue?.toLowerCase().includes(q)
+        || e.description?.toLowerCase().includes(q);
+      const matchesOrganizerType = !organizerTypeFilter
+        || organizerTypeByEvent.get(e.id)?.has(organizerTypeFilter);
+      return matchesSearch && matchesOrganizerType;
+    });
+  }, [events, search, organizerTypeFilter, organizerTypeByEvent]);
 
   // Eventos que aparecen en el banner: los marcados como featured ordenados por featured_order.
   // Si ninguno tiene featured=true, muestra todos (comportamiento por defecto).
@@ -1050,7 +1069,7 @@ export default function EventTerminal({ setCurrentSection }) {
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h2 className="text-base font-bold text-white">
-                  {search.trim() ? `${filteredEvents.length} resultado${filteredEvents.length !== 1 ? 's' : ''}` : 'Próximos Eventos'}
+                  {(search.trim() || organizerTypeFilter) ? `${filteredEvents.length} resultado${filteredEvents.length !== 1 ? 's' : ''}` : 'Próximos Eventos'}
                 </h2>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.30)' }} />
@@ -1072,11 +1091,37 @@ export default function EventTerminal({ setCurrentSection }) {
                 </div>
               </div>
 
-              {filteredEvents.length === 0 && search.trim() && (
+              {organizerTypeByEvent.size > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap mb-4">
+                  {[
+                    { key: null, label: 'Todos' },
+                    { key: 'club', label: 'Club' },
+                    { key: 'promoter', label: 'Promotor' },
+                    { key: 'collective', label: 'Colectivo' },
+                    { key: 'hybrid', label: 'Híbrido' },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setOrganizerTypeFilter(key)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                      style={{
+                        background: organizerTypeFilter === key ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
+                        color: organizerTypeFilter === key ? 'white' : 'rgba(255,255,255,0.35)',
+                        border: `1px solid ${organizerTypeFilter === key ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)'}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {filteredEvents.length === 0 && (search.trim() || organizerTypeFilter) && (
                 <div className="py-12 text-center">
                   <Search className="w-8 h-8 mx-auto mb-3" style={{ color: 'rgba(255,255,255,0.15)' }} />
                   <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    Sin resultados para <span className="text-white/55">"{search}"</span>
+                    {search.trim() ? <>Sin resultados para <span className="text-white/55">"{search}"</span></> : 'Sin resultados para este filtro'}
                   </p>
                 </div>
               )}

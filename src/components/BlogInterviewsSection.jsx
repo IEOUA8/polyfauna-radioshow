@@ -224,6 +224,15 @@ export default function BlogInterviewsSection() {
     window.addEventListener('pf:open-item', handler);
     return () => window.removeEventListener('pf:open-item', handler);
   }, [articles]);
+
+  // Deep-link desde /entrevistas/:interview
+  useEffect(() => {
+    const interviewParam = new URLSearchParams(window.location.search).get('interview');
+    if (!interviewParam || !interviews?.length) return;
+    const match = interviews.find(i => i.id === interviewParam);
+    if (match) openItem({ ...match, _type: 'interview' });
+  }, [interviews]);
+
   const goBack   = () => { setSelected(null); setSelectedType(null); };
 
   if (loading) return <div className="p-5"><CardSkeleton count={4} /></div>;

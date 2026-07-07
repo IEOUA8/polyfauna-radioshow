@@ -22,13 +22,14 @@ const PodcastsPage          = lazy(lazyImport(() => import('@/components/Podcast
 const MusicPage             = lazy(lazyImport(() => import('@/components/MusicPage')));
 const Organism              = lazy(lazyImport(() => import('@/components/Organism')));
 const ArtistsPage           = lazy(lazyImport(() => import('@/components/ArtistsPage')));
+const OrganizersPage        = lazy(lazyImport(() => import('@/components/OrganizersPage')));
 const BlogInterviewsSection = lazy(lazyImport(() => import('@/components/BlogInterviewsSection')));
 const SignalInbox           = lazy(lazyImport(() => import('@/components/SignalInbox')));
 const TicketVault           = lazy(lazyImport(() => import('@/components/TicketVault')));
 const ControlCenter         = lazy(lazyImport(() => import('@/components/ControlCenter')));
 
 const PUBLIC_SECTIONS  = ['radio-console', 'podcasts', 'events'];
-const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'blog', 'inbox', 'tickets', 'settings']);
+const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'organizers', 'blog', 'inbox', 'tickets', 'settings']);
 
 function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
@@ -105,6 +106,7 @@ function SectionLoader() {
 function GuestGate({ section, onClose }) {
   const labels = {
     music: 'Música', organism: 'Organismo', events: 'Event Terminal', artists: 'Artists & Labels',
+    organizers: 'Colonia',
     inbox: 'Signal Inbox', blog: 'Blog & Entrevistas',
     tickets: 'Ticket Vault', settings: 'Control Center',
   };
@@ -171,6 +173,7 @@ function PolyfaunaOS() {
     if (currentSection === 'radio-console') url.searchParams.delete('section');
     else url.searchParams.set('section', currentSection);
     if (currentSection !== 'artists') url.searchParams.delete('artist');
+    if (currentSection !== 'organizers') url.searchParams.delete('organizer');
     if (currentSection !== 'music') url.searchParams.delete('album');
     if (currentSection !== 'podcasts') url.searchParams.delete('podcast');
     if (currentSection !== 'events') url.searchParams.delete('event');
@@ -213,6 +216,11 @@ function PolyfaunaOS() {
       case 'events':        return <EventTerminal setCurrentSection={setCurrentSection} />;
       case 'artists':       return (
                               <ArtistsPage
+                                setCurrentSection={setCurrentSection}
+                              />
+                            );
+      case 'organizers':    return (
+                              <OrganizersPage
                                 setCurrentSection={setCurrentSection}
                               />
                             );
