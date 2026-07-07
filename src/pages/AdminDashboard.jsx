@@ -24,6 +24,7 @@ const InterviewManager = lazy(lazyImport(() => import('@/components/admin/Interv
 const ShowManager      = lazy(lazyImport(() => import('@/components/admin/ShowManager')));
 const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserManager')));
 const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
+const ArtistProfileEditor = lazy(lazyImport(() => import('@/components/admin/ArtistProfileEditor')));
 const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
@@ -398,6 +399,73 @@ function DashboardSection({ ownerId }) {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ContentDashboardSection({ ownerId }) {
+  const [stats, setStats] = useState({ podcasts: 0, podcastPlays: 0, albums: 0, tracks: 0, trackPlays: 0 });
+  const [myArtist, setMyArtist] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const [artistRes, podcastsRes, albumsRes] = await Promise.all([
+        supabase.from('artists').select('id, name, slug').eq('user_id', ownerId).maybeSingle(),
+        supabase.from('podcasts').select('play_count', { count: 'exact' }).eq('uploaded_by', ownerId),
+        supabase.from('albums').select('id', { count: 'exact' }).eq('uploaded_by', ownerId),
+      ]);
+
+      const albumIds = (albumsRes.data || []).map(a => a.id);
+      const tracksRes = albumIds.length
+        ? await supabase.from('tracks').select('play_count', { count: 'exact' }).in('album_id', albumIds)
+        : { data: [], count: 0 };
+
+      setMyArtist(artistRes.data || null);
+      setStats({
+        podcasts: podcastsRes.count || 0,
+        podcastPlays: (podcastsRes.data || []).reduce((sum, p) => sum + (p.play_count || 0), 0),
+        albums: albumsRes.count || 0,
+        tracks: tracksRes.count || 0,
+        trackPlays: (tracksRes.data || []).reduce((sum, t) => sum + (t.play_count || 0), 0),
+      });
+      setLoading(false);
+    };
+    if (ownerId) load();
+  }, [ownerId]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-black text-white">Dashboard</h2>
+          <p className="text-sm text-white/40 mt-0.5">Resumen de tu contenido</p>
+        </div>
+        {myArtist?.slug && (
+          <a
+            href={`/profiles/${myArtist.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+          >
+            Ver mi perfil público <ChevronRight className="w-3.5 h-3.5" />
+          </a>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatTile label="Podcasts" value={stats.podcasts} icon={Headphones} loading={loading} sub="Publicados" accent="96,165,250" />
+        <StatTile label="Álbumes" value={stats.albums} icon={Disc3} loading={loading} sub="Publicados" accent="255,138,31" />
+        <StatTile label="Tracks" value={stats.tracks} icon={Music} loading={loading} sub="En tus álbumes" accent="167,139,250" />
+        <StatTile
+          label="Reproducciones"
+          value={stats.podcastPlays + stats.trackPlays}
+          icon={TrendingUp}
+          loading={loading}
+          sub={`${stats.podcastPlays} podcast · ${stats.trackPlays} tracks`}
+          accent="93,224,163"
+        />
       </div>
     </div>
   );
@@ -2450,7 +2518,7 @@ const AdminDashboard = () => {
   const allowedSectionIds = [
     'dashboard',
     ...(canManageEvents ? ['events', 'tickets', 'refunds', 'qr', 'wallet'] : []),
-    ...(canManagePodcasts ? ['podcasts'] : []),
+    ...(canManagePodcasts ? ['podcasts', 'albums', 'artists'] : []),
   ];
   const allNavItems = NAV_GROUPS.flatMap(group => group.items);
   const visibleGroups = isAdmin ? NAV_GROUPS : [{
@@ -2460,7 +2528,9 @@ const AdminDashboard = () => {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'dashboard':   return <DashboardSection ownerId={isAdmin ? null : currentUser?.id} />;
+      case 'dashboard':   return (!isAdmin && canManagePodcasts && !canManageEvents)
+        ? <ContentDashboardSection ownerId={currentUser?.id} />
+        : <DashboardSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'analytics':   return isAdmin ? <UsageMetricsSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
@@ -2474,8 +2544,10 @@ const AdminDashboard = () => {
       case 'blog':        return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Blog</h2><p className="text-sm text-white/40 mt-0.5">Artículos y publicaciones</p></div><BlogManager /></div>;
       case 'interviews':  return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Interviews</h2><p className="text-sm text-white/40 mt-0.5">Entrevistas</p></div><InterviewManager /></div>;
       case 'shows':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Shows</h2><p className="text-sm text-white/40 mt-0.5">Programación de shows</p></div><ShowManager /></div>;
-      case 'artists':     return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Artistas</h2><p className="text-sm text-white/40 mt-0.5">Perfiles de artistas y sellos</p></div><ArtistManager /></div>;
-      case 'albums':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Álbumes</h2><p className="text-sm text-white/40 mt-0.5">Discografía y tracks</p></div><AlbumManager /></div>;
+      case 'artists':     return isAdmin
+        ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Artistas</h2><p className="text-sm text-white/40 mt-0.5">Perfiles de artistas y sellos</p></div><ArtistManager /></div>
+        : <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Mi perfil público</h2><p className="text-sm text-white/40 mt-0.5">Así apareces en Artists &amp; Labels</p></div><ArtistProfileEditor /></div>;
+      case 'albums':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Álbumes</h2><p className="text-sm text-white/40 mt-0.5">Discografía y tracks</p></div><AlbumManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
       case 'users':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Usuarios</h2><p className="text-sm text-white/40 mt-0.5">Gestión de cuentas y roles</p></div><UserManager /></div>;
       default:            return <DashboardSection />;
     }

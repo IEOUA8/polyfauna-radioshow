@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -20,7 +21,8 @@ function secondsToMMSS(secs) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-const AlbumManager = () => {
+const AlbumManager = ({ ownerId = null }) => {
+  const { currentUser } = useAuth();
   const { toast } = useToast();
   const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const [albums, setAlbums] = useState([]);
@@ -39,14 +41,18 @@ const AlbumManager = () => {
   const [trackForm, setTrackForm] = useState(EMPTY_TRACK);
   const [savingTrack, setSavingTrack] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
+  const myArtist = ownerId ? artists.find(a => a.user_id === ownerId) : null;
+
+  useEffect(() => { fetchData(); }, [ownerId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      let albumsQuery = supabase.from('albums').select('*, artists(name)').order('created_at', { ascending: false });
+      if (ownerId) albumsQuery = albumsQuery.eq('uploaded_by', ownerId);
       const [albumsRes, artistsRes] = await Promise.all([
-        supabase.from('albums').select('*, artists(name)').order('created_at', { ascending: false }),
-        supabase.from('artists').select('id, name').order('name'),
+        albumsQuery,
+        supabase.from('artists').select('id, name, user_id').order('name'),
       ]);
       if (albumsRes.error) throw albumsRes.error;
       if (artistsRes.error) throw artistsRes.error;
@@ -66,14 +72,14 @@ const AlbumManager = () => {
       const payload = {
         ...form,
         release_year: form.release_year ? parseInt(form.release_year) : null,
-        artist_id: form.artist_id || null,
+        artist_id: ownerId ? (myArtist?.id || null) : (form.artist_id || null),
       };
       if (editing) {
         const { error } = await supabase.from('albums').update(payload).eq('id', editing.id);
         if (error) throw error;
         toast({ title: 'Álbum actualizado' });
       } else {
-        const { error } = await supabase.from('albums').insert([payload]);
+        const { error } = await supabase.from('albums').insert([{ ...payload, uploaded_by: currentUser.id }]);
         if (error) throw error;
         toast({ title: 'Álbum creado' });
       }
@@ -178,7 +184,7 @@ const AlbumManager = () => {
         album_id: trackDialogAlbum,
         duration: trackForm.duration ? parseInt(trackForm.duration) : null,
         track_number: trackForm.track_number ? parseInt(trackForm.track_number) : null,
-        artist_id: trackForm.artist_id || null,
+        artist_id: ownerId ? (myArtist?.id || null) : (trackForm.artist_id || null),
       };
       if (editingTrack) {
         const { error } = await supabase.from('tracks').update(payload).eq('id', editingTrack.id);
@@ -242,19 +248,28 @@ const AlbumManager = () => {
                   required
                 />
               </div>
-              <div>
-                <Label>Artista</Label>
-                <select
-                  value={form.artist_id}
-                  onChange={(e) => setForm({ ...form, artist_id: e.target.value })}
-                  className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3"
-                >
-                  <option value="">Sin artista asignado</option>
-                  {artists.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
+              {ownerId ? (
+                <div>
+                  <Label>Artista</Label>
+                  <p className="h-10 flex items-center px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                    {myArtist?.name || 'Tu perfil de artista'}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Label>Artista</Label>
+                  <select
+                    value={form.artist_id}
+                    onChange={(e) => setForm({ ...form, artist_id: e.target.value })}
+                    className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3"
+                  >
+                    <option value="">Sin artista asignado</option>
+                    {artists.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Año de lanzamiento</Label>
@@ -414,19 +429,28 @@ const AlbumManager = () => {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Artista</Label>
-                <select
-                  value={trackForm.artist_id}
-                  onChange={(e) => setTrackForm({ ...trackForm, artist_id: e.target.value })}
-                  className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3"
-                >
-                  <option value="">Sin artista</option>
-                  {artists.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
+              {ownerId ? (
+                <div>
+                  <Label>Artista</Label>
+                  <p className="h-10 flex items-center px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                    {myArtist?.name || 'Tu perfil de artista'}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Label>Artista</Label>
+                  <select
+                    value={trackForm.artist_id}
+                    onChange={(e) => setTrackForm({ ...trackForm, artist_id: e.target.value })}
+                    className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3"
+                  >
+                    <option value="">Sin artista</option>
+                    {artists.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <Label>Número de track</Label>
                 <Input

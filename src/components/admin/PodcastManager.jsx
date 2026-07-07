@@ -30,6 +30,8 @@ const PodcastManager = ({ ownerId = null }) => {
     artist_id: '',
   });
 
+  const myArtist = ownerId ? artists.find(a => a.user_id === ownerId) : null;
+
   useEffect(() => {
     fetchData();
   }, [ownerId]);
@@ -41,7 +43,7 @@ const PodcastManager = ({ ownerId = null }) => {
 
       const [podcastsRes, artistsRes] = await Promise.all([
         podcastsQuery,
-        supabase.from('artists').select('id, name').order('name'),
+        supabase.from('artists').select('id, name, user_id').order('name'),
       ]);
 
       if (podcastsRes.error) throw podcastsRes.error;
@@ -67,7 +69,7 @@ const PodcastManager = ({ ownerId = null }) => {
       const podcastData = {
         ...formData,
         duration: parseInt(formData.duration),
-        artist_id: formData.artist_id || null,
+        artist_id: ownerId ? (myArtist?.id || null) : (formData.artist_id || null),
       };
 
       if (editingPodcast) {
@@ -210,20 +212,29 @@ const PodcastManager = ({ ownerId = null }) => {
                   />
                 </div>
               </div>
-              <div>
-                <Label htmlFor="artist_id">Artist</Label>
-                <select
-                  id="artist_id"
-                  value={formData.artist_id}
-                  onChange={(e) => setFormData({ ...formData, artist_id: e.target.value })}
-                  className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3"
-                >
-                  <option value="">Select an artist</option>
-                  {artists.map((artist) => (
-                    <option key={artist.id} value={artist.id}>{artist.name}</option>
-                  ))}
-                </select>
-              </div>
+              {ownerId ? (
+                <div>
+                  <Label>Artista</Label>
+                  <p className="h-10 flex items-center px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                    {myArtist?.name || 'Tu perfil de artista'}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="artist_id">Artist</Label>
+                  <select
+                    id="artist_id"
+                    value={formData.artist_id}
+                    onChange={(e) => setFormData({ ...formData, artist_id: e.target.value })}
+                    className="w-full h-10 bg-background border border-border text-foreground rounded-md px-3"
+                  >
+                    <option value="">Select an artist</option>
+                    {artists.map((artist) => (
+                      <option key={artist.id} value={artist.id}>{artist.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <R2UploadField
                 label="Portada"
                 folder="podcasts/covers"

@@ -84,6 +84,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
       duration: track.duration,
     });
     setIsPlaying(true);
+    supabase.rpc('increment_track_plays', { p_track_id: track.id }).then(() => {});
   };
 
   if (loading) {
