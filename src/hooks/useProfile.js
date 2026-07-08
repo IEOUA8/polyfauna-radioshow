@@ -10,11 +10,12 @@ export function useProfile() {
   const fetchProfile = useCallback(async () => {
     if (!currentUser) { setProfile(null); setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', currentUser.id)
       .single();
+    if (error) console.error('Error fetching profile:', error);
     setProfile(data);
     setLoading(false);
   }, [currentUser?.id]);

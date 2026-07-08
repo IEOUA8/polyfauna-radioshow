@@ -63,7 +63,10 @@ function NavCard({ item, locked, active, onPress, idx }) {
 
       {locked
         ? <Lock className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.20)' }} />
-        : <item.icon className="w-5 h-5" style={{ color: active ? '#ECECEC' : '#CFCFCF' }} />
+        : <item.icon
+            className={item.id === 'organism' ? 'w-5 h-5 icon-organism-alive' : 'w-5 h-5'}
+            style={{ color: active ? '#ECECEC' : '#CFCFCF' }}
+          />
       }
 
       <span

@@ -22,11 +22,17 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = useCallback(async (authUser) => {
     try {
-      const { data } = await supabase
+      const { data, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
+
+      // .single() no lanza excepcion en un error de Supabase (RLS, red, etc.),
+      // solo la devuelve en `error` — sin este log, un fallo silencioso caia
+      // a role 'citizen' sin ningun rastro, ocultando por completo secciones
+      // de promoter/club/collective para esa sesion.
+      if (profileError) console.error('Error fetching profile:', profileError);
 
       const profile = data || {};
       setCurrentUser({
