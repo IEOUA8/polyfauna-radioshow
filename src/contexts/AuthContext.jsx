@@ -17,7 +17,14 @@ export const AuthProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryMode, setRecoveryModeState] = useState(false);
+  const recoveryModeRef = useRef(false);
+  const setRecoveryMode = useCallback((value) => {
+    recoveryModeRef.current = value;
+    setRecoveryModeState(value);
+  }, []);
+  const [justVerified, setJustVerified] = useState(false);
+  const clearJustVerified = useCallback(() => setJustVerified(false), []);
   const roleNotificationIds = useRef(new Set());
 
   const fetchUserProfile = useCallback(async (authUser) => {
@@ -146,21 +153,53 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setRecoveryMode(true);
+      try {
+        if (event === 'PASSWORD_RECOVERY') {
+          setRecoveryMode(true);
+          return;
+        }
+        // Supabase puede emitir SIGNED_IN o TOKEN_REFRESHED justo después de
+        // PASSWORD_RECOVERY al procesar el mismo enlace de recuperación —
+        // sin este guard, ese segundo evento apagaba recoveryMode y el
+        // usuario volvía a ver el login normal en vez del formulario de
+        // nueva contraseña (quedándose en "Ingresando…" si además fallaba
+        // alguna llamada de las de abajo, ver catch/finally).
+        if (recoveryModeRef.current && event !== 'SIGNED_OUT') {
+          return;
+        }
+        setRecoveryMode(false);
+        if (session?.user) {
+          // El enlace de confirmación de correo redirige a
+          // `${origin}/?verified=1` (ver signup()); si ese parámetro sigue
+          // en la URL cuando la sesión recién se establece, es que el
+          // usuario acaba de verificar su cuenta — se lo mostramos con un
+          // modal en vez de dejarlo aterrizar en la plataforma sin ninguna
+          // confirmación visible, y limpiamos la URL para no repetirlo.
+          if (event === 'SIGNED_IN' && typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('verified') === '1') {
+              setJustVerified(true);
+              params.delete('verified');
+              const newSearch = params.toString();
+              window.history.replaceState(null, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
+            }
+          }
+          await consumePendingOAuthRole(session.user);
+          await notifyPendingRoleRequest(session.user);
+          await fetchUserProfile(session.user);
+        } else {
+          setCurrentUser(null);
+          setUserRole(null);
+        }
+      } catch (err) {
+        // Antes, un error sin capturar en cualquiera de las llamadas de
+        // arriba (ej. consumePendingOAuthRole) detenía la ejecución sin
+        // llegar nunca a setIsLoading(false) — el botón de login quedaba
+        // en "Ingresando…" para siempre.
+        console.error('Error handling auth state change:', err);
+      } finally {
         setIsLoading(false);
-        return;
       }
-      setRecoveryMode(false);
-      if (session?.user) {
-        await consumePendingOAuthRole(session.user);
-        await notifyPendingRoleRequest(session.user);
-        await fetchUserProfile(session.user);
-      } else {
-        setCurrentUser(null);
-        setUserRole(null);
-      }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -175,7 +214,10 @@ export const AuthProvider = ({ children }) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name, requested_role: requestedRole, organizer_type: organizerType } },
+        options: {
+          data: { name, requested_role: requestedRole, organizer_type: organizerType },
+          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/?verified=1` : undefined,
+        },
       });
       if (error) throw error;
 
@@ -287,7 +329,7 @@ export const AuthProvider = ({ children }) => {
   }, [toast]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, signInWithProvider, logout, recoveryMode, updatePassword }}>
+    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, signInWithProvider, logout, recoveryMode, updatePassword, justVerified, clearJustVerified }}>
       {children}
     </AuthContext.Provider>
   );
