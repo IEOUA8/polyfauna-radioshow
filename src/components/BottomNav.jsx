@@ -69,7 +69,7 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
                 className="relative z-10"
               >
                 <Icon
-                  className="w-[18px] h-[18px]"
+                  className={id === 'organism' && !locked ? 'w-[18px] h-[18px] icon-organism-alive' : 'w-[18px] h-[18px]'}
                   style={{ color: locked ? 'rgba(255,255,255,0.15)' : isActive ? '#ECECEC' : '#5E5E5E' }}
                 />
                 {locked && (

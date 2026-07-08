@@ -95,7 +95,9 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full bg-white/80" />
               )}
               <item.icon className={`w-4 h-4 shrink-0 transition-colors ${
-                locked ? 'text-white/25' : active ? 'text-white' : 'text-white/35 group-hover:text-white/60'
+                item.id === 'organism' && !locked
+                  ? 'icon-organism-alive'
+                  : locked ? 'text-white/25' : active ? 'text-white' : 'text-white/35 group-hover:text-white/60'
               }`} />
               <span className="flex-1 text-left">{item.label}</span>
               {locked && <Lock className="w-3 h-3 text-white/20 shrink-0" />}

@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
 const ARTIST_LIKE_ROLES = ['artist', 'sello'];
+const ORGANIZER_ROLES = ['promoter', 'club'];
 
 export default function EditProfile({ profile, onSave, onClose }) {
   const { currentUser } = useAuth();
@@ -29,6 +30,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
 
   const isArtistLike = ARTIST_LIKE_ROLES.includes(currentUser.role)
     || (currentUser.role === 'promoter' && currentUser.organizer_type === 'collective');
+  const isOrganizerLike = ORGANIZER_ROLES.includes(currentUser.role);
 
   useEffect(() => {
     supabase
@@ -98,14 +100,6 @@ export default function EditProfile({ profile, onSave, onClose }) {
   };
 
   const handleSave = async () => {
-    if (!identity.full_name.trim() || !identity.document_number.trim()) {
-      toast({
-        title: 'Completa tu identidad',
-        description: 'Nombre completo y número de documento son necesarios para validar tickets.',
-        variant: 'destructive',
-      });
-      return;
-    }
     setSaving(true);
     const updates = { ...form };
     if (avatarPreview && avatarPreview !== profile?.avatar_url) {
@@ -115,7 +109,11 @@ export default function EditProfile({ profile, onSave, onClose }) {
       .upsert({ id: currentUser.id, ...updates })
       .select().single();
 
-    const { error: identityError } = error ? { error: null } : await supabase
+    // La identidad (nombre/documento) solo es obligatoria para comprar o
+    // validar tickets (lo exige purchase_ticket en el servidor) — no debe
+    // bloquear el guardado del resto del perfil si todavía no la completó.
+    const hasIdentityInput = identity.full_name.trim() && identity.document_number.trim();
+    const { error: identityError } = (error || !hasIdentityInput) ? { error: null } : await supabase
       .from('user_identity')
       .upsert({
         user_id: currentUser.id,
@@ -144,8 +142,31 @@ export default function EditProfile({ profile, onSave, onClose }) {
       artistSyncError = syncError;
     }
 
-    if (error || identityError || artistSyncError) {
-      toast({ title: 'Error al guardar', description: error?.message || identityError?.message || artistSyncError?.message, variant: 'destructive' });
+    // Tu ficha publica en Colonia (organizers) se mantiene sincronizada con
+    // este mismo formulario, igual que Artists & Labels arriba.
+    let organizerSyncError = null;
+    if (!error && isOrganizerLike) {
+      const { error: syncError } = await supabase
+        .from('organizers')
+        .update({
+          name: updates.display_name || undefined,
+          bio: updates.bio,
+          image_url: updates.avatar_url,
+          city: updates.city,
+          social_links: updates.social_links,
+        })
+        .eq('owner_id', currentUser.id);
+      organizerSyncError = syncError;
+    }
+
+    if (error || identityError || artistSyncError || organizerSyncError) {
+      toast({ title: 'Error al guardar', description: error?.message || identityError?.message || artistSyncError?.message || organizerSyncError?.message, variant: 'destructive' });
+    } else if (!hasIdentityInput) {
+      toast({
+        title: 'Perfil actualizado',
+        description: 'Tus cambios se guardaron. Completa tu nombre y número de documento cuando quieras comprar o validar tickets.',
+      });
+      onSave?.();
     } else {
       toast({ title: 'Perfil actualizado', description: 'Tus cambios se guardaron correctamente.' });
       onSave?.();
@@ -219,11 +240,11 @@ export default function EditProfile({ profile, onSave, onClose }) {
               <IdCard className="w-4 h-4 text-cyan-300" />
               <div>
                 <p className="text-xs font-black text-white">Identidad para acceso a eventos</p>
-                <p className="text-[10px] text-white/35">Solo tú y el personal autorizado del evento pueden verla.</p>
+                <p className="text-[10px] text-white/35">Necesaria solo para comprar o validar tickets. Solo tú y el personal autorizado del evento pueden verla.</p>
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Nombre completo *</label>
+              <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Nombre completo</label>
               <input
                 value={identity.full_name}
                 onChange={event => setIdentity(current => ({ ...current, full_name: event.target.value }))}
@@ -234,7 +255,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
             </div>
             <div className="grid grid-cols-[110px_1fr] gap-2">
               <div>
-                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Tipo *</label>
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Tipo</label>
                 <select
                   value={identity.document_type}
                   onChange={event => setIdentity(current => ({ ...current, document_type: event.target.value }))}
@@ -245,7 +266,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 </select>
               </div>
               <div>
-                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Número de documento *</label>
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Número de documento</label>
                 <input
                   value={identity.document_number}
                   onChange={event => setIdentity(current => ({ ...current, document_number: event.target.value }))}
