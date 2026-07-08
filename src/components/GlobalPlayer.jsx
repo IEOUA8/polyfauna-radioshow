@@ -180,6 +180,20 @@ export default function GlobalPlayer() {
     }
   }, [isPlaying]);
 
+  // En móvil, al entrar a /admin (montaje pesado de AdminDashboard mientras
+  // PolyfaunaOS se desmonta), el navegador a veces pausa el <audio> por su
+  // cuenta (throttling de fondo del SO/navegador), sin que nuestro código
+  // haya pedido pausar. Si seguimos "queriendo" reproducir, se reintenta.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onPause = () => {
+      if (isPlaying) audio.play().catch(() => {});
+    };
+    audio.addEventListener('pause', onPause);
+    return () => audio.removeEventListener('pause', onPause);
+  }, [isPlaying]);
+
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
   }, [volume, muted]);
@@ -362,7 +376,11 @@ export default function GlobalPlayer() {
     <>
       <audio ref={audioRef} preload="none" />
 
-      <AnimatePresence mode="wait">
+      {/* Sin mode="wait": barra y disco animan a la vez (ambos "fixed", no
+          hay salto de layout) en vez de encadenar salida+entrada, para no
+          sumar más trabajo de animación justo cuando /admin monta de golpe
+          en móvil. */}
+      <AnimatePresence>
       {compactEligible && !discExpanded ? (
         <motion.div
           key="disc"
