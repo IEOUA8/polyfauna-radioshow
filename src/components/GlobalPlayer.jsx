@@ -377,7 +377,10 @@ export default function GlobalPlayer() {
           transition={{ type: 'spring', stiffness: 320, damping: 26 }}
           className="fixed z-50 rounded-full overflow-hidden cursor-pointer"
           style={{
-            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            // 78px despeja la barra de navegación rápida propia de
+            // /admin (MobileOperationsDock, ~64px) para no tapar su botón
+            // "Menú" — el disco solo existe en rutas que tienen esa barra.
+            bottom: 'calc(78px + env(safe-area-inset-bottom, 0px))',
             right: 16,
             width: 56,
             height: 56,

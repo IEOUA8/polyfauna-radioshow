@@ -2387,7 +2387,7 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen, group
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 lg:hidden"
+              className="fixed inset-0 z-[60] lg:hidden"
               style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)' }}
               onClick={() => setMobileOpen(false)}
             />
@@ -2396,7 +2396,9 @@ function Sidebar({ active, setActive, onGoHome, mobileOpen, setMobileOpen, group
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 340, damping: 36, mass: 0.9 }}
-              className="fixed left-0 right-0 bottom-0 z-50 lg:hidden flex flex-col overflow-hidden"
+              // z-[70]: por encima del GlobalPlayer (z-50), que vive fuera de
+              // esta ruta y si no quedaría flotando sobre este panel.
+              className="fixed left-0 right-0 bottom-0 z-[70] lg:hidden flex flex-col overflow-hidden"
               style={{
                 maxHeight: '88dvh',
                 background: '#0A0D0C',
