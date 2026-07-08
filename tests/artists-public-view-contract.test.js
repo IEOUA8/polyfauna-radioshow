@@ -6,6 +6,7 @@ const viewMigration = readFileSync('supabase/migrations/20260708033522_artists_p
 const artistsPage = readFileSync('src/components/ArtistsPage.jsx', 'utf8');
 const artistPublicPage = readFileSync('src/pages/ArtistPublicPage.jsx', 'utf8');
 const topBar = readFileSync('src/components/TopBar.jsx', 'utf8');
+const rightPanel = readFileSync('src/components/RightPanel.jsx', 'utf8');
 
 test('artists_public excluye fichas espejo de cuentas promoter/club, no por type', () => {
   // Bug real: artists.type='collective' tambien es un descriptor artistico
@@ -28,4 +29,6 @@ test('Artists & Labels (grid, deep-link y búsqueda global) usan artists_public,
   assert.match(artistPublicPage, /\.from\('artists_public'\)/);
   assert.doesNotMatch(topBar, /supabase\.from\('artists'\)/);
   assert.match(topBar, /supabase\.from\('artists_public'\)/);
+  assert.doesNotMatch(rightPanel, /supabase\.from\('artists'\)/);
+  assert.match(rightPanel, /supabase\.from\('artists_public'\)/);
 });
