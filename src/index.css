@@ -184,11 +184,13 @@
     background: linear-gradient(135deg, #FFA040 0%, #FFBE30 100%);
   }
 
-  /* ── Organismo nav icon — cambia de color como un organismo vivo ── */
+  /* ── Organismo nav icon — cambia de color como un organismo vivo ──
+     Opaco/apagado a propósito: es un detalle de atención, no un efecto
+     llamativo. */
   @keyframes organism-alive {
-    0%, 100% { color: #20C7E8; }
-    33%      { color: #D946EF; }
-    66%      { color: #5DE0A3; }
+    0%, 100% { color: rgba(32, 199, 232, 0.5); }
+    33%      { color: rgba(217, 70, 239, 0.5); }
+    66%      { color: rgba(93, 224, 163, 0.5); }
   }
   .icon-organism-alive {
     animation: organism-alive 5s ease-in-out infinite;
