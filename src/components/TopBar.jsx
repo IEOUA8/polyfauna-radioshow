@@ -57,7 +57,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
       const [evRes, podRes, artRes, albRes, blogRes] = await Promise.all([
         supabase.from('events').select('id, title, image_url').ilike('title', `%${q}%`).limit(3),
         supabase.from('podcasts').select('id, title, cover_url').ilike('title', `%${q}%`).limit(3),
-        supabase.from('artists').select('id, name, image_url').ilike('name', `%${q}%`).limit(3),
+        supabase.from('artists_public').select('id, name, image_url').ilike('name', `%${q}%`).limit(3),
         supabase.from('albums').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
         supabase.from('blog_articles').select('id, title, featured_image_url').ilike('title', `%${q}%`).limit(2),
       ]);
