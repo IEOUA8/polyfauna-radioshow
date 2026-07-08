@@ -16,6 +16,7 @@ import { lazyImport } from '@/lib/lazyImport';
 
 const RightPanel            = lazy(lazyImport(() => import('@/components/RightPanel')));
 const OnboardingModal       = lazy(lazyImport(() => import('@/components/OnboardingModal')));
+const EmailVerifiedModal    = lazy(lazyImport(() => import('@/components/EmailVerifiedModal')));
 const EventTerminal         = lazy(lazyImport(() => import('@/components/EventTerminal')));
 const RadioConsolePage      = lazy(lazyImport(() => import('@/components/RadioConsolePage')));
 const PodcastsPage          = lazy(lazyImport(() => import('@/components/PodcastsPage')));
@@ -306,6 +307,9 @@ function PolyfaunaOS() {
 
       <Suspense fallback={null}>
         <OnboardingModal />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EmailVerifiedModal />
       </Suspense>
       <InstallAppBanner />
       <Toaster />
