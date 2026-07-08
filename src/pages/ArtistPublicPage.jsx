@@ -46,7 +46,7 @@ export default function ArtistPublicPage() {
   useEffect(() => {
     if (!slug) return;
     supabase
-      .from('artists')
+      .from('artists_public')
       .select('*')
       .eq('slug', slug)
       .maybeSingle()

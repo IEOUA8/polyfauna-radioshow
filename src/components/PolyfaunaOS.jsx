@@ -7,11 +7,12 @@ import { Link } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
-import GlobalPlayer from '@/components/GlobalPlayer';
 import BottomNav from '@/components/BottomNav';
 import MobileMenu from '@/components/MobileMenu';
 import InstallAppBanner from '@/components/InstallAppBanner';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlayback } from '@/contexts/PlaybackContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { lazyImport } from '@/lib/lazyImport';
 
 const RightPanel            = lazy(lazyImport(() => import('@/components/RightPanel')));
@@ -31,18 +32,6 @@ const ControlCenter         = lazy(lazyImport(() => import('@/components/Control
 
 const PUBLIC_SECTIONS  = ['radio-console', 'podcasts', 'events'];
 const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'organizers', 'blog', 'inbox', 'tickets', 'settings']);
-
-function useMediaQuery(query) {
-  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, [query]);
-  return matches;
-}
 
 function SectionLoader() {
   return (
@@ -156,17 +145,25 @@ function GuestGate({ section, onClose }) {
 
 function PolyfaunaOS() {
   const { currentUser } = useAuth();
+  const { isPlaying, setIsPlaying, currentTrack, setCurrentTrack, registerSectionNavigator } = usePlayback();
   const [currentSection, setCurrentSection] = useState(() => {
     const requested = new URLSearchParams(window.location.search).get('section');
     return VALID_SECTIONS.has(requested) ? requested : 'radio-console';
   });
-  const [isPlaying, setIsPlaying]           = useState(false);
-  const [currentTrack, setCurrentTrack]     = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const showRightPanel = useMediaQuery('(min-width: 1280px)');
   const mainRef      = useRef(null);
   const touchStartX  = useRef(null);
   const touchStartY  = useRef(null);
+
+  // GlobalPlayer ahora vive fuera de esta ruta (en App.jsx, para que el
+  // audio no se detenga al navegar a /admin o /dashboard). Su botón "Ver
+  // podcasts" necesita cambiar de sección instantáneamente cuando
+  // PolyfaunaOS ya está montado — se registra esta función mientras dure.
+  useEffect(() => {
+    registerSectionNavigator(setCurrentSection);
+    return () => registerSectionNavigator(null);
+  }, [registerSectionNavigator]);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -286,14 +283,6 @@ function PolyfaunaOS() {
           </div>
         )}
       </div>
-
-      <GlobalPlayer
-        isPlaying={isPlaying}
-        setIsPlaying={setIsPlaying}
-        currentTrack={currentTrack}
-        setCurrentTrack={setCurrentTrack}
-        setCurrentSection={setCurrentSection}
-      />
 
       <BottomNav currentSection={currentSection} setCurrentSection={setCurrentSection} />
 

@@ -1,13 +1,37 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, ListMusic, Pause, Play, Radio, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlayback } from '@/contexts/PlaybackContext';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import HoloSpectrum from '@/components/HoloSpectrum';
+
+// Rutas con su propia página pública/standalone donde el reproductor nunca
+// se muestra (sin cambios respecto al comportamiento anterior a moverlo
+// fuera de PolyfaunaOS). Todo lo demás — el catch-all de PolyfaunaOS,
+// /admin y /dashboard — sí lo muestra, para que la música no se detenga
+// al navegar entre esas tres.
+const PLAYER_HIDDEN_PREFIXES = [
+  '/login', '/signup', '/validate', '/artist/', '/profiles/',
+  '/organizadores/', '/music/', '/podcasts/', '/events/', '/entrevistas/', '/e/',
+];
+function isPlayerHiddenRoute(pathname) {
+  return PLAYER_HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
+}
+
+// /admin y /dashboard no tienen el layout de PolyfaunaOS (sin su propio
+// <audio>) — en esas rutas, y solo en móvil, el reproductor se reduce a un
+// disco flotante para no taparle la pantalla al panel operativo/admin,
+// sin dejar de sonar.
+function isCompactRoute(pathname) {
+  return pathname === '/admin' || pathname === '/dashboard';
+}
 
 const BASE_STREAM = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
 const QUALITY_STREAMS = {
@@ -46,10 +70,23 @@ function MiniSignalBars({ active }) {
   );
 }
 
-export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack, setCurrentSection }) {
+export default function GlobalPlayer() {
   const { toast } = useToast();
   const { currentUser } = useAuth();
+  const { isPlaying, setIsPlaying, currentTrack, setCurrentTrack, goToSection } = usePlayback();
   const { isFav, toggle: toggleFav } = useFavorites();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+  const compactEligible = isMobile && isCompactRoute(location.pathname);
+  const [discExpanded, setDiscExpanded] = useState(false);
+
+  // Cada vez que se entra a /admin o /dashboard en móvil, arranca
+  // colapsado como disco — no debe tapar el panel apenas se navega ahí.
+  useEffect(() => {
+    if (compactEligible) setDiscExpanded(false);
+  }, [location.pathname, compactEligible]);
+
   const audioRef = useRef(null);
   const repeatRef = useRef(false);
   const queueRef = useRef(null);
@@ -319,14 +356,65 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
     } catch (_) {}
   }, [currentTime, audioDuration, isOnDemand]);
 
+  if (isPlayerHiddenRoute(location.pathname)) return null;
+
   return (
     <>
       <audio ref={audioRef} preload="none" />
 
+      <AnimatePresence mode="wait">
+      {compactEligible && !discExpanded ? (
+        <motion.div
+          key="disc"
+          role="button"
+          tabIndex={0}
+          onClick={() => setDiscExpanded(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDiscExpanded(true); } }}
+          aria-label="Mostrar reproductor completo"
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.4, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+          className="fixed z-50 rounded-full overflow-hidden cursor-pointer"
+          style={{
+            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            right: 16,
+            width: 56,
+            height: 56,
+            border: '1px solid rgba(255,255,255,0.14)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.55)',
+          }}
+        >
+          <img src={trackArt} alt="" className="w-full h-full object-cover" draggable={false} />
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.32)' }}>
+            {isPlaying && (
+              <motion.span
+                className="absolute rounded-full pointer-events-none"
+                style={{ inset: 6, border: '1.5px solid rgba(255,255,255,0.35)' }}
+                animate={{ scale: [1, 1.28], opacity: [0.5, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+              />
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+              aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir'}
+              className="w-8 h-8 rounded-full flex items-center justify-center relative z-10"
+              style={{ background: 'rgba(255,255,255,0.92)' }}
+            >
+              {isPlaying
+                ? <Pause className="w-3.5 h-3.5 fill-current" style={{ color: '#080B14' }} />
+                : <Play className="w-3.5 h-3.5 fill-current ml-0.5" style={{ color: '#080B14' }} />}
+            </button>
+          </div>
+        </motion.div>
+      ) : (
       <motion.div
+        key="bar"
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.3 }}
+        exit={compactEligible ? { y: 40, opacity: 0 } : undefined}
+        transition={{ type: 'spring', stiffness: 260, damping: 28, delay: compactEligible ? 0 : 0.3 }}
         className={`fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 right-3 md:left-4 md:right-4 lg:left-[256px] xl:right-[304px] z-50 flex flex-col sm:flex-row sm:items-center px-3 sm:px-4 md:px-6 pt-3 pb-2 sm:py-0 sm:h-[76px]${ticketModalOpen ? ' max-lg:hidden' : ''}`}
         style={{
           background: 'rgba(8, 12, 11, 0.75)',
@@ -340,20 +428,27 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
         {/* ── Row 1: Track Info + Mobile Play ── */}
         <div className="flex items-center gap-2.5 sm:gap-3 sm:flex-1 min-w-0">
           <div className="relative shrink-0">
-            {/* Móvil + live → organismo breathing */}
+            {/* Móvil + live → organismo breathing. En /admin y /dashboard
+                móvil, tocarlo también vuelve al disco (mismo gesto que la
+                portada de abajo, para el caso on-demand). */}
             {!isOnDemand ? (
               <motion.div
-                className="sm:hidden w-10 h-10 flex items-center justify-center shrink-0"
+                className={`sm:hidden w-10 h-10 flex items-center justify-center shrink-0${compactEligible ? ' cursor-pointer' : ''}`}
                 animate={isPlaying ? { scale: [1, 1.06, 1] } : { scale: 1 }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                onClick={compactEligible ? () => setDiscExpanded(false) : undefined}
+                title={compactEligible ? 'Minimizar reproductor' : undefined}
               >
                 <img src="/icons/symbol-ui.svg" alt="" className="w-9 h-9 object-contain" draggable={false} />
               </motion.div>
             ) : null}
-            {/* Portada — siempre en desktop, solo en on-demand en móvil */}
+            {/* Portada — siempre en desktop, solo en on-demand en móvil.
+                En /admin y /dashboard móvil, tocarla vuelve al disco. */}
             <div
-              className={`${!isOnDemand ? 'hidden sm:block' : ''} w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden`}
+              className={`${!isOnDemand ? 'hidden sm:block' : ''} w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden${compactEligible ? ' cursor-pointer' : ''}`}
               style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+              onClick={compactEligible ? () => setDiscExpanded(false) : undefined}
+              title={compactEligible ? 'Minimizar reproductor' : undefined}
             >
               <img src={trackArt} alt="Now playing" className="w-full h-full object-cover" />
             </div>
@@ -589,7 +684,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           </div>
           <button
             type="button"
-            onClick={() => setCurrentSection?.('podcasts')}
+            onClick={() => { if (!goToSection('podcasts')) navigate('/?section=podcasts'); }}
             className="ml-2 text-white/25 hover:text-white/55 transition-colors"
             title="Ver podcasts"
           >
@@ -597,6 +692,8 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
           </button>
         </div>
       </motion.div>
+      )}
+      </AnimatePresence>
     </>
   );
 }

@@ -332,8 +332,10 @@ export default function RightPanel({ setCurrentSection }) {
     []
   );
 
+  // artists_public excluye las fichas espejo de colectivos/clubes (se
+  // muestran en Colonia, no aquí) — mismo criterio que ArtistsPage.jsx.
   const { data: artists } = useSupabaseQuery(
-    () => supabase.from('artists').select('id, name, image_url').limit(5),
+    () => supabase.from('artists_public').select('id, name, image_url').limit(5),
     []
   );
 
