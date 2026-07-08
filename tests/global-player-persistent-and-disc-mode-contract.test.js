@@ -71,3 +71,20 @@ test('el disco despeja la barra de navegacion rapida de /admin (MobileOperations
   assert.match(globalPlayer, /bottom: 'calc\(78px \+ env\(safe-area-inset-bottom, 0px\)\)'/);
   assert.match(adminDashboard, /fixed left-0 right-0 bottom-0 z-30 lg:hidden/);
 });
+
+test('el audio se reintenta si el navegador lo pausa por su cuenta mientras deberia sonar', () => {
+  // En movil, al entrar a /admin (PolyfaunaOS se desmonta y AdminDashboard
+  // monta de golpe), el navegador a veces pausa el <audio> sin que el
+  // codigo lo pida. Si isPlaying sigue en true, se reintenta reproducir.
+  assert.match(globalPlayer, /addEventListener\('pause', onPause\)/);
+  assert.match(globalPlayer, /const onPause = \(\) => \{\s*\n\s*if \(isPlaying\) audio\.play\(\)\.catch\(\(\) => \{\}\);/);
+});
+
+test('barra y disco no encadenan animaciones (sin mode="wait")', () => {
+  // mode="wait" hace que la animacion de salida termine antes de empezar
+  // la de entrada, sumando duracion de animacion justo cuando /admin monta
+  // de golpe en movil. Ambos son "fixed" (sin layout compartido), asi que
+  // pueden animar a la vez sin salto visual.
+  assert.doesNotMatch(globalPlayer, /<AnimatePresence mode="wait">/);
+  assert.match(globalPlayer, /<AnimatePresence>/);
+});
