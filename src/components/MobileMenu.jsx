@@ -101,19 +101,20 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 z-40 lg:hidden"
+            className="fixed inset-0 z-[60] lg:hidden"
             style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
             onClick={onClose}
           />
 
-          {/* Panel */}
+          {/* Panel — z-[70]: por encima del GlobalPlayer (z-50), que vive
+              fuera de esta ruta y si no quedaría flotando sobre el menú. */}
           <motion.div
             key="panel"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 340, damping: 38, mass: 0.9 }}
-            className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-[70] lg:hidden flex flex-col"
             style={{
               background: '#0A0A0A',
               borderTop: '1px solid #1F1F1F',

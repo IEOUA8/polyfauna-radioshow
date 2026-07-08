@@ -6,6 +6,8 @@ const appJsx = readFileSync('src/App.jsx', 'utf8');
 const globalPlayer = readFileSync('src/components/GlobalPlayer.jsx', 'utf8');
 const polyfaunaOS = readFileSync('src/components/PolyfaunaOS.jsx', 'utf8');
 const playbackContext = readFileSync('src/contexts/PlaybackContext.jsx', 'utf8');
+const mobileMenu = readFileSync('src/components/MobileMenu.jsx', 'utf8');
+const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
 
 test('GlobalPlayer vive fuera de <Routes>, con su propio PlaybackProvider compartido', () => {
   // Antes GlobalPlayer era hijo de PolyfaunaOS: navegar a /admin o
@@ -46,4 +48,26 @@ test('PlaybackContext expone estado compartido de reproduccion y navegacion de s
   assert.match(playbackContext, /isPlaying, setIsPlaying/);
   assert.match(playbackContext, /currentTrack, setCurrentTrack/);
   assert.match(playbackContext, /registerSectionNavigator, goToSection/);
+});
+
+test('los menus moviles (PolyfaunaOS y Admin Panel) van por encima del GlobalPlayer', () => {
+  // GlobalPlayer vive fuera de <Routes> y se monta despues en el DOM, asi
+  // que con el mismo z-index (z-50) siempre gana el empate y tapa estos
+  // menus. Deben quedar por encima con z-index explicitamente mayor.
+  assert.match(globalPlayer, /className="fixed z-50 rounded-full overflow-hidden cursor-pointer"/);
+  assert.match(globalPlayer, /z-50 flex flex-col sm:flex-row/);
+
+  assert.match(mobileMenu, /fixed inset-0 z-\[60\] lg:hidden/);
+  assert.match(mobileMenu, /fixed bottom-0 left-0 right-0 z-\[70\] lg:hidden flex flex-col/);
+
+  assert.match(adminDashboard, /fixed inset-0 z-\[60\] lg:hidden/);
+  assert.match(adminDashboard, /fixed left-0 right-0 bottom-0 z-\[70\] lg:hidden flex flex-col overflow-hidden/);
+});
+
+test('el disco despeja la barra de navegacion rapida de /admin (MobileOperationsDock)', () => {
+  // La barra de navegacion rapida propia de /admin (z-30, ~64px) queda
+  // debajo del disco (z-50) si este se ancla muy abajo, tapando su boton
+  // "Menu". El disco debe descansar por encima de esa barra.
+  assert.match(globalPlayer, /bottom: 'calc\(78px \+ env\(safe-area-inset-bottom, 0px\)\)'/);
+  assert.match(adminDashboard, /fixed left-0 right-0 bottom-0 z-30 lg:hidden/);
 });
