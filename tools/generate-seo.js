@@ -5,6 +5,8 @@ import path from 'node:path';
 
 const SITE_URL = 'https://www.polyfauna.com';
 const publicDir = path.join(process.cwd(), 'public');
+const sitemapPath = path.join(publicDir, 'sitemap.xml');
+const robotsPath = path.join(publicDir, 'robots.txt');
 
 function loadLocalEnv() {
   const envPath = path.join(process.cwd(), '.env');
@@ -24,7 +26,7 @@ function xml(value) {
 async function fetchRows(table, select) {
   const baseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!baseUrl || !anonKey) return [];
+  if (!baseUrl || !anonKey) throw new Error('Supabase env no configurada');
 
   const response = await fetch(`${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
@@ -37,19 +39,37 @@ function urlEntry(location, lastModified, changefreq, priority) {
   return `  <url>\n    <loc>${xml(location)}</loc>${lastModified ? `\n    <lastmod>${xml(lastModified.slice(0, 10))}</lastmod>` : ''}\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
 }
 
+function writeRobots() {
+  fs.writeFileSync(robotsPath,
+    `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+}
+
+function countSitemapUrls() {
+  if (!fs.existsSync(sitemapPath)) return 0;
+  return (fs.readFileSync(sitemapPath, 'utf8').match(/<loc>/g) || []).length;
+}
+
 async function main() {
   loadLocalEnv();
   fs.mkdirSync(publicDir, { recursive: true });
 
   let events = [];
   let artists = [];
+  let remoteError = null;
   try {
     [events, artists] = await Promise.all([
       fetchRows('events', 'id,created_at'),
       fetchRows('artists', 'slug,created_at'),
     ]);
   } catch (error) {
-    console.warn(`SEO sitemap: usando rutas estáticas (${error.message})`);
+    remoteError = error;
+    console.warn(`SEO sitemap: no se pudo consultar Supabase (${error.message})`);
+  }
+
+  if (remoteError && fs.existsSync(sitemapPath)) {
+    writeRobots();
+    console.warn(`SEO sitemap: conservando sitemap existente (${countSitemapUrls()} URLs)`);
+    return;
   }
 
   const today = new Date().toISOString();
@@ -61,11 +81,10 @@ async function main() {
     if (artist.slug) entries.push(urlEntry(`${SITE_URL}/profiles/${artist.slug}`, artist.created_at, 'weekly', '0.7'));
   }
 
-  fs.writeFileSync(path.join(publicDir, 'sitemap.xml'),
+  fs.writeFileSync(sitemapPath,
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`);
 
-  fs.writeFileSync(path.join(publicDir, 'robots.txt'),
-    `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+  writeRobots();
 
   console.log(`SEO sitemap: ${entries.length} URLs`);
 }

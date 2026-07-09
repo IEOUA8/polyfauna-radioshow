@@ -470,6 +470,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button
               type="button"
               onClick={handleSkipBack}
+              aria-label="Reiniciar pista"
               className="flex transition-colors"
               title="Reiniciar pista"
               style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
@@ -509,6 +510,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
             <button
               type="button"
               onClick={handleSkipForward}
+              aria-label={queueRef.current?.items?.[queueRef.current?.index + 1] ? 'Siguiente' : isOnDemand ? 'Volver al radio' : 'Siguiente no disponible en radio en vivo'}
               className="flex transition-colors"
               title={queueRef.current?.items?.[queueRef.current?.index + 1] ? 'Siguiente' : isOnDemand ? 'Volver al radio' : undefined}
               style={{ color: isOnDemand ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)', cursor: isOnDemand ? 'pointer' : 'default' }}
@@ -568,7 +570,12 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
 
         {/* ── Volume — desktop ── */}
         <div className="flex-1 hidden md:flex justify-end items-center gap-3">
-          <button type="button" onClick={() => setMuted(!muted)} className="text-white/25 hover:text-white/55 transition-colors">
+          <button
+            type="button"
+            onClick={() => setMuted(!muted)}
+            aria-label={muted ? 'Activar volumen' : 'Silenciar'}
+            className="text-white/25 hover:text-white/55 transition-colors"
+          >
             {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
           <div className="relative w-24">
@@ -578,6 +585,7 @@ export default function GlobalPlayer({ isPlaying, setIsPlaying, currentTrack, se
               max="1"
               step="0.02"
               value={muted ? 0 : volume}
+              aria-label="Volumen"
               onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
               className="w-full h-1 cursor-pointer appearance-none rounded-full"
               style={{ accentColor: 'rgba(255,255,255,0.9)' }}
