@@ -13,6 +13,7 @@ import { resolveLineupArtists } from '@/lib/artistIdentity';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getFunctionErrorMessage } from '@/lib/functionErrors';
 import { claimFreeTicket } from '@/lib/freeTickets';
+import { buildWompiCheckoutUrl, isWompiCheckoutUrl } from '@/lib/wompiCheckout';
 import { loadTicketIdentity } from '@/lib/ticketIdentity';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
@@ -172,18 +173,7 @@ function BuyModal({ event, onClose }) {
         if (error) throw new Error(await getFunctionErrorMessage(error, 'Error al crear el pago'));
         if (!data?.reference) throw new Error('Respuesta inválida del servidor de pagos');
 
-        const origin = window.location.origin;
-        const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-        const redirectParam = isLocal ? '' : `&redirect-url=${encodeURIComponent(origin + '/')}`;
-
-        const checkoutUrl =
-          `https://checkout.wompi.co/p/?` +
-          `public-key=${data.public_key}` +
-          `&currency=COP` +
-          `&amount-in-cents=${data.amount_in_cents}` +
-          `&reference=${data.reference}` +
-          `&signature:integrity=${data.signature}` +
-          redirectParam;
+        const checkoutUrl = buildWompiCheckoutUrl(data, window.location.origin);
 
         setWompiRef(checkoutUrl);
         setStatus('pending');
@@ -284,7 +274,14 @@ function BuyModal({ event, onClose }) {
               </div>
 
               <button type="button"
-                onClick={() => { window.location.href = wompiRef; }}
+                onClick={() => {
+                  if (!isWompiCheckoutUrl(wompiRef)) {
+                    setStatus('error');
+                    setErrorMsg('Checkout inválido. Intenta crear el pago de nuevo.');
+                    return;
+                  }
+                  window.location.assign(wompiRef);
+                }}
                 className="w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2"
                 style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
                 <ExternalLink className="w-4 h-4" />

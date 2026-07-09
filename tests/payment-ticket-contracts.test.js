@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getFunctionErrorMessage } from '../src/lib/functionErrors.js';
+import { buildWompiCheckoutUrl, isWompiCheckoutUrl } from '../src/lib/wompiCheckout.js';
 
 const migration = readFileSync('supabase/migrations/20260622000004_launch_ticket_integrity.sql', 'utf8');
 const webhook = readFileSync('supabase/functions/webhook-wompi/index.ts', 'utf8');
@@ -95,6 +96,42 @@ test('checkout conserva compatibilidad GA y muestra el error real del servidor',
     }),
   });
   assert.equal(message, 'Tipo de entrada no disponible');
+});
+
+test('checkout Wompi se construye solo contra el dominio oficial', () => {
+  const checkoutUrl = buildWompiCheckoutUrl({
+    public_key: 'pub_test_polyfauna',
+    amount_in_cents: 12000000,
+    reference: 'evt/abc 123',
+    signature: 'abc123signature',
+  }, 'https://www.polyfauna.com');
+
+  const url = new URL(checkoutUrl);
+  assert.equal(isWompiCheckoutUrl(checkoutUrl), true);
+  assert.equal(url.origin, 'https://checkout.wompi.co');
+  assert.equal(url.pathname, '/p/');
+  assert.equal(url.searchParams.get('currency'), 'COP');
+  assert.equal(url.searchParams.get('amount-in-cents'), '12000000');
+  assert.equal(url.searchParams.get('reference'), 'evt/abc 123');
+  assert.equal(url.searchParams.get('redirect-url'), 'https://www.polyfauna.com/');
+});
+
+test('checkout Wompi no envía redirect local y rechaza montos inválidos', () => {
+  const localCheckoutUrl = buildWompiCheckoutUrl({
+    public_key: 'pub_test_polyfauna',
+    amount_in_cents: 1000,
+    reference: 'local-ref',
+    signature: 'local-signature',
+  }, 'http://127.0.0.1:3000');
+
+  assert.equal(new URL(localCheckoutUrl).searchParams.has('redirect-url'), false);
+  assert.equal(isWompiCheckoutUrl('https://evil.example/p/?reference=x'), false);
+  assert.throws(() => buildWompiCheckoutUrl({
+    public_key: 'pub_test_polyfauna',
+    amount_in_cents: 0,
+    reference: 'bad-ref',
+    signature: 'bad-signature',
+  }, 'https://www.polyfauna.com'), /monto inválido/);
 });
 
 test('tipos de entrada conservan precio, cupo e inventario independientes', () => {
@@ -231,6 +268,17 @@ test('modal de eventos no se desplaza lateralmente en móvil', () => {
 test('la fila de usuario en el panel admin se apila en móvil en vez de comprimir el nombre', () => {
   assert.match(userManager, /flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between/);
   assert.doesNotMatch(userManager, /flex items-center justify-between p-4 bg-background rounded-xl border border-border/);
+});
+
+test('modales de compra y perfil usan portal global con un solo scroll interno', () => {
+  assert.match(eventTerminal, /createPortal\(/);
+  assert.match(eventTerminal, /fixed inset-0 z-\[220\] flex items-center justify-center/);
+  assert.doesNotMatch(eventTerminal, /playerBottom/);
+  assert.match(eventTerminal, /document\.body\.style\.overflow = 'hidden'/);
+  assert.match(editProfile, /createPortal\(/);
+  assert.match(editProfile, /fixed inset-0 z-\[220\] flex items-center justify-center/);
+  assert.match(editProfile, /flex-1 min-h-0 overflow-y-auto overscroll-contain/);
+  assert.match(editProfile, /Save footer/);
 });
 
 test('modales de compra y perfil usan portal global con un solo scroll interno', () => {

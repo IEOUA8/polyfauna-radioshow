@@ -59,8 +59,7 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
   const isLoggedIn = !!currentUser;
   const role = profile?.role || 'citizen';
 
-  const navigate = (id, locked) => {
-    if (locked) return;
+  const navigate = (id) => {
     setCurrentSection(id);
   };
 
@@ -81,11 +80,12 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
             <button
               key={item.id}
               type="button"
-              onClick={() => navigate(item.id, locked)}
+              onClick={() => navigate(item.id)}
               title={locked ? 'Inicia sesión para acceder' : undefined}
+              aria-label={locked ? `${item.label}. Inicia sesión para acceder` : item.label}
               className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
                 locked
-                  ? 'opacity-35 cursor-not-allowed'
+                  ? 'opacity-45 text-white/35 hover:text-white/65 hover:bg-white/4'
                   : active
                     ? 'text-white bg-white/8'
                     : 'text-white/40 hover:text-white/75 hover:bg-white/4'

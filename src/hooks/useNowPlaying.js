@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_AZURACAST_API || 'http://72.60.121.90:8880/api';
+const API_BASE = import.meta.env.VITE_AZURACAST_API || 'https://radio.polyfauna.com/api';
 const STATION = import.meta.env.VITE_AZURACAST_STATION || 'polyfauna';
 const FALLBACK_ART = 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop';
 const REFRESH_INTERVAL_MS = 15000;
