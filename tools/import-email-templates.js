@@ -59,9 +59,29 @@ const hardenEmailClientColors = (html) => html
     'color:#0A0A0A !important;-webkit-text-fill-color:#0A0A0A !important;text-decoration:none;',
   );
 
+// Gmail (sobre todo la app de iOS) aplica su propia inversión automática
+// de "modo oscuro" a correos que ya son oscuros, mostrando fondo blanco y
+// texto oscuro en vez del diseño real — nada de lo de arriba (bgcolor,
+// !important, color-scheme, @media prefers-color-scheme) evita eso,
+// porque Gmail decide invertir ANTES de que esas reglas se apliquen. El
+// truco documentado (Rémi Parmentier / hteumeuleu.com) usa dos capas con
+// mix-blend-mode que se cancelan entre sí, aprovechando que Gmail
+// reemplaza el DOCTYPE por un <u></u>, lo que permite apuntarle solo a
+// Gmail con el selector `u + .body` sin afectar ningún otro cliente.
+const preventGmailDarkModeInversion = (html) => html
+  .replace(
+    '</style>\n</head>',
+    '  u + .body .gmail-blend-screen{ background:#000; mix-blend-mode:screen; }\n  u + .body .gmail-blend-difference{ background:#000; mix-blend-mode:difference; }\n</style>\n</head>',
+  )
+  .replace(
+    /<body bgcolor="#0A0A0A" style="([^"]*)">/,
+    '<body class="body" bgcolor="#0A0A0A" style="$1">\n<div class="gmail-blend-screen"><div class="gmail-blend-difference">',
+  )
+  .replace('</body>\n</html>', '</div></div>\n</body>\n</html>');
+
 const entries = Object.entries(sources).map(([key, source]) => {
   const destination = join(templatesDir, `${key}.html`);
-  const html = hardenEmailClientColors(readFileSync(source, 'utf8'));
+  const html = preventGmailDarkModeInversion(hardenEmailClientColors(readFileSync(source, 'utf8')));
   writeFileSync(destination, html);
   return [key, html];
 });
