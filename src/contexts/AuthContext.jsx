@@ -314,16 +314,26 @@ export const AuthProvider = ({ children }) => {
 
   const updatePassword = useCallback(async (newPassword) => {
     setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (!error) {
-      toast({ title: 'Contraseña actualizada', description: 'Inicia sesión con tu nueva contraseña.' });
-      setRecoveryMode(false);
-      await supabase.auth.signOut();
-    } else {
-      toast({ variant: 'destructive', title: 'Error al actualizar', description: error.message });
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (!error) {
+        toast({ title: 'Contraseña actualizada', description: 'Inicia sesión con tu nueva contraseña.' });
+        setRecoveryMode(false);
+        await supabase.auth.signOut();
+      } else {
+        toast({ variant: 'destructive', title: 'Error al actualizar', description: error.message });
+      }
+      return { error };
+    } catch (err) {
+      // Sin try/catch, una excepcion aca (ej. signOut fallando en una red
+      // inestable) dejaba isLoading atascado en true para siempre — el
+      // boton de "Guardar contraseña" se quedaba en "Guardando..." y los
+      // campos, deshabilitados.
+      toast({ variant: 'destructive', title: 'Error al actualizar', description: err.message });
+      return { error: err };
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    return { error };
   }, [toast]);
 
   const logout = useCallback(async () => {

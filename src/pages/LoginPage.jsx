@@ -14,19 +14,27 @@ import supabase from '@/lib/customSupabaseClient';
 // ── Reset Password view (PASSWORD_RECOVERY session) ──────────────────────────
 
 function ResetPasswordView() {
-  const { updatePassword, isLoading } = useAuth();
+  const { updatePassword } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword]   = useState('');
   const [confirm, setConfirm]     = useState('');
   const [error, setError]         = useState('');
   const [done, setDone]           = useState(false);
+  // Estado propio en vez del isLoading global de AuthContext: ese flag
+  // tambien lo usan consumePendingOAuthRole/fetchUserProfile de fondo, sin
+  // relacion con este formulario — si algo ahi se colgaba, este boton
+  // quedaba en "Guardando..." para siempre aunque updatePassword() ya
+  // hubiera terminado.
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (password.length < 8) { setError('Mínimo 8 caracteres.'); return; }
     if (password !== confirm) { setError('Las contraseñas no coinciden.'); return; }
+    setSubmitting(true);
     const { error: err } = await updatePassword(password);
+    setSubmitting(false);
     if (err) { setError(err.message); }
     else { setDone(true); setTimeout(() => navigate('/login'), 2200); }
   };
@@ -58,7 +66,7 @@ function ResetPasswordView() {
             <PasswordInput placeholder="Mínimo 8 caracteres" value={password}
               onChange={e => setPassword(e.target.value)}
               className="pl-12 h-14 bg-[#121212] border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base"
-              disabled={isLoading} />
+              disabled={submitting} />
           </div>
         </div>
         <div className="space-y-2">
@@ -68,7 +76,7 @@ function ResetPasswordView() {
             <PasswordInput placeholder="Repite la contraseña" value={confirm}
               onChange={e => setConfirm(e.target.value)}
               className="pl-12 h-14 bg-[#121212] border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base"
-              disabled={isLoading} />
+              disabled={submitting} />
           </div>
         </div>
 
@@ -76,9 +84,9 @@ function ResetPasswordView() {
           <p className="text-destructive text-sm font-bold text-center bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>
         )}
 
-        <Button type="submit" disabled={isLoading || !password || !confirm}
+        <Button type="submit" disabled={submitting || !password || !confirm}
           className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-bold text-lg h-14 rounded-xl border-0 shadow-lg">
-          {isLoading ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Guardando…</> : 'Guardar contraseña'}
+          {submitting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Guardando…</> : 'Guardar contraseña'}
         </Button>
       </form>
     </motion.div>

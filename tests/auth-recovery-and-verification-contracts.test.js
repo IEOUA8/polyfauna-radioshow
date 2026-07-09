@@ -61,3 +61,36 @@ test('la confirmacion de correo de recuperacion enviado menciona revisar spam/co
   // sin este aviso el usuario no sabe donde buscar el enlace.
   assert.match(loginPage, /revisa tu carpeta de spam o correo no deseado/i);
 });
+
+test('updatePassword() nunca deja isLoading atascado en true', () => {
+  // Bug: sin try/catch/finally, una excepcion en updateUser/signOut
+  // (ej. red inestable) dejaba isLoading en true para siempre — el boton
+  // "Guardar contraseña" se quedaba en "Guardando..." y los campos,
+  // deshabilitados, aunque el usuario ya hubiera llenado el formulario.
+  const fnBody = authContext.slice(
+    authContext.indexOf('const updatePassword = useCallback(async (newPassword) => {'),
+    authContext.indexOf("const logout = useCallback")
+  );
+  assert.match(fnBody, /try \{/);
+  assert.match(fnBody, /\} catch \(err\) \{/);
+  assert.match(fnBody, /\} finally \{\s*setIsLoading\(false\);\s*\}/);
+});
+
+test('ResetPasswordView usa un estado local (submitting), no el isLoading global de AuthContext', () => {
+  // isLoading global tambien lo mueven consumePendingOAuthRole,
+  // notifyPendingRoleRequest y fetchUserProfile en segundo plano — sin
+  // relacion con este formulario. Si esas llamadas de fondo tardaban o se
+  // colgaban, este boton se quedaba en "Guardando..." aunque
+  // updatePassword() ya hubiera terminado. Un estado propio evita ese
+  // acoplamiento.
+  const viewBody = loginPage.slice(
+    loginPage.indexOf('function ResetPasswordView()'),
+    loginPage.indexOf('// ── Forgot Password view')
+  );
+  assert.match(viewBody, /const \{ updatePassword \} = useAuth\(\);/);
+  assert.doesNotMatch(viewBody, /disabled=\{isLoading/);
+  assert.doesNotMatch(viewBody, /\{isLoading \?/);
+  assert.match(viewBody, /const \[submitting, setSubmitting\] = useState\(false\);/);
+  assert.match(viewBody, /disabled=\{submitting\}/);
+  assert.match(viewBody, /disabled=\{submitting \|\| !password \|\| !confirm\}/);
+});
