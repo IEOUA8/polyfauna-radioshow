@@ -11,6 +11,19 @@ function getOauthRedirect(nextPath = '/') {
   return `${window.location.origin}${safePath}`;
 }
 
+// Una llamada de red que nunca resuelve (comun en movil con señal
+// inestable) deja colgada cualquier promesa que la espere — ningun
+// try/catch/finally salva eso, porque "finally" tampoco corre hasta que
+// la promesa se resuelve o rechaza. Este timeout le pone un limite para
+// que la UI siempre pueda desbloquearse con un error en vez de quedar
+// atascada para siempre.
+function withTimeout(promise, ms = 15000, message = 'La operación tardó demasiado. Intenta de nuevo.') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
 // El cliente de Supabase procesa el token del enlace de recuperación durante
 // su propia inicialización interna (detectSessionInUrl), que arranca en cuanto
 // se crea el cliente — es decir, antes de que este provider llegue a montar y
@@ -315,20 +328,24 @@ export const AuthProvider = ({ children }) => {
   const updatePassword = useCallback(async (newPassword) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await withTimeout(supabase.auth.updateUser({ password: newPassword }));
       if (!error) {
         toast({ title: 'Contraseña actualizada', description: 'Inicia sesión con tu nueva contraseña.' });
         setRecoveryMode(false);
-        await supabase.auth.signOut();
+        // Sin await: esperar a que cierre sesión no debe bloquear que el
+        // usuario vea que ya se guardó su contraseña — una red inestable
+        // en esta llamada (frecuente en móvil) dejaba el botón atascado
+        // en "Guardando..." aunque la contraseña ya se hubiera cambiado.
+        supabase.auth.signOut().catch(() => {});
       } else {
         toast({ variant: 'destructive', title: 'Error al actualizar', description: error.message });
       }
       return { error };
     } catch (err) {
-      // Sin try/catch, una excepcion aca (ej. signOut fallando en una red
-      // inestable) dejaba isLoading atascado en true para siempre — el
-      // boton de "Guardar contraseña" se quedaba en "Guardando..." y los
-      // campos, deshabilitados.
+      // Sin try/catch (y sin el timeout de arriba), una excepcion o un
+      // updateUser() colgado en una red inestable dejaba isLoading
+      // atascado en true para siempre — el boton de "Guardar contraseña"
+      // se quedaba en "Guardando..." y los campos, deshabilitados.
       toast({ variant: 'destructive', title: 'Error al actualizar', description: err.message });
       return { error: err };
     } finally {

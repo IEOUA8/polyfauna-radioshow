@@ -76,6 +76,23 @@ test('updatePassword() nunca deja isLoading atascado en true', () => {
   assert.match(fnBody, /\} finally \{\s*setIsLoading\(false\);\s*\}/);
 });
 
+test('updatePassword() no deja que signOut() bloquee la resolucion, y el updateUser critico tiene timeout', () => {
+  // Bug (2da vuelta): con el try/catch ya puesto, el boton seguia
+  // atascado en "Guardando..." porque el `await` a signOut() colgaba con
+  // una red inestable (comun en movil) — ninguna promesa que nunca se
+  // resuelve ni rechaza deja correr un finally. Se deja de esperar
+  // signOut() y se le pone un timeout al updateUser() critico para que
+  // la UI siempre pueda desbloquearse.
+  const fnBody = authContext.slice(
+    authContext.indexOf('const updatePassword = useCallback(async (newPassword) => {'),
+    authContext.indexOf("const logout = useCallback")
+  );
+  assert.doesNotMatch(fnBody, /await supabase\.auth\.signOut\(\)/);
+  assert.match(fnBody, /supabase\.auth\.signOut\(\)\.catch\(\(\) => \{\}\)/);
+  assert.match(fnBody, /withTimeout\(supabase\.auth\.updateUser\(/);
+  assert.match(authContext, /function withTimeout\(/);
+});
+
 test('ResetPasswordView usa un estado local (submitting), no el isLoading global de AuthContext', () => {
   // isLoading global tambien lo mueven consumePendingOAuthRole,
   // notifyPendingRoleRequest y fetchUserProfile en segundo plano — sin
