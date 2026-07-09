@@ -14,7 +14,7 @@ import supabase from '@/lib/customSupabaseClient';
 // ── Reset Password view (PASSWORD_RECOVERY session) ──────────────────────────
 
 function ResetPasswordView() {
-  const { updatePassword } = useAuth();
+  const { updatePassword, exitRecoveryMode } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword]   = useState('');
   const [confirm, setConfirm]     = useState('');
@@ -36,7 +36,16 @@ function ResetPasswordView() {
     const { error: err } = await updatePassword(password);
     setSubmitting(false);
     if (err) { setError(err.message); }
-    else { setDone(true); setTimeout(() => navigate('/login'), 2200); }
+    else {
+      setDone(true);
+      // La sesión de recuperación ya es válida (probó ser el dueño de la
+      // cuenta al abrir el enlace), así que en vez de mandarlo de vuelta a
+      // /login para que inicie sesión otra vez, se lo lleva ya logueado a
+      // la plataforma — recién ahora se apaga recoveryMode, después de que
+      // ya vio la confirmación (apagarlo antes salta directo a la
+      // plataforma sin mostrar este mensaje).
+      setTimeout(() => { exitRecoveryMode(); navigate('/', { replace: true }); }, 1800);
+    }
   };
 
   if (done) {
@@ -44,8 +53,8 @@ function ResetPasswordView() {
       <motion.div key="reset-done" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-5 py-4">
         <CheckCircle2 className="w-14 h-14 mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }} />
         <div>
-          <h2 className="text-xl font-black text-white mb-2">¡Contraseña actualizada!</h2>
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Redirigiendo al inicio de sesión…</p>
+          <h2 className="text-xl font-black text-white mb-2">¡Tu contraseña ha sido actualizada exitosamente!</h2>
+          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Te estamos llevando a la plataforma…</p>
         </div>
       </motion.div>
     );

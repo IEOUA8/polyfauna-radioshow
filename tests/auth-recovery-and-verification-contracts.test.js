@@ -76,21 +76,32 @@ test('updatePassword() nunca deja isLoading atascado en true', () => {
   assert.match(fnBody, /\} finally \{\s*setIsLoading\(false\);\s*\}/);
 });
 
-test('updatePassword() no deja que signOut() bloquee la resolucion, y el updateUser critico tiene timeout', () => {
+test('updatePassword() no fuerza cierre de sesion ni apaga recoveryMode por su cuenta, y el updateUser critico tiene timeout', () => {
   // Bug (2da vuelta): con el try/catch ya puesto, el boton seguia
   // atascado en "Guardando..." porque el `await` a signOut() colgaba con
   // una red inestable (comun en movil) — ninguna promesa que nunca se
-  // resuelve ni rechaza deja correr un finally. Se deja de esperar
-  // signOut() y se le pone un timeout al updateUser() critico para que
-  // la UI siempre pueda desbloquearse.
+  // resuelve ni rechaza deja correr un finally.
+  //
+  // Bug (3ra vuelta): quitar el await no alcanzaba — apagar recoveryMode
+  // aca mismo disparaba de inmediato el efecto de LoginPage que redirige
+  // en cuanto currentUser existe y recoveryMode es false, saltandose la
+  // confirmacion visual y cerrando la sesion de recuperacion (que ya es
+  // valida) sin necesidad. Ahora updatePassword() no toca recoveryMode ni
+  // cierra sesion — ResetPasswordView decide cuando salir de recoveryMode,
+  // despues de mostrar el mensaje de exito.
   const fnBody = authContext.slice(
     authContext.indexOf('const updatePassword = useCallback(async (newPassword) => {'),
     authContext.indexOf("const logout = useCallback")
   );
-  assert.doesNotMatch(fnBody, /await supabase\.auth\.signOut\(\)/);
-  assert.match(fnBody, /supabase\.auth\.signOut\(\)\.catch\(\(\) => \{\}\)/);
+  assert.doesNotMatch(fnBody, /signOut/);
+  assert.doesNotMatch(fnBody, /setRecoveryMode/);
   assert.match(fnBody, /withTimeout\(supabase\.auth\.updateUser\(/);
   assert.match(authContext, /function withTimeout\(/);
+});
+
+test('exitRecoveryMode se expone en el contexto para que la UI decida cuando salir del modo recuperacion', () => {
+  assert.match(authContext, /const exitRecoveryMode = useCallback\(\(\) => setRecoveryMode\(false\), \[setRecoveryMode\]\);/);
+  assert.match(authContext, /updatePassword, exitRecoveryMode, justVerified/);
 });
 
 test('ResetPasswordView usa un estado local (submitting), no el isLoading global de AuthContext', () => {
@@ -104,10 +115,24 @@ test('ResetPasswordView usa un estado local (submitting), no el isLoading global
     loginPage.indexOf('function ResetPasswordView()'),
     loginPage.indexOf('// ── Forgot Password view')
   );
-  assert.match(viewBody, /const \{ updatePassword \} = useAuth\(\);/);
+  assert.match(viewBody, /const \{ updatePassword, exitRecoveryMode \} = useAuth\(\);/);
   assert.doesNotMatch(viewBody, /disabled=\{isLoading/);
   assert.doesNotMatch(viewBody, /\{isLoading \?/);
   assert.match(viewBody, /const \[submitting, setSubmitting\] = useState\(false\);/);
   assert.match(viewBody, /disabled=\{submitting\}/);
   assert.match(viewBody, /disabled=\{submitting \|\| !password \|\| !confirm\}/);
+});
+
+test('tras actualizar la contraseña, el usuario queda logueado y se lo lleva a la plataforma (no de vuelta a /login)', () => {
+  // La sesion de recuperacion ya prueba que es el dueño de la cuenta;
+  // pedirle iniciar sesion de nuevo es friccion innecesaria. El mensaje
+  // de exito y el destino deben reflejar que ya quedo dentro de la
+  // plataforma, no que debe volver a loguearse.
+  const viewBody = loginPage.slice(
+    loginPage.indexOf('function ResetPasswordView()'),
+    loginPage.indexOf('// ── Forgot Password view')
+  );
+  assert.match(viewBody, /exitRecoveryMode\(\); navigate\('\/', \{ replace: true \}\)/);
+  assert.doesNotMatch(viewBody, /navigate\('\/login'\)/);
+  assert.match(viewBody, /contraseña ha sido actualizada exitosamente/i);
 });
