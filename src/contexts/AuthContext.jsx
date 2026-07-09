@@ -11,14 +11,31 @@ function getOauthRedirect(nextPath = '/') {
   return `${window.location.origin}${safePath}`;
 }
 
+// El cliente de Supabase procesa el token del enlace de recuperación durante
+// su propia inicialización interna (detectSessionInUrl), que arranca en cuanto
+// se crea el cliente — es decir, antes de que este provider llegue a montar y
+// suscribirse con onAuthStateChange. Si esa inicialización resuelve primero
+// (variable según qué tan rápido carga/parsea el JS en cada dispositivo), el
+// evento PASSWORD_RECOVERY se emite sin nadie escuchando y se pierde para
+// siempre: el usuario ve el login normal, "atascado" en Ingresando… mientras
+// isLoading se resuelve. Leer el hash/query directamente en el primer render
+// evita depender de ganar esa carrera.
+function isRecoveryUrl() {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+  const hashParams = new URLSearchParams(hash);
+  const searchParams = new URLSearchParams(window.location.search);
+  return hashParams.get('type') === 'recovery' || searchParams.get('type') === 'recovery';
+}
+
 export const AuthProvider = ({ children }) => {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [recoveryMode, setRecoveryModeState] = useState(false);
-  const recoveryModeRef = useRef(false);
+  const [recoveryMode, setRecoveryModeState] = useState(isRecoveryUrl);
+  const recoveryModeRef = useRef(isRecoveryUrl());
   const setRecoveryMode = useCallback((value) => {
     recoveryModeRef.current = value;
     setRecoveryModeState(value);

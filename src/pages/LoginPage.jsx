@@ -123,7 +123,7 @@ function ForgotPasswordView({ onBack, initialError }) {
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Enviamos un enlace de recuperación a{' '}
             <span className="text-white font-bold">{email}</span>.<br />
-            Puede tardar unos minutos.
+            Puede tardar unos minutos. Si no lo ves, revisa tu carpeta de spam o correo no deseado.
           </p>
         </div>
         <button
