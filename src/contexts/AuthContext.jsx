@@ -53,6 +53,12 @@ export const AuthProvider = ({ children }) => {
     recoveryModeRef.current = value;
     setRecoveryModeState(value);
   }, []);
+  // ResetPasswordView llama esto recien despues de mostrar la confirmacion
+  // de "contraseña actualizada" — updatePassword() ya no apaga recoveryMode
+  // por su cuenta apenas termina, porque hacerlo de inmediato disparaba el
+  // efecto de LoginPage que redirige en cuanto currentUser existe y
+  // recoveryMode es false, saltandose la confirmacion visual.
+  const exitRecoveryMode = useCallback(() => setRecoveryMode(false), [setRecoveryMode]);
   const [justVerified, setJustVerified] = useState(false);
   const clearJustVerified = useCallback(() => setJustVerified(false), []);
   const roleNotificationIds = useRef(new Set());
@@ -330,13 +336,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const { error } = await withTimeout(supabase.auth.updateUser({ password: newPassword }));
       if (!error) {
-        toast({ title: 'Contraseña actualizada', description: 'Inicia sesión con tu nueva contraseña.' });
-        setRecoveryMode(false);
-        // Sin await: esperar a que cierre sesión no debe bloquear que el
-        // usuario vea que ya se guardó su contraseña — una red inestable
-        // en esta llamada (frecuente en móvil) dejaba el botón atascado
-        // en "Guardando..." aunque la contraseña ya se hubiera cambiado.
-        supabase.auth.signOut().catch(() => {});
+        toast({ title: 'Contraseña actualizada', description: 'Ya puedes continuar en la plataforma.' });
+        // No se apaga recoveryMode ni se cierra sesión aca: la sesion de
+        // recuperacion ya es una sesion valida para este usuario (probo
+        // ser el dueño de la cuenta al abrir el enlace del correo), asi
+        // que no hace falta forzarlo a loguearse de nuevo. ResetPasswordView
+        // llama a exitRecoveryMode() luego de mostrar la confirmacion, para
+        // no saltarse ese mensaje con una redireccion instantanea.
       } else {
         toast({ variant: 'destructive', title: 'Error al actualizar', description: error.message });
       }
@@ -373,7 +379,7 @@ export const AuthProvider = ({ children }) => {
   }, [toast]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, signInWithProvider, logout, recoveryMode, updatePassword, justVerified, clearJustVerified }}>
+    <AuthContext.Provider value={{ currentUser, userRole, isLoading, error, signup, login, signInWithProvider, logout, recoveryMode, updatePassword, exitRecoveryMode, justVerified, clearJustVerified }}>
       {children}
     </AuthContext.Provider>
   );
