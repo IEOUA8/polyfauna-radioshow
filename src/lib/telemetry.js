@@ -12,6 +12,12 @@ const ALLOWED_USAGE_EVENTS = new Set([
   'session_heartbeat',
   'route_view',
   'stream_start',
+  'stream_connecting',
+  'stream_playing',
+  'stream_stalled',
+  'stream_reconnect_attempt',
+  'stream_recovered',
+  'stream_failed',
   'media_start',
   'event_view',
   'checkout_start',
@@ -30,6 +36,12 @@ const ALLOWED_USAGE_PROPERTIES = new Set([
   'quantity',
   'section',
   'error_code',
+  'quality',
+  'reason',
+  'attempt',
+  'delay_ms',
+  'duration_ms',
+  'network_type',
 ]);
 
 function getSessionId(key) {
@@ -61,7 +73,7 @@ function canSendUsageEvent(eventName, properties) {
   }
   if (usageTimestamps.length >= USAGE_RATE_LIMIT) return false;
 
-  const fingerprint = `${eventName}:${properties.event_id || properties.content_id || properties.section || ''}:${properties.mode || ''}`;
+  const fingerprint = `${eventName}:${properties.event_id || properties.content_id || properties.section || ''}:${properties.mode || ''}:${properties.reason || ''}:${properties.attempt || ''}`;
   const lastSentAt = recentUsageEvents.get(fingerprint) || 0;
   if (now - lastSentAt < 5000 && eventName !== 'session_heartbeat') return false;
 

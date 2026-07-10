@@ -9,6 +9,7 @@ import { usePlayback } from '@/contexts/PlaybackContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { trackUsageEvent } from '@/lib/telemetry';
+import { getStreamReconnectDelay, isPlaybackPermissionError, STREAM_STALL_TIMEOUT_MS } from '@/lib/streamRecovery';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import HoloSpectrum from '@/components/HoloSpectrum';
 
@@ -34,15 +35,21 @@ function isCompactRoute(pathname) {
 }
 
 const BASE_STREAM = import.meta.env.VITE_RADIO_STREAM_URL || 'https://ice1.somafm.com/groovesalad-256-mp3';
+const HIGH_STREAM = import.meta.env.VITE_RADIO_STREAM_HIGH || BASE_STREAM;
+const MEDIUM_STREAM = import.meta.env.VITE_RADIO_STREAM_MEDIUM || BASE_STREAM;
+const LOW_STREAM = import.meta.env.VITE_RADIO_STREAM_LOW || MEDIUM_STREAM;
 const QUALITY_STREAMS = {
-  auto:   BASE_STREAM,
-  high:   import.meta.env.VITE_RADIO_STREAM_HIGH   || BASE_STREAM,
-  medium: BASE_STREAM,
-  low:    import.meta.env.VITE_RADIO_STREAM_LOW    || BASE_STREAM,
+  auto:   MEDIUM_STREAM,
+  high:   HIGH_STREAM,
+  medium: MEDIUM_STREAM,
+  low:    LOW_STREAM,
 };
 const QUALITY_KEY = 'pf_stream_quality';
+function getSelectedQuality() {
+  return localStorage.getItem(QUALITY_KEY) || 'auto';
+}
 function getStreamUrl() {
-  return QUALITY_STREAMS[localStorage.getItem(QUALITY_KEY) || 'auto'] || BASE_STREAM;
+  return QUALITY_STREAMS[getSelectedQuality()] || MEDIUM_STREAM;
 }
 
 function formatTime(secs) {
@@ -90,9 +97,16 @@ export default function GlobalPlayer() {
   const audioRef = useRef(null);
   const repeatRef = useRef(false);
   const queueRef = useRef(null);
+  const currentTrackRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const stallTimerRef = useRef(null);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectInFlightRef = useRef(false);
+  const streamIssueStartedAtRef = useRef(null);
   const [volume, setVolume] = useState(0.75);
   const [muted, setMuted] = useState(false);
   const [streamError, setStreamError] = useState(false);
+  const [playbackStatus, setPlaybackStatus] = useState('idle');
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [shuffle, setShuffle] = useState(false);
@@ -122,20 +136,16 @@ export default function GlobalPlayer() {
   useEffect(() => {
     const handler = (e) => {
       const { quality } = e.detail || {};
-      const url = QUALITY_STREAMS[quality] || BASE_STREAM;
+      const url = QUALITY_STREAMS[quality] || MEDIUM_STREAM;
       setStreamUrl(url);
-      const audio = audioRef.current;
-      if (!currentTrack && isPlaying && audio) {
-        audio.src = url;
-        audio.play().catch(() => {});
-      }
     };
     window.addEventListener('pf:quality-change', handler);
     return () => window.removeEventListener('pf:quality-change', handler);
-  }, [currentTrack, isPlaying]);
+  }, []);
 
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
   useEffect(() => { queueRef.current = playbackQueue; }, [playbackQueue]);
+  useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -164,35 +174,195 @@ export default function GlobalPlayer() {
     }
   }, [currentTrack?.id, currentTrack?.audio_url, playbackQueue]);
 
+  // isPlaying representa la intención del usuario. El estado técnico vive en
+  // playbackStatus y un fallo transitorio del stream no apaga esa intención.
+  // Para radio en vivo se recuperan pausas ajenas, stalls, errores y finales
+  // de conexión con backoff. Los archivos on-demand conservan su semántica.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    let disposed = false;
+    const isLiveStream = !currentTrack;
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+    const clearStallTimer = () => {
+      if (stallTimerRef.current !== null) {
+        window.clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+      }
+    };
+
+    const streamProperties = (extra = {}) => ({
+      mode: 'live',
+      quality: getSelectedQuality(),
+      network_type: navigator.connection?.effectiveType || 'unknown',
+      ...extra,
+    });
+
+    const handleTerminalPlaybackError = (reason = 'terminal_error') => {
+      if (isLiveStream) {
+        trackUsageEvent('stream_failed', streamProperties({
+          reason,
+          attempt: reconnectAttemptRef.current,
+          duration_ms: streamIssueStartedAtRef.current ? Date.now() - streamIssueStartedAtRef.current : 0,
+        }));
+      }
+      setPlaybackStatus('error');
+      setStreamError(true);
+      setIsPlaying(false);
+      toast({ title: 'Audio no disponible', description: 'Verifica la conexión o el archivo de audio.', variant: 'destructive' });
+    };
+
+    const scheduleReconnect = (reason, immediate = false) => {
+      if (disposed || !isPlaying || !isLiveStream || reconnectTimerRef.current !== null) return;
+      clearStallTimer();
+      reconnectInFlightRef.current = false;
+
+      const attempt = reconnectAttemptRef.current;
+      const delay = immediate ? 0 : getStreamReconnectDelay(attempt);
+      if (!streamIssueStartedAtRef.current) streamIssueStartedAtRef.current = Date.now();
+      setPlaybackStatus('retrying');
+      setStreamError(true);
+      trackUsageEvent('stream_reconnect_attempt', streamProperties({
+        reason,
+        attempt: attempt + 1,
+        delay_ms: delay,
+      }));
+
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null;
+        if (disposed || !isPlaying || currentTrack) return;
+
+        reconnectAttemptRef.current += 1;
+        const shouldUseLowFallback = getSelectedQuality() === 'auto'
+          && reconnectAttemptRef.current >= 3
+          && LOW_STREAM !== streamUrl;
+        const reconnectUrl = shouldUseLowFallback ? LOW_STREAM : streamUrl;
+        reconnectInFlightRef.current = true;
+        setPlaybackStatus('connecting');
+
+        if (shouldUseLowFallback) setStreamUrl(LOW_STREAM);
+
+        // Fuerza una conexión HTTP nueva al mount de Icecast. El guard evita
+        // que el pause producido por esta recarga programe otro reintento.
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+        audio.src = reconnectUrl;
+        audio.load();
+        audio.play().catch((error) => {
+          reconnectInFlightRef.current = false;
+          if (disposed || error?.name === 'AbortError') return;
+          if (isPlaybackPermissionError(error)) {
+            handleTerminalPlaybackError('playback_permission');
+            return;
+          }
+          scheduleReconnect(reason);
+        });
+      }, delay);
+    };
+
+    const onPlaying = () => {
+      const attempts = reconnectAttemptRef.current;
+      const issueStartedAt = streamIssueStartedAtRef.current;
+      clearReconnectTimer();
+      clearStallTimer();
+      reconnectAttemptRef.current = 0;
+      reconnectInFlightRef.current = false;
+      setStreamError(false);
+      setPlaybackStatus('playing');
+      if (isLiveStream) {
+        trackUsageEvent(issueStartedAt || attempts > 0 ? 'stream_recovered' : 'stream_playing', streamProperties({
+          attempt: attempts,
+          duration_ms: issueStartedAt ? Date.now() - issueStartedAt : 0,
+        }));
+        streamIssueStartedAtRef.current = null;
+      }
+    };
+    const onWaiting = () => {
+      if (!isPlaying || !isLiveStream) return;
+      setPlaybackStatus('buffering');
+      if (stallTimerRef.current !== null) return;
+      if (!streamIssueStartedAtRef.current) streamIssueStartedAtRef.current = Date.now();
+      trackUsageEvent('stream_stalled', streamProperties({ reason: 'waiting' }));
+      stallTimerRef.current = window.setTimeout(() => {
+        stallTimerRef.current = null;
+        scheduleReconnect('stall_timeout', true);
+      }, STREAM_STALL_TIMEOUT_MS);
+    };
+    const onStalled = () => {
+      if (!isPlaying || !isLiveStream) return;
+      setPlaybackStatus('buffering');
+      onWaiting();
+    };
+    const onError = () => {
+      if (!isPlaying) return;
+      if (isLiveStream) scheduleReconnect('media_error');
+      else handleTerminalPlaybackError('media_error');
+    };
+    const onPause = () => {
+      if (isPlaying && isLiveStream && !reconnectInFlightRef.current) scheduleReconnect('unexpected_pause');
+    };
+    const onLiveEnded = () => {
+      if (isPlaying && isLiveStream) scheduleReconnect('stream_ended', true);
+    };
+    const onOnline = () => {
+      if (isPlaying && isLiveStream && audio.paused) scheduleReconnect('network_online', true);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPlaying && isLiveStream && audio.paused) {
+        scheduleReconnect('visibility_resume', true);
+      }
+    };
+
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('stalled', onStalled);
+    audio.addEventListener('error', onError);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onLiveEnded);
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     if (isPlaying) {
       setStreamError(false);
-      audio.play().catch((err) => {
-        if (err.name === 'AbortError') return;
-        setStreamError(true);
-        setIsPlaying(false);
-        toast({ title: 'Stream no disponible', description: 'Verifica la URL del stream o el archivo de audio.', variant: 'destructive' });
+      setPlaybackStatus('connecting');
+      if (isLiveStream) trackUsageEvent('stream_connecting', streamProperties());
+      audio.play().catch((error) => {
+        if (disposed || error?.name === 'AbortError') return;
+        if (isLiveStream && !isPlaybackPermissionError(error)) scheduleReconnect('play_error');
+        else handleTerminalPlaybackError(isPlaybackPermissionError(error) ? 'playback_permission' : 'play_error');
       });
     } else {
+      clearReconnectTimer();
+      clearStallTimer();
+      reconnectAttemptRef.current = 0;
+      reconnectInFlightRef.current = false;
+      streamIssueStartedAtRef.current = null;
+      setPlaybackStatus('idle');
       audio.pause();
     }
-  }, [isPlaying]);
 
-  // En móvil, al entrar a /admin (montaje pesado de AdminDashboard mientras
-  // PolyfaunaOS se desmonta), el navegador a veces pausa el <audio> por su
-  // cuenta (throttling de fondo del SO/navegador), sin que nuestro código
-  // haya pedido pausar. Si seguimos "queriendo" reproducir, se reintenta.
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onPause = () => {
-      if (isPlaying) audio.play().catch(() => {});
+    return () => {
+      disposed = true;
+      clearReconnectTimer();
+      clearStallTimer();
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('stalled', onStalled);
+      audio.removeEventListener('error', onError);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onLiveEnded);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-    audio.addEventListener('pause', onPause);
-    return () => audio.removeEventListener('pause', onPause);
-  }, [isPlaying]);
+  }, [currentTrack?.id, currentTrack?.audio_url, isPlaying, setIsPlaying, streamUrl, toast]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
@@ -204,6 +374,9 @@ export default function GlobalPlayer() {
     const onTimeUpdate     = () => setCurrentTime(audio.currentTime);
     const onDurationChange = () => setAudioDuration(audio.duration || 0);
     const onEnded = () => {
+      // El stream en vivo se recupera en el efecto de resiliencia; esta
+      // lógica corresponde exclusivamente a archivos y colas on-demand.
+      if (!currentTrackRef.current) return;
       if (repeatRef.current && audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
@@ -311,6 +484,8 @@ export default function GlobalPlayer() {
   const trackTitle   = isOnDemand ? currentTrack.title : (song?.title || 'PolyFauna Radio');
   const trackSub     = isOnDemand
     ? (currentTrack.artist || currentTrack.album || '')
+    : playbackStatus === 'buffering' ? 'Esperando señal…'
+    : playbackStatus === 'retrying' || playbackStatus === 'connecting' ? 'Reconectando…'
     : streamError ? 'Error de conexión'
     : song?.artist || (isPlaying ? 'Transmisión en vivo · 24/7' : 'En pausa');
   const progressPct  = isOnDemand && audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
@@ -370,11 +545,13 @@ export default function GlobalPlayer() {
     } catch (_) {}
   }, [currentTime, audioDuration, isOnDemand]);
 
-  if (isPlayerHiddenRoute(location.pathname)) return null;
+  const playerHidden = isPlayerHiddenRoute(location.pathname);
 
   return (
     <>
       <audio ref={audioRef} preload="none" />
+
+      {!playerHidden && <>
 
       {/* Sin mode="wait": barra y disco animan a la vez (ambos "fixed", no
           hay salto de layout) en vez de encadenar salida+entrada, para no
@@ -723,6 +900,7 @@ export default function GlobalPlayer() {
       </motion.div>
       )}
       </AnimatePresence>
+      </>}
     </>
   );
 }

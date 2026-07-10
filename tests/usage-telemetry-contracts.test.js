@@ -13,6 +13,8 @@ const eventPublicPage = readFileSync('src/pages/EventPublicPage.jsx', 'utf8');
 const metricsMigration = readFileSync('supabase/migrations/20260630000001_usage_metrics_dashboard.sql', 'utf8');
 const metricsInvokerMigration = readFileSync('supabase/migrations/20260630000002_usage_metrics_security_invoker.sql', 'utf8');
 const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
+const streamMonitoringMigration = readFileSync('supabase/migrations/20260710000001_stream_resilience_and_monitoring.sql', 'utf8');
+const radioHealthFunction = readFileSync('supabase/functions/check-radio-health/index.ts', 'utf8');
 
 test('fase 7.6 crea telemetria de uso cerrada para escritura cliente', () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.usage_events/);
@@ -29,6 +31,12 @@ test('fase 7.6 recolector limita eventos, volumen y datos sensibles', () => {
     'session_heartbeat',
     'route_view',
     'stream_start',
+    'stream_connecting',
+    'stream_playing',
+    'stream_stalled',
+    'stream_reconnect_attempt',
+    'stream_recovered',
+    'stream_failed',
     'media_start',
     'event_view',
     'checkout_start',
@@ -44,6 +52,29 @@ test('fase 7.6 recolector limita eventos, volumen y datos sensibles', () => {
   assert.match(edgeFunction, /ALLOWED_PROPERTIES/);
   assert.match(edgeFunction, /pathnameOnly/);
   assert.doesNotMatch(edgeFunction, /email/i);
+});
+
+test('la radio registra cortes, recuperaciones y calidad sin datos personales', () => {
+  for (const eventName of ['stream_connecting', 'stream_playing', 'stream_stalled', 'stream_reconnect_attempt', 'stream_recovered', 'stream_failed']) {
+    assert.match(player, new RegExp(`'${eventName}'`));
+  }
+  for (const property of ['quality', 'reason', 'attempt', 'delay_ms', 'duration_ms', 'network_type']) {
+    assert.match(telemetry, new RegExp(`'${property}'`));
+    assert.match(edgeFunction, new RegExp(`'${property}'`));
+  }
+});
+
+test('el monitor externo comprueba API y tres mounts y alimenta alertas operativas', () => {
+  assert.match(streamMonitoringMigration, /CREATE TABLE IF NOT EXISTS public\.radio_health_checks/);
+  assert.match(streamMonitoringMigration, /get_radio_health_alerts\(\)/);
+  assert.match(streamMonitoringMigration, /trigger_radio_health_check\(\)/);
+  assert.match(streamMonitoringMigration, /polyfauna-radio-health/);
+  assert.match(streamMonitoringMigration, /polyfauna-radio-alert-email/);
+  assert.match(radioHealthFunction, /radio\.mp3/);
+  assert.match(radioHealthFunction, /radio-128\.mp3/);
+  assert.match(radioHealthFunction, /radio-64\.mp3/);
+  assert.match(radioHealthFunction, /radio_health_checks/);
+  assert.match(adminDashboard, /supabase\.rpc\('get_radio_health_alerts'/);
 });
 
 test('fase 7.6 instrumenta actividad, escucha y checkout sin bloquear UX', () => {

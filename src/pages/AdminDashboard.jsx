@@ -478,7 +478,12 @@ function OperationalSection() {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    const { data, error: alertError } = await supabase.rpc('get_operational_alerts');
+    const [operationalResult, radioResult] = await Promise.all([
+      supabase.rpc('get_operational_alerts'),
+      supabase.rpc('get_radio_health_alerts'),
+    ]);
+    const { data, error: alertError } = operationalResult;
+    const radioAlerts = radioResult.error?.code === '42883' ? [] : (radioResult.data || []);
     if (alertError) {
       setError(alertError.code === '42883'
         ? 'La migración de alertas operativas aún no está aplicada en Supabase.'
@@ -486,7 +491,7 @@ function OperationalSection() {
       setAlerts([]);
     } else {
       const severityOrder = { critical: 0, warning: 1, info: 2 };
-      setAlerts((data || []).sort((a, b) =>
+      setAlerts([...(data || []), ...radioAlerts].sort((a, b) =>
         (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3)
         || new Date(b.latest_at || 0) - new Date(a.latest_at || 0)
       ));

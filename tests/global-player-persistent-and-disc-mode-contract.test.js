@@ -19,13 +19,14 @@ test('GlobalPlayer vive fuera de <Routes>, con su propio PlaybackProvider compar
   assert.match(polyfaunaOS, /usePlayback\(\)/);
 });
 
-test('GlobalPlayer se oculta en rutas standalone (login, perfiles publicos, etc.)', () => {
+test('GlobalPlayer oculta su interfaz en rutas standalone sin desmontar el audio', () => {
   assert.match(globalPlayer, /PLAYER_HIDDEN_PREFIXES\s*=\s*\[/);
   const hiddenPrefixes = ['/login', '/signup', '/validate', '/artist/', '/profiles/', '/organizadores/', '/music/', '/podcasts/', '/events/', '/entrevistas/', '/e/'];
   for (const prefix of hiddenPrefixes) {
     assert.match(globalPlayer, new RegExp(`'${prefix.replace(/\//g, '\\/')}'`));
   }
-  assert.match(globalPlayer, /if \(isPlayerHiddenRoute\(location\.pathname\)\) return null;/);
+  assert.match(globalPlayer, /const playerHidden = isPlayerHiddenRoute\(location\.pathname\);/);
+  assert.match(globalPlayer, /<audio ref=\{audioRef\} preload="none" \/>\s*\n\s*\{!playerHidden && <>/);
 });
 
 test('modo disco: solo en /admin y /dashboard, solo movil, sin afectar escritorio', () => {
@@ -72,12 +73,27 @@ test('el disco despeja la barra de navegacion rapida de /admin (MobileOperations
   assert.match(adminDashboard, /fixed left-0 right-0 bottom-0 z-30 lg:hidden/);
 });
 
-test('el audio se reintenta si el navegador lo pausa por su cuenta mientras deberia sonar', () => {
-  // En movil, al entrar a /admin (PolyfaunaOS se desmonta y AdminDashboard
-  // monta de golpe), el navegador a veces pausa el <audio> sin que el
-  // codigo lo pida. Si isPlaying sigue en true, se reintenta reproducir.
+test('el stream se recupera con backoff ante pausa, stall, error o fin inesperado', () => {
   assert.match(globalPlayer, /addEventListener\('pause', onPause\)/);
-  assert.match(globalPlayer, /const onPause = \(\) => \{\s*\n\s*if \(isPlaying\) audio\.play\(\)\.catch\(\(\) => \{\}\);/);
+  assert.match(globalPlayer, /addEventListener\('waiting', onWaiting\)/);
+  assert.match(globalPlayer, /addEventListener\('stalled', onStalled\)/);
+  assert.match(globalPlayer, /addEventListener\('error', onError\)/);
+  assert.match(globalPlayer, /addEventListener\('ended', onLiveEnded\)/);
+  assert.match(globalPlayer, /getStreamReconnectDelay\(attempt\)/);
+  assert.match(globalPlayer, /STREAM_STALL_TIMEOUT_MS/);
+  assert.match(globalPlayer, /window\.addEventListener\('online', onOnline\)/);
+  assert.match(globalPlayer, /document\.addEventListener\('visibilitychange', onVisibilityChange\)/);
+  assert.doesNotMatch(globalPlayer, /setStreamError\(true\);\s*\n\s*setIsPlaying\(false\);\s*\n\s*toast\(\{ title: 'Stream no disponible'/);
+});
+
+test('las calidades usan mounts reales y Auto baja a 64 kbps tras tres cortes', () => {
+  assert.match(globalPlayer, /VITE_RADIO_STREAM_HIGH/);
+  assert.match(globalPlayer, /VITE_RADIO_STREAM_MEDIUM/);
+  assert.match(globalPlayer, /VITE_RADIO_STREAM_LOW/);
+  assert.match(globalPlayer, /auto:\s+MEDIUM_STREAM/);
+  assert.match(globalPlayer, /getSelectedQuality\(\) === 'auto'/);
+  assert.match(globalPlayer, /reconnectAttemptRef\.current >= 3/);
+  assert.match(globalPlayer, /setStreamUrl\(LOW_STREAM\)/);
 });
 
 test('barra y disco no encadenan animaciones (sin mode="wait")', () => {

@@ -65,8 +65,8 @@ function SettingsTile({ icon: Icon, label, description, onClick, badge, delay = 
 const QUALITY_KEY = 'pf_stream_quality';
 
 const QUALITY_OPTIONS = [
-  { id: 'auto',   label: 'Auto',           desc: 'Se ajusta según tu conexión' },
-  { id: 'high',   label: 'Alta calidad',   desc: '320 kbps — mejor sonido' },
+  { id: 'auto',   label: 'Auto',           desc: '128 kbps · baja a 64 si detecta cortes' },
+  { id: 'high',   label: 'Alta calidad',   desc: '192 kbps — mejor sonido' },
   { id: 'medium', label: 'Estándar',       desc: '128 kbps — balance óptimo' },
   { id: 'low',    label: 'Baja calidad',   desc: '64 kbps — ahorra datos' },
 ];

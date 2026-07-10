@@ -9,6 +9,12 @@ const ALLOWED_EVENTS = new Set([
   'session_heartbeat',
   'route_view',
   'stream_start',
+  'stream_connecting',
+  'stream_playing',
+  'stream_stalled',
+  'stream_reconnect_attempt',
+  'stream_recovered',
+  'stream_failed',
   'media_start',
   'event_view',
   'checkout_start',
@@ -27,6 +33,12 @@ const ALLOWED_PROPERTIES = new Set([
   'quantity',
   'section',
   'error_code',
+  'quality',
+  'reason',
+  'attempt',
+  'delay_ms',
+  'duration_ms',
+  'network_type',
 ]);
 
 const clean = (value: unknown, max: number) => String(value ?? '')
