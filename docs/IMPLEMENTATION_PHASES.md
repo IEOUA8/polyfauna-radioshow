@@ -2,6 +2,23 @@
 
 Este documento registra que se implemento en cada fase, como se verifico y que queda pendiente para la siguiente iteracion.
 
+## Esquema de versionado
+
+PolyFauna usa versionado semantico (`MAJOR.MINOR.PATCH`) sobre `package.json`, con un tag de git (`vX.Y.Z`) por cada version. No hay consumidores externos de una API publica, asi que el criterio de "breaking change" para un `MAJOR` es una decision de producto (relanzamiento, cambio de proveedor de pagos, rediseno total), no una obligacion tecnica:
+
+- **PATCH** (`1.0.x`): fix de bug, ajuste chico, hardening puntual.
+- **MINOR** (`1.x.0`): feature nueva que no rompe nada existente — normalmente cierra una fase de este documento.
+- **MAJOR** (`x.0.0`): cambio grande de arquitectura o de producto.
+
+### Historial de versiones
+
+El historial de commits mezcla dos flujos de trabajo (sesiones documentadas fase por fase en este archivo, y una serie de PRs de Codex #1-#8 no siempre reflejados aqui por nombre). Reconstruir una version por cada fase individual habria sido precision falsa — varias fases comparten fecha y commit exacto. En su lugar, `v1.0.0` consolida todo el trabajo hasta el 2026-07-07 (Fases 1 a 7.11 mas el trabajo de tickets/organizadores de los PRs de Codex) como la linea base ya desplegada a produccion. De ahi en adelante, cada nueva fase o feature relevante recibe su propio tag.
+
+| Version | Commit | Fecha | Contenido |
+|---|---|---|---|
+| `v1.0.0` | `9ad1758` | 2026-07-07 | Linea base consolidada: Fases 1-7.11 (fundaciones, seguridad, RLS, telemetria, gobernanza, Colonia/organizadores) mas tickets gratis/cortesias, tiers y editor de eventos unificado. |
+| `v1.1.0` | *(este commit)* | 2026-07-10 | Reconexion resiliente del stream en vivo con backoff, telemetria de estado de stream, monitor externo de salud de AzuraCast (Edge Function + cron) y esquema de versionado. |
+
 ## Fase 1 - Fundaciones de ingenieria
 
 Fecha: 2026-06-24
