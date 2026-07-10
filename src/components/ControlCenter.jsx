@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import EditProfile from '@/components/EditProfile';
 import RoleRequestsPanel from '@/components/RoleRequestsPanel';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import pkg from '../../package.json';
 
 const ROLE_META = {
   citizen:  { label: 'Oyente',             description: 'Explora, escucha y alimenta tu Organismo.', color: '#B8CFA6', icon: Headphones },
@@ -687,7 +688,7 @@ export default function ControlCenter({ setCurrentSection }) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-white/60">Versión de la plataforma</p>
-                <p className="text-xs mt-0.5 text-white/28">v1.0 Beta — 2026</p>
+                <p className="text-xs mt-0.5 text-white/28">v{pkg.version} · Beta</p>
               </div>
             </motion.div>
           </div>
