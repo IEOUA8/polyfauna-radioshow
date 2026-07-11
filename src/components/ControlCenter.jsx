@@ -82,7 +82,7 @@ function TextModal({ title, onClose, children }) {
   // caja larga en vez del viewport, apareciendo "muy abajo" en la página.
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(10px)' }} />
