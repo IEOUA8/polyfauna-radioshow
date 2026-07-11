@@ -9,6 +9,8 @@ const RETRY_INTERVAL_MS = 30000;
 const defaultNowPlaying = {
   song: null,
   nextSong: null,
+  elapsedSeconds: 0,
+  remainingSeconds: 0,
   isOnline: false,
   listeners: 0,
   isLive: false,
@@ -46,6 +48,8 @@ function normalizeNowPlaying(data) {
   return {
     song: isOnline ? normalizeSongData(data.now_playing?.song) : null,
     nextSong: isOnline ? normalizeSongData(data.playing_next?.song) : null,
+    elapsedSeconds: isOnline ? (data.now_playing?.elapsed ?? 0) : 0,
+    remainingSeconds: isOnline ? (data.now_playing?.remaining ?? 0) : 0,
     isOnline,
     listeners: data.listeners?.current ?? 0,
     isLive: data.live?.is_live ?? false,

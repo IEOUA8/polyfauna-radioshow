@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Loader2, MessageCircle, Pause, Play, Radio, Share2, SkipForward, Tv2, User, Users } from 'lucide-react';
+import { ArrowRight, Bookmark, Calendar, ChevronLeft, ChevronRight, Loader2, MapPin, MessageCircle, Pause, Play, Share2, Tv2, User, Users } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { EmptyState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import HoloSpectrum from '@/components/HoloSpectrum';
+import RadioQueueTimeline from '@/components/RadioQueueTimeline';
 import FormModal, { FField, FTextarea, FSubmit } from '@/components/ui/FormModal';
 
 const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=200&auto=format&fit=crop';
@@ -17,7 +17,7 @@ const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbb
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { song, nextSong, isOnline, listeners, isLive, streamerName } = useNowPlaying();
+  const { song, isOnline, listeners, isLive, streamerName, remainingSeconds } = useNowPlaying();
   const { currentUser } = useAuth();
   const { isFav, toggle: toggleFav } = useFavorites();
 
@@ -30,6 +30,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const [showAskHost, setShowAskHost] = useState(false);
   const [hostQuestion, setHostQuestion] = useState('');
   const [sendingQuestion, setSendingQuestion] = useState(false);
+  const [featuredEventIndex, setFeaturedEventIndex] = useState(0);
 
   const sessionFavId = `live-${song?.title || 'polyfauna-radio'}-${new Date().toISOString().slice(0, 10)}`;
   const isSessionSaved = Boolean(currentUser && isFav('session', sessionFavId));
@@ -349,76 +350,139 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
       </motion.div>
 
       {/* ── Sigue en la transmisión — cola real de AzuraCast, no hay horario
-          fijo (playlist en shuffle), por eso no se etiqueta como "programado". ── */}
+          fijo (playlist en shuffle), por eso las horas son proyectadas, no
+          "programadas". ── */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
       >
         <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Sigue en la transmisión</h2>
-
-        {!isOnline && <EmptyState label="La radio está offline" icon={Radio} />}
-
-        {isOnline && !nextSong && (
-          <EmptyState label="No hay información de la cola por ahora" icon={Radio} />
-        )}
-
-        {isOnline && nextSong && (
-          <div className="glass-card flex items-center gap-4 p-3 rounded-xl" style={{ borderRadius: '12px' }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(32,199,232,0.10)' }}>
-              <SkipForward className="w-4 h-4" style={{ color: '#20C7E8' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{nextSong.title}</p>
-              <p className="text-xs text-white/35 truncate">{nextSong.artist || 'PolyFauna Radio'}</p>
-            </div>
-          </div>
-        )}
+        <RadioQueueTimeline song={song} isOnline={isOnline} remainingSeconds={remainingSeconds} />
       </motion.div>
 
-      {/* ── Próximos eventos — secundario, no compite con el player: cards
-          chicas, scroll horizontal, debajo de todo lo relacionado al audio. ── */}
-      {upcomingEvents && upcomingEvents.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.2, ease: 'easeOut' }}
-        >
-          <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Eventos</h2>
-          <div
-            className="flex gap-3 overflow-x-auto pb-1"
-            style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
+      {/* ── Próximos eventos — banner-slide, mismo lenguaje visual que el
+          hero de Event Terminal pero bajo (proporción de reproductor), sin
+          flujo de compra: solo descubrimiento, un CTA a "Ver evento". ── */}
+      {upcomingEvents && upcomingEvents.length > 0 && (() => {
+        const safeIndex = Math.min(featuredEventIndex, upcomingEvents.length - 1);
+        const ev = upcomingEvents[safeIndex];
+        const date = ev.date ? new Date(ev.date) : null;
+        const goPrev = () => setFeaturedEventIndex((safeIndex - 1 + upcomingEvents.length) % upcomingEvents.length);
+        const goNext = () => setFeaturedEventIndex((safeIndex + 1) % upcomingEvents.length);
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.2, ease: 'easeOut' }}
           >
-            {upcomingEvents.map((ev, i) => {
-              const date = ev.date ? new Date(ev.date) : null;
-              return (
-                <motion.button
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Eventos</h2>
+            <div
+              className="relative rounded-2xl overflow-hidden cursor-pointer group"
+              style={{ minHeight: 168 }}
+              onClick={() => navigate(`/e/${ev.id}`)}
+            >
+              <AnimatePresence mode="wait">
+                <motion.img
                   key={ev.id}
-                  type="button"
-                  onClick={() => navigate(`/e/${ev.id}`)}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="glass-card shrink-0 w-36 text-left rounded-xl overflow-hidden group"
-                  style={{ scrollSnapAlign: 'start' }}
-                >
-                  <div className="w-36 h-20 overflow-hidden">
-                    <img src={ev.image_url || FALLBACK_EVENT} alt={ev.title} loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
-                  </div>
-                  <div className="p-2.5">
-                    <p className="text-xs font-semibold text-white truncate">{ev.title}</p>
-                    <p className="text-[10px] text-white/35 truncate mt-0.5">
-                      {date ? date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : ''}
-                      {ev.venue ? ` · ${ev.venue}` : ''}
-                    </p>
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
+                  src={ev.image_url || FALLBACK_EVENT}
+                  alt={ev.title}
+                  initial={{ opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+
+              {upcomingEvents.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Evento anterior"
+                    onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full flex items-center justify-center
+                      opacity-80 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200"
+                    style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Evento siguiente"
+                    onClick={(e) => { e.stopPropagation(); goNext(); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full flex items-center justify-center
+                      opacity-80 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200"
+                    style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+                  >
+                    <ChevronRight className="w-4 h-4 text-white" />
+                  </button>
+                </>
+              )}
+
+              <div className="relative z-10 p-4 md:p-5 flex flex-col justify-between" style={{ minHeight: 168 }}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={ev.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <h3 className="text-lg md:text-xl font-black text-white leading-tight max-w-sm truncate">{ev.title}</h3>
+                    <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-white/65">
+                      {date && (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-white/40" />
+                          {date.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}
+                        </span>
+                      )}
+                      {ev.venue && (
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-white/40" />
+                          {ev.venue}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+
+                <div className="flex items-center justify-between gap-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/e/${ev.id}`); }}
+                    className="btn-cta flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200"
+                  >
+                    Ver evento
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  {upcomingEvents.length > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      {upcomingEvents.map((item, i) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          aria-label={`Ir al evento ${i + 1}`}
+                          onClick={(e) => { e.stopPropagation(); setFeaturedEventIndex(i); }}
+                          className="rounded-full transition-all duration-300"
+                          style={{
+                            width: i === safeIndex ? 18 : 6,
+                            height: 6,
+                            background: i === safeIndex ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* ── Preguntar al host modal ── */}
       <AnimatePresence>

@@ -44,11 +44,11 @@ test('el link de co-promotor (?ref=) se captura dentro de Event Terminal, no en 
 });
 
 test('ArtistDetail y OrganizerDetail usan ProfileContentTabs, no queries propias duplicadas', () => {
-  assert.match(artistsPage, /<ProfileContentTabs artistId=\{artist\.id\} \/>/);
+  assert.match(artistsPage, /<ProfileContentTabs artistId=\{artist\.id\} artistType=\{artist\.type\} \/>/);
   assert.doesNotMatch(artistsPage, /from\('albums'\)/);
   assert.doesNotMatch(artistsPage, /from\('tracks'\)/);
 
-  assert.match(organizersPage, /<ProfileContentTabs organizerId=\{organizer\.id\} artistId=\{mirrorArtistId \|\| undefined\} \/>/);
+  assert.match(organizersPage, /<ProfileContentTabs organizerId=\{organizer\.id\} organizerType=\{organizer\.type\} artistId=\{mirrorArtistId \|\| undefined\} \/>/);
   assert.doesNotMatch(organizersPage, /from\('event_organizers'\)/);
 });
 
