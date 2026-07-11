@@ -79,8 +79,9 @@ async function main() {
 
   const events = await fetchRows('events', 'id,title,description,date,venue,city,image_url,price,lineup,status,tickets_total,tickets_sold');
   const artists = await fetchRows('artists', 'name,slug,type,bio,genres,image_url,social_links');
+  const organizers = await fetchRows('organizers', 'name,slug,type,bio,city,image_url,social_links');
 
-  if (events.length === 0 && artists.length === 0) {
+  if (events.length === 0 && artists.length === 0 && organizers.length === 0) {
     console.log('SEO prerender: sin datos remotos, se conserva dist/index.html');
     return;
   }
@@ -127,7 +128,27 @@ async function main() {
     writePage(`profiles/${artist.slug}`, pageHtml(template, { title: `${artist.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
   }
 
-  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas`);
+  for (const organizer of organizers) {
+    if (!organizer.slug) continue;
+    const canonical = `${SITE_URL}/organizadores/${organizer.slug}`;
+    const image = organizer.image_url || DEFAULT_COVER;
+    const description = organizer.bio
+      ? String(organizer.bio).slice(0, 300)
+      : `${organizer.name} en POLYFAUNA — clubes, promotores y colectivos de música electrónica en Colombia.`;
+    const links = typeof organizer.social_links === 'object' && organizer.social_links ? organizer.social_links : {};
+    const sameAs = Object.entries(SOCIAL_BUILDERS)
+      .map(([key, build]) => (links[key] ? build(links[key]) : null))
+      .filter(Boolean);
+    const schema = {
+      '@context': 'https://schema.org', '@type': 'Organization', name: organizer.name,
+      description, image, url: canonical,
+      ...(organizer.city ? { address: { '@type': 'PostalAddress', addressLocality: organizer.city, addressCountry: 'CO' } } : {}),
+      ...(sameAs.length > 0 ? { sameAs } : {}),
+    };
+    writePage(`organizadores/${organizer.slug}`, pageHtml(template, { title: `${organizer.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
+  }
+
+  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores`);
 }
 
 main().catch(error => {

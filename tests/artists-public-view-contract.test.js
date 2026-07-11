@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const viewMigration = readFileSync('supabase/migrations/20260708033522_artists_public_view.sql', 'utf8');
+const rotatingArtistsMigration = readFileSync('supabase/migrations/20260711000002_rotating_artists.sql', 'utf8');
 const artistsPage = readFileSync('src/components/ArtistsPage.jsx', 'utf8');
-const artistPublicPage = readFileSync('src/pages/ArtistPublicPage.jsx', 'utf8');
 const topBar = readFileSync('src/components/TopBar.jsx', 'utf8');
 const rightPanel = readFileSync('src/components/RightPanel.jsx', 'utf8');
 
@@ -22,13 +22,25 @@ test('artists_public excluye fichas espejo de cuentas promoter/club, no por type
   assert.match(viewMigration, /WHERE p\.role IS NULL OR p\.role NOT IN \('promoter', 'club'\)/);
 });
 
-test('Artists & Labels (grid, deep-link y búsqueda global) usan artists_public, no artists', () => {
+test('Artists & Labels (grid, detalle, deep-link y búsqueda global) usan artists_public, no artists', () => {
+  // ArtistPublicPage.jsx (la vieja pagina standalone /profiles/:slug) se
+  // retiro: ese detalle ahora vive dentro de ArtistsPage.jsx (ArtistDetail),
+  // que reusa artists_public tanto en el grid como en el fallback de
+  // deep-link — una sola fuente, no dos implementaciones divergentes.
   assert.doesNotMatch(artistsPage, /supabase\.from\('artists'\)/);
   assert.match(artistsPage, /supabase\.from\('artists_public'\)/);
-  assert.doesNotMatch(artistPublicPage, /supabase\s*\n?\s*\.from\('artists'\)/);
-  assert.match(artistPublicPage, /\.from\('artists_public'\)/);
   assert.doesNotMatch(topBar, /supabase\.from\('artists'\)/);
   assert.match(topBar, /supabase\.from\('artists_public'\)/);
+});
+
+test('RightPanel usa get_rotating_artists, y esa RPC lee de artists_public, no de artists', () => {
+  // RightPanel rota el subconjunto cada 25 min via RPC (ver
+  // 20260711000002_rotating_artists.sql) en vez de un SELECT directo, pero
+  // la garantia de seguridad (excluir fichas espejo de promoter/club) debe
+  // seguir cumpliendose adentro de esa funcion.
   assert.doesNotMatch(rightPanel, /supabase\.from\('artists'\)/);
-  assert.match(rightPanel, /supabase\.from\('artists_public'\)/);
+  assert.doesNotMatch(rightPanel, /supabase\.from\('artists_public'\)/);
+  assert.match(rightPanel, /supabase\.rpc\('get_rotating_artists'/);
+  assert.doesNotMatch(rotatingArtistsMigration, /FROM public\.artists\b/);
+  assert.match(rotatingArtistsMigration, /FROM public\.artists_public/);
 });

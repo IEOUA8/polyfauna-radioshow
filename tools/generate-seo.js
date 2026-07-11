@@ -55,11 +55,13 @@ async function main() {
 
   let events = [];
   let artists = [];
+  let organizers = [];
   let remoteError = null;
   try {
-    [events, artists] = await Promise.all([
+    [events, artists, organizers] = await Promise.all([
       fetchRows('events', 'id,created_at'),
       fetchRows('artists', 'slug,created_at'),
+      fetchRows('organizers', 'slug,created_at'),
     ]);
   } catch (error) {
     remoteError = error;
@@ -79,6 +81,9 @@ async function main() {
   }
   for (const artist of artists) {
     if (artist.slug) entries.push(urlEntry(`${SITE_URL}/profiles/${artist.slug}`, artist.created_at, 'weekly', '0.7'));
+  }
+  for (const organizer of organizers) {
+    if (organizer.slug) entries.push(urlEntry(`${SITE_URL}/organizadores/${organizer.slug}`, organizer.created_at, 'weekly', '0.7'));
   }
 
   fs.writeFileSync(sitemapPath,

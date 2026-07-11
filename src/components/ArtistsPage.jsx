@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Disc3, ExternalLink, Globe, Headphones, Heart, Instagram, Link2, MapPin, Music, Twitter, X } from 'lucide-react';
+import { ArrowLeft, Disc3, Globe, Heart, Instagram, Link2, MapPin, Music, Twitter, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
-import { lineupIncludesArtist } from '@/lib/artistIdentity';
+import ProfileContentTabs from '@/components/ProfileContentTabs';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
 
@@ -56,77 +56,6 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
     ? `${window.location.origin}/profiles/${artist.slug}`
     : `${window.location.origin}/?section=artists`;
 
-  const { data: albums } = useSupabaseQuery(
-    () => supabase
-      .from('albums')
-      .select('id, title, cover_url, genre, release_year, description, artists(name)')
-      .eq('artist_id', artist.id)
-      .order('created_at', { ascending: false })
-      .limit(6),
-    [artist.id]
-  );
-
-  const { data: tracks } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase
-        .from('tracks')
-        .select('id, title, duration, genre, album_id, albums(id, title, cover_url), artists(name)')
-        .eq('artist_id', artist.id)
-        .order('created_at', { ascending: false })
-        .limit(24);
-
-      if (error || !data?.length) return { data: data || [], error };
-
-      const ids = data.map(track => track.id);
-      const favs = ids.length
-        ? await supabase
-            .from('user_favorites')
-            .select('item_id')
-            .eq('item_type', 'track')
-            .in('item_id', ids)
-        : { data: [], error: null };
-
-      const counts = (favs.data || []).reduce((acc, row) => {
-        acc[row.item_id] = (acc[row.item_id] || 0) + 1;
-        return acc;
-      }, {});
-
-      return {
-        data: data
-          .map(track => ({ ...track, favorite_count: counts[track.id] || 0 }))
-          .sort((a, b) => (b.favorite_count - a.favorite_count) || String(a.title).localeCompare(String(b.title)))
-          .slice(0, 5),
-        error: favs.error,
-      };
-    },
-    [artist.id]
-  );
-
-  const { data: podcasts } = useSupabaseQuery(
-    () => supabase
-      .from('podcasts')
-      .select('id, title, audio_url, cover_url, duration, genre, artists(name)')
-      .eq('artist_id', artist.id)
-      .order('created_at', { ascending: false })
-      .limit(6),
-    [artist.id]
-  );
-
-  const { data: events } = useSupabaseQuery(
-    () => supabase
-      .from('events')
-      .select('id, title, date, venue, city, image_url, lineup')
-      .gte('date', new Date().toISOString())
-      .order('date', { ascending: true })
-      .limit(40),
-    [artist.id]
-  );
-
-  const artistEvents = useMemo(
-    () => (events || []).filter(event => lineupIncludesArtist(event.lineup, artist)).slice(0, 4),
-    [events, artist]
-  );
-
   const handleShare = async () => {
     const text = `${artist.name} en POLYFAUNA`;
     if (navigator.share) {
@@ -135,29 +64,6 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
       await navigator.clipboard.writeText(profileUrl);
       toast({ title: 'Enlace copiado', description: text });
     }
-  };
-
-  const openAlbum = (album) => {
-    if (!album?.id) return;
-    setCurrentSection?.('music');
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'albums', id: album.id } }));
-    }, 60);
-  };
-
-  const openPodcast = (podcast) => {
-    if (!podcast?.id) return;
-    setCurrentSection?.('podcasts');
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'podcasts', id: podcast.id } }));
-    }, 60);
-  };
-
-  const openEvent = (event) => {
-    setCurrentSection?.('events');
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'events', id: event.id } }));
-    }, 60);
   };
 
   return (
@@ -305,136 +211,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
           </div>
         )}
 
-        {(albums?.length > 0 || tracks?.length > 0 || podcasts?.length > 0 || artistEvents.length > 0) && (
-          <div className="space-y-5">
-            {tracks?.length > 0 && (
-              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
-                  <Music className="w-3.5 h-3.5" />
-                  Top tracks
-                </h2>
-                <div className="space-y-2">
-                  {tracks.map((track) => (
-                    <button
-                      key={track.id}
-                      type="button"
-                      onClick={() => openAlbum(track.albums)}
-                      disabled={!track.albums?.id}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors disabled:opacity-60 disabled:cursor-default"
-                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
-                    >
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center shrink-0">
-                        {track.albums?.cover_url
-                          ? <img src={track.albums.cover_url} alt="" loading="lazy" className="w-full h-full object-cover" />
-                          : <Music className="w-4 h-4 text-white/45" />
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white truncate">{track.title}</p>
-                        <p className="text-[11px] text-white/35 truncate">{track.albums?.title || track.genre || artist.name}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {track.favorite_count > 0 && (
-                          <p className="text-[10px] font-bold text-white/35">{track.favorite_count} like{track.favorite_count === 1 ? '' : 's'}</p>
-                        )}
-                        <p className="text-[10px] text-white/22">Ver álbum</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {albums?.length > 0 && (
-              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
-                  <Disc3 className="w-3.5 h-3.5" />
-                  Música
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {albums.map((album) => (
-                    <button
-                      key={album.id}
-                      type="button"
-                      onClick={() => openAlbum(album)}
-                      className="text-left rounded-xl overflow-hidden transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
-                    >
-                      <div className="aspect-square bg-white/5 overflow-hidden">
-                        <img src={album.cover_url || img} alt={album.title} loading="lazy" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="p-3">
-                        <p className="text-sm font-bold text-white truncate">{album.title}</p>
-                        <p className="text-[11px] text-white/35 truncate">{[album.genre, album.release_year].filter(Boolean).join(' · ') || artist.name}</p>
-                        <p className="text-[10px] text-white/22 mt-1">Ver detalle</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {podcasts?.length > 0 && (
-              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
-                  <Headphones className="w-3.5 h-3.5" />
-                  Podcasts / Mixes
-                </h2>
-                <div className="space-y-2">
-                  {podcasts.map((podcast) => (
-                    <button
-                      key={podcast.id}
-                      type="button"
-                      onClick={() => openPodcast(podcast)}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
-                    >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                        <img src={podcast.cover_url || img} alt="" loading="lazy" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white truncate">{podcast.title}</p>
-                        <p className="text-[11px] text-white/35 truncate">{podcast.genre || 'Mix POLYFAUNA'}</p>
-                      </div>
-                      <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {artistEvents.length > 0 && (
-              <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  Eventos vinculados
-                </h2>
-                <div className="space-y-2">
-                  {artistEvents.map((event) => (
-                    <button
-                      key={event.id}
-                      type="button"
-                      onClick={() => openEvent(event)}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
-                    >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                        <img src={event.image_url || img} alt="" loading="lazy" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white truncate">{event.title}</p>
-                        <p className="text-[11px] text-white/35 truncate">
-                          {[event.venue || event.city, event.date && new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
-                        </p>
-                      </div>
-                      <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        )}
+        <ProfileContentTabs artistId={artist.id} />
       </div>
     </motion.div>
 

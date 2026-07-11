@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter as Router, Navigate, Routes, Route, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Routes, Route, useParams, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PlaybackProvider } from '@/contexts/PlaybackContext';
@@ -16,9 +16,6 @@ const SignupPage      = lazy(lazyImport(() => import('@/pages/SignupPage')));
 const UserDashboard   = lazy(lazyImport(() => import('@/pages/UserDashboard')));
 const AdminDashboard  = lazy(lazyImport(() => import('@/pages/AdminDashboard')));
 const ValidatePage    = lazy(lazyImport(() => import('@/pages/ValidatePage')));
-const EventPublicPage  = lazy(lazyImport(() => import('@/pages/EventPublicPage')));
-const ArtistPublicPage = lazy(lazyImport(() => import('@/pages/ArtistPublicPage')));
-const OrganizerPublicPage = lazy(lazyImport(() => import('@/pages/OrganizerPublicPage')));
 const VercelTelemetry  = lazy(lazyImport(() => import('@/components/VercelTelemetry')));
 
 function RouteLoader() {
@@ -65,10 +62,20 @@ function ArtistAliasRedirect() {
   return <Navigate to={`/profiles/${encodeURIComponent(slug || '')}`} replace />;
 }
 
-function InternalRouteRedirect({ section, param }) {
+function InternalRouteRedirect({ section, param, routeParam }) {
   const params = useParams();
-  const value = params[param] || '';
-  return <Navigate to={`/?section=${section}&${param}=${encodeURIComponent(value)}`} replace />;
+  const location = useLocation();
+  // routeParam es el nombre del placeholder en el path (ej. :slug); param es
+  // el nombre de la query key que la sección ya sabe leer (ej. ?artist=).
+  // Coinciden en la mayoría de rutas, pero no en /profiles/:slug ni
+  // /organizadores/:slug, donde el placeholder es genérico.
+  const value = params[routeParam || param] || '';
+  // Preserva query params extra del link original (ej. ?ref= de un
+  // co-promotor) — antes se descartaban al reconstruir la URL desde cero.
+  const search = new URLSearchParams(location.search);
+  search.set('section', section);
+  search.set(param, value);
+  return <Navigate to={`/?${search.toString()}`} replace />;
 }
 
 function App() {
@@ -98,13 +105,13 @@ function App() {
                   <Route path="/signup"   element={<SignupPage />} />
                   <Route path="/validate" element={<ValidatePage />} />
                   <Route path="/artist/:slug" element={<ArtistAliasRedirect />} />
-                  <Route path="/profiles/:slug" element={<ArtistPublicPage />} />
-                  <Route path="/organizadores/:slug" element={<OrganizerPublicPage />} />
+                  <Route path="/profiles/:slug" element={<InternalRouteRedirect section="artists" param="artist" routeParam="slug" />} />
+                  <Route path="/organizadores/:slug" element={<InternalRouteRedirect section="organizers" param="organizer" routeParam="slug" />} />
                   <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
                   <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
                   <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
                   <Route path="/entrevistas/:interview" element={<InternalRouteRedirect section="blog" param="interview" />} />
-                  <Route path="/e/:eventId"   element={<EventPublicPage />} />
+                  <Route path="/e/:event"   element={<InternalRouteRedirect section="events" param="event" />} />
                   <Route path="/dashboard" element={
                     <ProtectedRoute>
                       <UserDashboard />

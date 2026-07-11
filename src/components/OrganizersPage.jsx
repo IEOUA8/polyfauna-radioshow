@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CalendarDays, ExternalLink, Globe, Heart, Instagram, Link2, MapPin, Twitter, Users } from 'lucide-react';
+import { ArrowLeft, Globe, Heart, Instagram, Link2, MapPin, Twitter, Users } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
+import { normalizeArtistKey } from '@/lib/artistIdentity';
+import ProfileContentTabs from '@/components/ProfileContentTabs';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
 
@@ -45,22 +47,22 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
     ? `${window.location.origin}/organizadores/${organizer.slug}`
     : `${window.location.origin}/?section=organizadores`;
 
-  const { data: events } = useSupabaseQuery(
-    () => supabase
-      .from('event_organizers')
-      .select('events(id, title, date, venue, city, image_url)')
-      .eq('organizer_id', organizer.id),
-    [organizer.id]
-  );
-
-  const organizerEvents = useMemo(
-    () => (events || [])
-      .map((row) => row.events)
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 8),
-    [events]
-  );
+  // Un organizador puede tener una fila espejo en `artists` si además sube
+  // contenido propio (música/podcast/entrevistas) — se resuelve por slug,
+  // igual que en la antigua OrganizerPublicPage.jsx.
+  const [mirrorArtistId, setMirrorArtistId] = useState(null);
+  useEffect(() => {
+    if (!organizer?.slug) return;
+    supabase
+      .from('artists')
+      .select('id, slug')
+      .then(({ data }) => {
+        const match = (data || []).find(
+          (artist) => normalizeArtistKey(artist.slug) === normalizeArtistKey(organizer.slug)
+        );
+        setMirrorArtistId(match?.id || null);
+      });
+  }, [organizer?.slug]);
 
   const handleShare = async () => {
     const text = `${organizer.name} en POLYFAUNA`;
@@ -70,13 +72,6 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
       await navigator.clipboard.writeText(profileUrl);
       toast({ title: 'Enlace copiado', description: text });
     }
-  };
-
-  const openEvent = (event) => {
-    setCurrentSection?.('events');
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('pf:open-item', { detail: { type: 'events', id: event.id } }));
-    }, 60);
   };
 
   return (
@@ -192,36 +187,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
           </div>
         )}
 
-        {organizerEvents.length > 0 && (
-          <section className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3 flex items-center gap-2">
-              <CalendarDays className="w-3.5 h-3.5" />
-              Eventos
-            </h2>
-            <div className="space-y-2">
-              {organizerEvents.map((event) => (
-                <button
-                  key={event.id}
-                  type="button"
-                  onClick={() => openEvent(event)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
-                >
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                    <img src={event.image_url || img} alt="" loading="lazy" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{event.title}</p>
-                    <p className="text-[11px] text-white/35 truncate">
-                      {[event.venue || event.city, event.date && new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-white/25 shrink-0" />
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        <ProfileContentTabs organizerId={organizer.id} artistId={mirrorArtistId || undefined} />
       </div>
     </motion.div>
   );

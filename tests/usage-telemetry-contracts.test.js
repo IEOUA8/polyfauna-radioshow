@@ -9,7 +9,6 @@ const usageComponent = readFileSync('src/components/UsageTelemetry.jsx', 'utf8')
 const app = readFileSync('src/App.jsx', 'utf8');
 const player = readFileSync('src/components/GlobalPlayer.jsx', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
-const eventPublicPage = readFileSync('src/pages/EventPublicPage.jsx', 'utf8');
 const metricsMigration = readFileSync('supabase/migrations/20260630000001_usage_metrics_dashboard.sql', 'utf8');
 const metricsInvokerMigration = readFileSync('supabase/migrations/20260630000002_usage_metrics_security_invoker.sql', 'utf8');
 const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
@@ -86,9 +85,7 @@ test('fase 7.6 instrumenta actividad, escucha y checkout sin bloquear UX', () =>
   assert.match(eventTerminal, /trackUsageEvent\('checkout_start'/);
   assert.match(eventTerminal, /trackUsageEvent\('checkout_ready'/);
   assert.match(eventTerminal, /trackUsageEvent\('ticket_claimed'/);
-  assert.match(eventPublicPage, /trackUsageEvent\('event_view'/);
-  assert.match(eventPublicPage, /trackUsageEvent\('checkout_start'/);
-  assert.match(eventPublicPage, /trackUsageEvent\('checkout_error'/);
+  assert.match(eventTerminal, /trackUsageEvent\('checkout_error'/);
 });
 
 test('fase 7.7 agrega metricas en servidor y restringe el tablero a admin', () => {

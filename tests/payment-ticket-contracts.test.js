@@ -15,7 +15,6 @@ const roleRequestsPanel = readFileSync('src/components/RoleRequestsPanel.jsx', '
 const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
 const roleAndTicketTiers = readFileSync('supabase/migrations/20260701000001_role_requests_and_ticket_tiers.sql', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
-const eventPublicPage = readFileSync('src/pages/EventPublicPage.jsx', 'utf8');
 const controlCenter = readFileSync('src/components/ControlCenter.jsx', 'utf8');
 const organizerOperations = readFileSync('supabase/migrations/20260701000002_organizer_operations_and_manual_tickets.sql', 'utf8');
 const manualTicketFunction = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
@@ -157,7 +156,6 @@ test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', (
   assert.match(claimFreeTicketFunction, /confirmation_email_sent_at: claimedAt/);
   assert.match(claimFreeTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
   assert.match(eventTerminal, /claimFreeTicket\(\{/);
-  assert.match(eventPublicPage, /claimFreeTicket\(\{/);
   assert.match(eventTerminal, /!isFree/);
   assert.match(claimFreeTicketFunction, /Las cortesías solo pueden ser emitidas por el organizador/);
   assert.match(freeTicketsClient, /saveTicketIdentity/);
@@ -165,8 +163,6 @@ test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', (
   assert.match(ticketIdentity, /document_type: 'CC'/);
   assert.match(eventTerminal, /Identificación del asistente/);
   assert.match(eventTerminal, /Número de cédula/);
-  assert.match(eventPublicPage, /Identificación del asistente/);
-  assert.match(eventPublicPage, /Número de cédula/);
   assert.match(claimFreeTicketFunction, /Ingresa tu nombre completo y número de cédula/);
 });
 
@@ -385,9 +381,9 @@ test('co-promotores venden sin poder editar el evento y se acreditan en su propi
   assert.match(createPayment, /eq\('ref_code', seller_ref\.trim\(\)\)/);
   assert.match(createPayment, /let sellerPromoterId = event\.owner_id/);
 
-  // El link se captura en la página pública y se reenvía al checkout
-  assert.match(eventPublicPage, /pf_seller_ref_\$\{eventId\}/);
-  assert.match(eventPublicPage, /seller_ref: sessionStorage\.getItem/);
+  // El link se captura en Event Terminal (antes vivía en la extinta
+  // EventPublicPage / :id) y se reenvía al checkout.
+  assert.match(eventTerminal, /pf_seller_ref_\$\{eventParam\}/);
   assert.match(eventTerminal, /seller_ref: sessionStorage\.getItem/);
 
   // UI: invitar/gestionar co-promotores, y ocultar edición para no-dueños

@@ -848,6 +848,17 @@ export default function EventTerminal({ setCurrentSection }) {
     if (inList) setSelectedEvent(inList);
   }, [events]);
 
+  // Link de un co-promotor (?ref=...) — se guarda para que la compra, aunque
+  // el comprador navegue dentro de la app antes de pagar, se atribuya a él.
+  // Antes vivía solo en la extinta EventPublicPage (/e/:id); ahora que ese
+  // link redirige aquí, la captura tiene que pasar por este componente.
+  useEffect(() => {
+    const eventParam = new URLSearchParams(window.location.search).get('event');
+    if (!eventParam) return;
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) sessionStorage.setItem(`pf_seller_ref_${eventParam}`, ref);
+  }, []);
+
   const toggleFavorite = useCallback((e, id) => {
     e.stopPropagation();
     toggleFav('event', id);

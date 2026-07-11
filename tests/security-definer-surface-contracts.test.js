@@ -9,7 +9,6 @@ const sourceFiles = [
   readFileSync('src/components/RoleRequestsPanel.jsx', 'utf8'),
   readFileSync('src/components/admin/EventManager.jsx', 'utf8'),
   readFileSync('src/components/PodcastsPage.jsx', 'utf8'),
-  readFileSync('src/pages/EventPublicPage.jsx', 'utf8'),
   readFileSync('src/components/EventTerminal.jsx', 'utf8'),
   readFileSync('src/lib/offlineTickets.js', 'utf8'),
 ].join('\n');
