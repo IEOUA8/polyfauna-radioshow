@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CalendarDays, CheckCircle, ChevronRight, Clock, FileText, Headphones, MapPin, Music, Play, QrCode, Radio, User, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -217,6 +218,7 @@ function TicketCard({ ticket }) {
 }
 
 function EventRow({ event, index }) {
+  const navigate = useNavigate();
   const date = event.date ? new Date(event.date) : null;
   const day  = date?.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 
@@ -225,6 +227,10 @@ function EventRow({ event, index }) {
       initial={{ opacity: 0, x: 10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.07 }}
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/e/${event.id}`)}
+      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/e/${event.id}`); }}
       className="flex items-center gap-3 group cursor-pointer"
     >
       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
@@ -283,11 +289,16 @@ function PodcastRow({ pod, isPlaying, onPlay }) {
 }
 
 function ArtistAvatar({ artist, index }) {
+  const navigate = useNavigate();
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.06 }}
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/profiles/${artist.slug}`)}
+      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/profiles/${artist.slug}`); }}
       className="flex flex-col items-center gap-1.5 cursor-pointer group"
     >
       <div className="w-11 h-11 rounded-full overflow-hidden transition-transform duration-200 group-hover:scale-110"
@@ -332,12 +343,19 @@ export default function RightPanel({ setCurrentSection }) {
     []
   );
 
-  // artists_public excluye las fichas espejo de colectivos/clubes (se
-  // muestran en Colonia, no aquí) — mismo criterio que ArtistsPage.jsx.
-  const { data: artists } = useSupabaseQuery(
-    () => supabase.from('artists_public').select('id, name, image_url').limit(5),
+  // get_rotating_artists rota el subconjunto cada 25 min (mismo bucket de
+  // tiempo = mismo orden para todos los usuarios, ver migración
+  // 20260711000002_rotating_artists.sql). Se refresca cada 5 min para que
+  // una sesión abierta recoja el cambio de ventana sin recargar la página.
+  const { data: artists, refetch: refetchArtists } = useSupabaseQuery(
+    () => supabase.rpc('get_rotating_artists', { p_limit: 8 }),
     []
   );
+
+  useEffect(() => {
+    const intervalId = window.setInterval(refetchArtists, 5 * 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [refetchArtists]);
 
   return (
     <>

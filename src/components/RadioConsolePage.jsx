@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Bookmark, Loader2, MessageCircle, Pause, Play, Radio, Share2, SkipForward, Tv2, User, Users } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { EmptyState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
@@ -10,11 +12,20 @@ import { useFavorites } from '@/hooks/useFavorites';
 import HoloSpectrum from '@/components/HoloSpectrum';
 import FormModal, { FField, FTextarea, FSubmit } from '@/components/ui/FormModal';
 
+const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=200&auto=format&fit=crop';
+
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { song, nextSong, isOnline, listeners, isLive, streamerName } = useNowPlaying();
   const { currentUser } = useAuth();
   const { isFav, toggle: toggleFav } = useFavorites();
+
+  const { data: upcomingEvents } = useSupabaseQuery(
+    () => supabase.from('events').select('id, title, date, venue, image_url')
+      .gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(6),
+    []
+  );
 
   const [showAskHost, setShowAskHost] = useState(false);
   const [hostQuestion, setHostQuestion] = useState('');
@@ -364,6 +375,50 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
           </div>
         )}
       </motion.div>
+
+      {/* ── Próximos eventos — secundario, no compite con el player: cards
+          chicas, scroll horizontal, debajo de todo lo relacionado al audio. ── */}
+      {upcomingEvents && upcomingEvents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.2, ease: 'easeOut' }}
+        >
+          <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Eventos</h2>
+          <div
+            className="flex gap-3 overflow-x-auto pb-1"
+            style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
+          >
+            {upcomingEvents.map((ev, i) => {
+              const date = ev.date ? new Date(ev.date) : null;
+              return (
+                <motion.button
+                  key={ev.id}
+                  type="button"
+                  onClick={() => navigate(`/e/${ev.id}`)}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="glass-card shrink-0 w-36 text-left rounded-xl overflow-hidden group"
+                  style={{ scrollSnapAlign: 'start' }}
+                >
+                  <div className="w-36 h-20 overflow-hidden">
+                    <img src={ev.image_url || FALLBACK_EVENT} alt={ev.title} loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-xs font-semibold text-white truncate">{ev.title}</p>
+                    <p className="text-[10px] text-white/35 truncate mt-0.5">
+                      {date ? date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : ''}
+                      {ev.venue ? ` · ${ev.venue}` : ''}
+                    </p>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Preguntar al host modal ── */}
       <AnimatePresence>
