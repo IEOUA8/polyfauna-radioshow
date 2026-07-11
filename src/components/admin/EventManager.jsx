@@ -747,6 +747,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                   value={formData.image_url}
                   onChange={(url) => set('image_url', url)}
                   pathPrefix={`events/${currentUser.id}/`}
+                  hint="Recomendado 1600×900px (16:9), mínimo. Se recorta centrado en distintos banners de la plataforma — evita textos o logos cerca de los bordes."
                 />
 
                 {/* Título */}

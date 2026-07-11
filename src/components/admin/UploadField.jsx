@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import supabase from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
-export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '' }) {
+export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '', hint = '' }) {
   const { toast } = useToast();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -43,6 +43,7 @@ export function UploadField({ label, bucket, accept, value, onChange, required =
   return (
     <div>
       <Label>{label}{required && ' *'}</Label>
+      {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
       <div className="flex gap-2 mt-1">
         <Input
           value={value}
