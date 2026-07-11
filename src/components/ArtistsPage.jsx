@@ -211,7 +211,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
           </div>
         )}
 
-        <ProfileContentTabs artistId={artist.id} />
+        <ProfileContentTabs artistId={artist.id} artistType={artist.type} />
       </div>
     </motion.div>
 

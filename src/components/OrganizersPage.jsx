@@ -187,7 +187,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
           </div>
         )}
 
-        <ProfileContentTabs organizerId={organizer.id} artistId={mirrorArtistId || undefined} />
+        <ProfileContentTabs organizerId={organizer.id} organizerType={organizer.type} artistId={mirrorArtistId || undefined} />
       </div>
     </motion.div>
   );

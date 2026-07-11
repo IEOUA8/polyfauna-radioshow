@@ -15,6 +15,23 @@ const TAB_DEFS = [
   { key: 'interviews', label: 'Entrevistas', icon: Mic, requiresArtist: true },
 ];
 
+// Qué pestañas tiene sentido mostrar según el tipo de perfil — un sello no
+// toca en vivo (sin Eventos), un promotor no sube contenido propio (sin
+// Música ni Podcast), etc. Sin esto, cualquier organizador con fila espejo
+// en `artists` mostraba las 4 pestañas sin importar su rol real.
+const DEFAULT_ARTIST_CAPABILITIES = { events: true, music: true, podcast: true, interviews: true };
+const ARTIST_TAB_CAPABILITIES = {
+  label: { events: false, music: true, podcast: true, interviews: true },
+};
+
+const DEFAULT_ORGANIZER_CAPABILITIES = { events: true, music: false, podcast: true, interviews: true };
+const ORGANIZER_TAB_CAPABILITIES = {
+  club:       { events: true, music: false, podcast: true,  interviews: true },
+  promoter:   { events: true, music: false, podcast: false, interviews: true },
+  collective: { events: true, music: false, podcast: true,  interviews: true },
+  hybrid:     { events: true, music: false, podcast: true,  interviews: true },
+};
+
 function formatEventDate(date) {
   if (!date) return '';
   return new Date(date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -43,10 +60,16 @@ function PreviewRow({ to, image, title, subtitle }) {
   );
 }
 
-export default function ProfileContentTabs({ artistId, organizerId }) {
+export default function ProfileContentTabs({ artistId, organizerId, artistType, organizerType }) {
+  const capabilities = useMemo(() => {
+    if (organizerId) return ORGANIZER_TAB_CAPABILITIES[organizerType] || DEFAULT_ORGANIZER_CAPABILITIES;
+    if (artistId) return ARTIST_TAB_CAPABILITIES[artistType] || DEFAULT_ARTIST_CAPABILITIES;
+    return { events: true, music: false, podcast: false, interviews: false };
+  }, [organizerId, organizerType, artistId, artistType]);
+
   const tabs = useMemo(
-    () => TAB_DEFS.filter((tab) => !tab.requiresArtist || Boolean(artistId)),
-    [artistId]
+    () => TAB_DEFS.filter((tab) => capabilities[tab.key] && (!tab.requiresArtist || Boolean(artistId))),
+    [capabilities, artistId]
   );
 
   const [activeTab, setActiveTab] = useState(tabs[0]?.key || 'events');
