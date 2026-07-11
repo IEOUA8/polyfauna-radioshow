@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -73,7 +74,13 @@ const QUALITY_OPTIONS = [
 ];
 
 function TextModal({ title, onClose, children }) {
-  return (
+  // createPortal a document.body: sin esto, el modal hereda el transform
+  // del motion.div que anima el cambio de sección en PolyfaunaOS.jsx (le
+  // pasa y/opacity/filter en cada render) — cualquier transform en un
+  // ancestro convierte a ese ancestro en el "containing block" de un
+  // position:fixed, así que el modal terminaba posicionado relativo a esa
+  // caja larga en vez del viewport, apareciendo "muy abajo" en la página.
+  return createPortal(
     <div
       className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4"
       onClick={onClose}
@@ -111,7 +118,8 @@ function TextModal({ title, onClose, children }) {
           {children}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -228,7 +236,7 @@ function ReportIssueModal({ onClose, currentUser }) {
 }
 
 function DeactivateModal({ onClose, onConfirm, email }) {
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-4"
       onClick={onClose}
@@ -284,7 +292,8 @@ function DeactivateModal({ onClose, onConfirm, email }) {
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
