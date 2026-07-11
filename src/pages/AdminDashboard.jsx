@@ -21,7 +21,6 @@ const EventManager     = lazy(lazyImport(() => import('@/components/admin/EventM
 const PodcastManager   = lazy(lazyImport(() => import('@/components/admin/PodcastManager')));
 const BlogManager      = lazy(lazyImport(() => import('@/components/admin/BlogManager')));
 const InterviewManager = lazy(lazyImport(() => import('@/components/admin/InterviewManager')));
-const ShowManager      = lazy(lazyImport(() => import('@/components/admin/ShowManager')));
 const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserManager')));
 const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
 const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
@@ -49,7 +48,6 @@ const NAV_GROUPS = [
       { id: 'podcasts',   label: 'Podcasts',    icon: Headphones,  color: 'rgba(255,255,255,0.85)' },
       { id: 'blog',       label: 'Blog',         icon: FileText,    color: 'rgba(255,255,255,0.7)' },
       { id: 'interviews', label: 'Interviews',   icon: Mic,         color: 'rgba(255,255,255,0.85)' },
-      { id: 'shows',      label: 'Shows',        icon: Radio,       color: 'rgba(255,255,255,0.85)' },
       { id: 'artists',    label: 'Artistas',     icon: Disc3,       color: 'rgba(255,255,255,0.85)' },
       { id: 'albums',     label: 'Álbumes',      icon: Music,       color: 'rgba(255,255,255,0.85)' },
     ],
@@ -2549,7 +2547,6 @@ const AdminDashboard = () => {
       case 'podcasts':    return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Podcasts</h2><p className="text-sm text-white/40 mt-0.5">Gestionar episodios</p></div><PodcastManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
       case 'blog':        return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Blog</h2><p className="text-sm text-white/40 mt-0.5">Artículos y publicaciones</p></div><BlogManager /></div>;
       case 'interviews':  return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Interviews</h2><p className="text-sm text-white/40 mt-0.5">Entrevistas</p></div><InterviewManager /></div>;
-      case 'shows':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Shows</h2><p className="text-sm text-white/40 mt-0.5">Programación de shows</p></div><ShowManager /></div>;
       case 'artists':     return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Artistas</h2><p className="text-sm text-white/40 mt-0.5">Perfiles de artistas y sellos</p></div><ArtistManager /></div>;
       case 'albums':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Álbumes</h2><p className="text-sm text-white/40 mt-0.5">Discografía y tracks</p></div><AlbumManager ownerId={isAdmin ? null : currentUser?.id} /></div>;
       case 'users':       return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Usuarios</h2><p className="text-sm text-white/40 mt-0.5">Gestión de cuentas y roles</p></div><UserManager /></div>;

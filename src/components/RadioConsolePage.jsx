@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark, Loader2, MessageCircle, Pause, Play, Radio, Share2, Tv2, User, Users } from 'lucide-react';
+import { Bookmark, Loader2, MessageCircle, Pause, Play, Radio, Share2, SkipForward, Tv2, User, Users } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
+import { EmptyState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +12,7 @@ import FormModal, { FField, FTextarea, FSubmit } from '@/components/ui/FormModal
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
   const { toast } = useToast();
-  const { song, isOnline, listeners, isLive, streamerName } = useNowPlaying();
+  const { song, nextSong, isOnline, listeners, isLive, streamerName } = useNowPlaying();
   const { currentUser } = useAuth();
   const { isFav, toggle: toggleFav } = useFavorites();
 
@@ -87,11 +86,6 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
       toast({ title: 'Sin sala activa', description: 'No hay sala en vivo disponible en este momento.' });
     }
   };
-
-  const { data: shows, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('radio_shows').select('*').order('schedule', { ascending: true }).limit(8),
-    []
-  );
 
   return (
     <div className="p-5 space-y-6">
@@ -343,50 +337,30 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
         )}
       </motion.div>
 
-      {/* ── Upcoming Shows ── */}
+      {/* ── Sigue en la transmisión — cola real de AzuraCast, no hay horario
+          fijo (playlist en shuffle), por eso no se etiqueta como "programado". ── */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
       >
-        <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Programas</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Sigue en la transmisión</h2>
 
-        {loading && <LoadingSkeleton rows={4} />}
-        {error && <ErrorState message={error} onRetry={refetch} />}
-        {!loading && !error && (!shows || shows.length === 0) && (
-          <EmptyState label="No hay programas programados" icon={Radio} />
+        {!isOnline && <EmptyState label="La radio está offline" icon={Radio} />}
+
+        {isOnline && !nextSong && (
+          <EmptyState label="No hay información de la cola por ahora" icon={Radio} />
         )}
 
-        {!loading && !error && shows && shows.length > 0 && (
-          <div className="space-y-2">
-            {shows.map((show, i) => (
-              <motion.div
-                key={show.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className="glass-card flex items-center gap-4 p-3 rounded-xl transition-all duration-200 cursor-pointer group"
-                style={{ borderRadius: '12px' }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)')}
-              >
-                <span className="text-sm font-mono font-bold shrink-0 w-14 truncate" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                  {show.schedule || '—'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate group-hover:text-white transition-colors">{show.name}</p>
-                  <p className="text-xs text-white/35 truncate">{show.dj}</p>
-                </div>
-                {show.genre && (
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  >
-                    {show.genre}
-                  </span>
-                )}
-              </motion.div>
-            ))}
+        {isOnline && nextSong && (
+          <div className="glass-card flex items-center gap-4 p-3 rounded-xl" style={{ borderRadius: '12px' }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(32,199,232,0.10)' }}>
+              <SkipForward className="w-4 h-4" style={{ color: '#20C7E8' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{nextSong.title}</p>
+              <p className="text-xs text-white/35 truncate">{nextSong.artist || 'PolyFauna Radio'}</p>
+            </div>
           </div>
         )}
       </motion.div>

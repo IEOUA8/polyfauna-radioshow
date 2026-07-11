@@ -8,6 +8,7 @@ const RETRY_INTERVAL_MS = 30000;
 
 const defaultNowPlaying = {
   song: null,
+  nextSong: null,
   isOnline: false,
   listeners: 0,
   isLive: false,
@@ -30,11 +31,8 @@ const NowPlayingContext = createContext({
   refreshNowPlaying: async () => false,
 });
 
-function normalizeSong(data) {
-  const song = data.now_playing?.song;
-
-  if (!song || !data.is_online) return null;
-
+function normalizeSongData(song) {
+  if (!song) return null;
   return {
     title: song.title || 'PolyFauna Radio',
     artist: song.artist || '',
@@ -44,9 +42,11 @@ function normalizeSong(data) {
 }
 
 function normalizeNowPlaying(data) {
+  const isOnline = data.is_online ?? false;
   return {
-    song: normalizeSong(data),
-    isOnline: data.is_online ?? false,
+    song: isOnline ? normalizeSongData(data.now_playing?.song) : null,
+    nextSong: isOnline ? normalizeSongData(data.playing_next?.song) : null,
+    isOnline,
     listeners: data.listeners?.current ?? 0,
     isLive: data.live?.is_live ?? false,
     streamerName: data.live?.streamer_name ?? '',
