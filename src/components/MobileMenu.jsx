@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { preloadSection } from '@/lib/sectionPreload';
 
 const NAV_ITEMS = [
   { id: 'radio-console', label: 'Radio',    icon: Radio,             public: true  },
@@ -36,6 +37,7 @@ function NavCard({ item, locked, active, onPress, idx }) {
     <motion.button
       type="button"
       onClick={locked ? undefined : onPress}
+      onTouchStart={locked || item.href ? undefined : () => preloadSection(item.id)}
       disabled={locked}
       aria-current={active ? 'page' : undefined}
       aria-label={locked ? `${item.label}. Inicia sesión para acceder` : item.label}

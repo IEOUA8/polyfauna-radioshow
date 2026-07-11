@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import supabase from '@/lib/customSupabaseClient';
+import { preloadSection } from '@/lib/sectionPreload';
 
 const ALL_NAV = [
   { id: 'radio-console', label: 'Radio Console',     icon: Radio,             public: true  },
@@ -81,6 +82,7 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
               key={item.id}
               type="button"
               onClick={() => navigate(item.id)}
+              onMouseEnter={() => preloadSection(item.id)}
               title={locked ? 'Inicia sesión para acceder' : undefined}
               aria-label={locked ? `${item.label}. Inicia sesión para acceder` : item.label}
               className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${

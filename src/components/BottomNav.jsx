@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dna, Headphones, Lock, Music, Radio, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { preloadSection } from '@/lib/sectionPreload';
 
 const NAV_ITEMS = [
   { id: 'radio-console', icon: Radio,     label: 'Radio',    public: true  },
@@ -38,6 +39,7 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
               type="button"
               whileTap={locked ? undefined : { scale: 0.94 }}
               onClick={() => !locked && setCurrentSection(id)}
+              onTouchStart={() => !locked && preloadSection(id)}
               disabled={locked}
               aria-current={isActive && !locked ? 'page' : undefined}
               aria-label={locked ? `${label}. Inicia sesión para acceder` : label}
