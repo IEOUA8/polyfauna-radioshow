@@ -107,12 +107,12 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
           }} />
         </div>
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-start gap-5">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 flex-1 min-w-0 text-center sm:text-left">
+          <div className="flex flex-row items-start gap-4 sm:gap-5 flex-1 min-w-0 text-left">
+            {/* Avatar — compacto en mobile para no empujar bio/pestañas fuera
+                de pantalla; mismo tamaño de siempre a partir de sm:. */}
             <div
-              className="rounded-full overflow-hidden shrink-0"
+              className="rounded-full overflow-hidden shrink-0 w-20 h-20 sm:w-[140px] sm:h-[140px]"
               style={{
-                width: 140,
-                height: 140,
                 border: '1px solid rgba(255,255,255,0.12)',
                 boxShadow: '0 12px 34px rgba(0,0,0,0.55)',
               }}
@@ -120,7 +120,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
               <img src={img} alt={organizer.name} className="w-full h-full object-cover" />
             </div>
 
-            <div className="flex-1 min-w-0 flex flex-col items-center sm:items-start">
+            <div className="flex-1 min-w-0 flex flex-col items-start">
               {organizer.type && (
                 <span
                   className="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
@@ -129,7 +129,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
                   {TYPE_LABEL[organizer.type] || organizer.type}
                 </span>
               )}
-              <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">{organizer.name}</h1>
+              <h1 className="text-xl sm:text-3xl font-black text-white leading-tight">{organizer.name}</h1>
               {organizer.city && (
                 <span className="text-sm font-medium text-white/50 flex items-center gap-1.5 mt-2">
                   <MapPin className="w-3.5 h-3.5" /> {organizer.city}
@@ -141,7 +141,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
                 </span>
               )}
               {SOCIAL_DETAIL.some(({ key }) => links[key]) && (
-                <div className="flex gap-1.5 mt-3.5 flex-wrap justify-center sm:justify-start">
+                <div className="flex gap-1.5 mt-3.5 flex-wrap justify-start">
                   {SOCIAL_DETAIL.map(({ key, icon, label, color, build }) =>
                     links[key] ? (
                       <SocialButton key={key} href={build(links[key])} icon={icon} label={label} color={color} />
@@ -152,7 +152,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
             </div>
           </div>
 
-          <div className="flex items-center justify-center sm:justify-end gap-2 sm:shrink-0 sm:pt-1">
+          <div className="flex items-center justify-start sm:justify-end gap-2 sm:shrink-0 sm:pt-1">
             <button
               type="button"
               onClick={handleShare}
