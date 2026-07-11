@@ -358,7 +358,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
         transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
       >
         <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Sigue en la transmisión</h2>
-        <RadioQueueTimeline song={song} isOnline={isOnline} remainingSeconds={remainingSeconds} />
+        <RadioQueueTimeline isOnline={isOnline} remainingSeconds={remainingSeconds} />
       </motion.div>
 
       {/* ── Próximos eventos — banner-slide, mismo lenguaje visual que el

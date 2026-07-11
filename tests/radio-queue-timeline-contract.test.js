@@ -51,9 +51,11 @@ test('useNowPlaying expone remainingSeconds del track en vivo', () => {
   assert.match(nowPlaying, /remainingSeconds: isOnline \? \(data\.now_playing\?\.remaining \?\? 0\) : 0/);
 });
 
-test('RadioQueueTimeline muestra hasta 6 proximos ademas de "Ahora", con genero y duracion', () => {
-  assert.match(timeline, /const MAX_UPCOMING = 6;/);
-  assert.match(timeline, /AHORA|Ahora/);
+test('RadioQueueTimeline muestra hasta 3 proximos, sin repetir "Ahora" (ya lo dice el reproductor)', () => {
+  // La cola es secundaria al banner de próximos eventos, y el estado "Ahora"
+  // ya vive en la Now Playing card de arriba — repetirlo aquí era ruido.
+  assert.match(timeline, /const MAX_UPCOMING = 3;/);
+  assert.doesNotMatch(timeline, />Ahora</);
   assert.match(timeline, /item\.genre/);
   assert.match(timeline, /formatDuration\(item\.duration_seconds\)/);
 });
