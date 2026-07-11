@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { id: 'podcasts',      label: 'Podcasts', icon: Headphones,        public: true  },
   { id: 'music',         label: 'Música',   icon: Music,             public: false },
   { id: 'organism',      label: 'Organismo', icon: Dna,              public: false },
-  { id: 'events',        label: 'Eventos',  icon: CalendarDays,      public: false },
+  { id: 'events',        label: 'Eventos',  icon: CalendarDays,      public: true  },
   { id: 'artists',       label: 'Artistas', icon: Disc3,             public: false },
   { id: 'organizers',    label: 'Colonia',  icon: Network,           public: false },
   { id: 'blog',          label: 'Blog',     icon: FileText,          public: false },

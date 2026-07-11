@@ -17,7 +17,7 @@ const ALL_NAV = [
   { id: 'podcasts',      label: 'Podcasts',           icon: Headphones,        public: true  },
   { id: 'music',         label: 'Música',             icon: Music,             public: false },
   { id: 'organism',      label: 'Organismo',          icon: Dna,               public: false },
-  { id: 'events',        label: 'Event Terminal',     icon: CalendarDays,      public: false },
+  { id: 'events',        label: 'Event Terminal',     icon: CalendarDays,      public: true  },
   { id: 'artists',       label: 'Artists & Labels',   icon: Disc3,             public: false },
   { id: 'organizers',    label: 'Colonia',            icon: Network,           public: false },
   { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: false },
