@@ -4,9 +4,9 @@
   "version": "1.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite --host :: --port 3000",
+    "dev": "vite --host :: --port 5173 --strictPort",
     "build": "node tools/generate-llms.js || true && node tools/generate-seo.js || true && vite build && node tools/prerender-seo.js",
-    "preview": "vite preview --host :: --port 3000",
+    "preview": "vite preview --host :: --port 5173 --strictPort",
     "lint": "eslint . --quiet",
     "test": "node --test tests/*.test.js",
     "security:check": "node tools/security-check.js",
