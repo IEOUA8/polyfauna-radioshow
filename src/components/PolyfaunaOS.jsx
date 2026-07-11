@@ -207,7 +207,7 @@ function PolyfaunaOS() {
     if (isGuestProtected) return <GuestGate section={currentSection} onClose={() => setCurrentSection('radio-console')} />;
 
     switch (currentSection) {
-      case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
+      case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} setCurrentSection={setCurrentSection} />;
       case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} />;
       case 'music':         return <MusicPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} />;
       case 'organism':      return <Organism currentTrack={currentTrack} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
@@ -226,7 +226,7 @@ function PolyfaunaOS() {
       case 'inbox':         return <SignalInbox />;
       case 'tickets':       return <TicketVault />;
       case 'settings':      return <ControlCenter setCurrentSection={setCurrentSection} />;
-      default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
+      default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} setCurrentSection={setCurrentSection} />;
     }
   };
 

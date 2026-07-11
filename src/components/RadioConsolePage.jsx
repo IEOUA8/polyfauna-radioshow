@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Bookmark, Calendar, ChevronLeft, ChevronRight, Loader2, MapPin, MessageCircle, Pause, Play, Share2, Tv2, User, Users } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -11,12 +10,12 @@ import { useFavorites } from '@/hooks/useFavorites';
 import HoloSpectrum from '@/components/HoloSpectrum';
 import RadioQueueTimeline from '@/components/RadioQueueTimeline';
 import FormModal, { FField, FTextarea, FSubmit } from '@/components/ui/FormModal';
+import { openInSection } from '@/lib/openInSection';
 
 const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=200&auto=format&fit=crop';
 
-export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
+export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSection }) {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { song, isOnline, listeners, isLive, streamerName, remainingSeconds } = useNowPlaying();
   const { currentUser } = useAuth();
   const { isFav, toggle: toggleFav } = useFavorites();
@@ -380,7 +379,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
             <div
               className="relative rounded-2xl overflow-hidden cursor-pointer group"
               style={{ minHeight: 168 }}
-              onClick={() => navigate(`/e/${ev.id}`)}
+              onClick={() => openInSection(setCurrentSection, 'events', 'event', ev.id)}
             >
               <AnimatePresence mode="wait">
                 <motion.img
@@ -452,7 +451,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying }) {
                 <div className="flex items-center justify-between gap-3 mt-3">
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); navigate(`/e/${ev.id}`); }}
+                    onClick={(e) => { e.stopPropagation(); openInSection(setCurrentSection, 'events', 'event', ev.id); }}
                     className="btn-cta flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200"
                   >
                     Ver evento

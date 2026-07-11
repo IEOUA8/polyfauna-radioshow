@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { Bell, CalendarDays, CheckCircle, ChevronRight, Clock, FileText, Headphones, MapPin, Music, Play, QrCode, Radio, User, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -8,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { openInSection } from '@/lib/openInSection';
 
 const ROLE_LABEL = { citizen: 'Wave Citizen', artist: 'Artista', promoter: 'Promotor', club: 'Club', admin: 'Admin' };
 
@@ -217,10 +217,10 @@ function TicketCard({ ticket }) {
   );
 }
 
-function EventRow({ event, index }) {
-  const navigate = useNavigate();
+function EventRow({ event, index, setCurrentSection }) {
   const date = event.date ? new Date(event.date) : null;
   const day  = date?.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  const open = () => openInSection(setCurrentSection, 'events', 'event', event.id);
 
   return (
     <motion.div
@@ -229,8 +229,8 @@ function EventRow({ event, index }) {
       transition={{ delay: index * 0.07 }}
       role="button"
       tabIndex={0}
-      onClick={() => navigate(`/e/${event.id}`)}
-      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/e/${event.id}`); }}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
       className="flex items-center gap-3 group cursor-pointer"
     >
       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
@@ -288,8 +288,8 @@ function PodcastRow({ pod, isPlaying, onPlay }) {
   );
 }
 
-function ArtistAvatar({ artist, index }) {
-  const navigate = useNavigate();
+function ArtistAvatar({ artist, index, setCurrentSection }) {
+  const open = () => openInSection(setCurrentSection, 'artists', 'artist', artist.slug);
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8 }}
@@ -297,8 +297,8 @@ function ArtistAvatar({ artist, index }) {
       transition={{ delay: index * 0.06 }}
       role="button"
       tabIndex={0}
-      onClick={() => navigate(`/profiles/${artist.slug}`)}
-      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/profiles/${artist.slug}`); }}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
       className="flex flex-col items-center gap-1.5 cursor-pointer group"
     >
       <div className="w-11 h-11 rounded-full overflow-hidden transition-transform duration-200 group-hover:scale-110"
@@ -454,7 +454,7 @@ export default function RightPanel({ setCurrentSection }) {
           </div>
         ) : (
           <div className="space-y-3">
-            {events.map((ev, i) => <EventRow key={ev.id} event={ev} index={i} />)}
+            {events.map((ev, i) => <EventRow key={ev.id} event={ev} index={i} setCurrentSection={setCurrentSection} />)}
           </div>
         )}
       </div>
@@ -464,7 +464,7 @@ export default function RightPanel({ setCurrentSection }) {
         <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <SectionHeader title="Artistas" onViewAll={() => setCurrentSection?.('artists')} />
           <div className="flex items-start gap-2 flex-wrap">
-            {artists.map((a, i) => <ArtistAvatar key={a.id} artist={a} index={i} />)}
+            {artists.map((a, i) => <ArtistAvatar key={a.id} artist={a} index={i} setCurrentSection={setCurrentSection} />)}
           </div>
         </div>
       )}
