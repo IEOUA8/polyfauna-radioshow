@@ -1,6 +1,6 @@
 // POLYFAUNA Service Worker — instalación, modo degradado y Web Push
 const APP_URL = self.location.origin;
-const CACHE_VERSION = 'polyfauna-v4';
+const CACHE_VERSION = 'polyfauna-v5';
 const APP_SHELL = `${CACHE_VERSION}-shell`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 const PRECACHE = [
@@ -48,7 +48,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (['script', 'style', 'font', 'image'].includes(request.destination) || url.pathname.startsWith('/icons/')) {
+  // Las imágenes editoriales pueden actualizarse conservando la misma URL.
+  // Servimos inmediatamente la copia local, pero siempre la revalidamos en
+  // segundo plano para que una PWA móvil no quede atrapada con una versión
+  // anterior. El cambio a v5 también descarta el runtime cache viejo.
+  if (request.destination === 'image' || url.pathname.startsWith('/icons/')) {
+    const refreshed = fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(RUNTIME).then(cache => cache.put(request, copy));
+      }
+      return response;
+    });
+
+    event.respondWith(
+      caches.match(request).then(cached => cached || refreshed)
+    );
+    event.waitUntil(refreshed.catch(() => undefined));
+    return;
+  }
+
+  if (['script', 'style', 'font'].includes(request.destination)) {
     event.respondWith(
       caches.match(request).then(cached => cached || fetch(request).then(response => {
         if (response.ok) {

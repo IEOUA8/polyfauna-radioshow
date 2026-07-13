@@ -120,7 +120,7 @@ function FigureBlock({ src, alt, caption }) {
   return (
     <figure className="my-6">
       {src ? (
-        <img src={src} alt={alt || caption || ''}
+        <img src={src} alt={alt || caption || ''} loading="lazy" decoding="async"
           className="w-full rounded-xl object-cover"
           style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
       ) : (
@@ -243,6 +243,7 @@ function ArticleDetail({ article, onBack }) {
       </button>
       <div className="relative aspect-video rounded-2xl overflow-hidden">
         <img src={coverOf(article)} alt={article.title}
+          loading="eager" fetchPriority="high" decoding="async"
           className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-5">
@@ -301,7 +302,7 @@ function InterviewDetail({ interview, onBack }) {
             style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
         ) : (
           <>
-            <img src={interview.image_url || IVTW_FALLBACK} alt={interview.title}
+            <img src={interview.image_url || IVTW_FALLBACK} alt={interview.title} loading="lazy" decoding="async"
               className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           </>
@@ -352,7 +353,7 @@ function ContentCard({ item, onClick, idx }) {
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
     >
       <div className="relative aspect-video overflow-hidden">
-        <img src={cover} alt={item.title}
+        <img src={cover} alt={item.title} loading="lazy" decoding="async"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute top-2 left-2 flex items-center gap-1.5">
