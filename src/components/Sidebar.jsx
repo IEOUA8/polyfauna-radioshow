@@ -20,7 +20,7 @@ const ALL_NAV = [
   { id: 'events',        label: 'Event Terminal',     icon: CalendarDays,      public: true  },
   { id: 'artists',       label: 'Artists & Labels',   icon: Disc3,             public: false },
   { id: 'organizers',    label: 'Colonia',            icon: Network,           public: false },
-  { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: false },
+  { id: 'blog',          label: 'Blog & Entrevistas', icon: FileText,          public: true  },
   { id: 'inbox',         label: 'Signal Inbox',       icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Ticket Vault',       icon: Ticket,            public: false },
   { id: 'settings',      label: 'Control Center',     icon: SlidersHorizontal, public: false },

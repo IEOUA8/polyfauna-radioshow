@@ -30,7 +30,7 @@ const SignalInbox           = lazy(lazyImport(() => import('@/components/SignalI
 const TicketVault           = lazy(lazyImport(() => import('@/components/TicketVault')));
 const ControlCenter         = lazy(lazyImport(() => import('@/components/ControlCenter')));
 
-const PUBLIC_SECTIONS  = ['radio-console', 'podcasts', 'events', 'artists', 'organizers'];
+const PUBLIC_SECTIONS  = ['radio-console', 'podcasts', 'events', 'artists', 'organizers', 'blog'];
 const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'organizers', 'blog', 'inbox', 'tickets', 'settings']);
 
 function SectionLoader() {

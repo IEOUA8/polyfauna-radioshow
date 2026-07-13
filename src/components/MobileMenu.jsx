@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { id: 'events',        label: 'Eventos',  icon: CalendarDays,      public: true  },
   { id: 'artists',       label: 'Artistas', icon: Disc3,             public: false },
   { id: 'organizers',    label: 'Colonia',  icon: Network,           public: false },
-  { id: 'blog',          label: 'Blog',     icon: FileText,          public: false },
+  { id: 'blog',          label: 'Blog',     icon: FileText,          public: true  },
   { id: 'inbox',         label: 'Mensajes', icon: MessageSquare,     public: false },
   { id: 'tickets',       label: 'Tickets',  icon: Ticket,            public: false },
   { id: 'settings',      label: 'Ajustes',  icon: SlidersHorizontal, public: false },
