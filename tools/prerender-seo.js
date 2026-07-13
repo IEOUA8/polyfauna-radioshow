@@ -50,12 +50,17 @@ function pageHtml(template, { title, description, canonical, image, type, schema
   let html = template.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'name', 'robots', 'index, follow, max-image-preview:large');
+  html = replaceMeta(html, 'property', 'og:site_name', 'POLYFAUNA');
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
   html = replaceMeta(html, 'property', 'og:url', canonical);
   html = replaceMeta(html, 'property', 'og:type', type);
+  html = replaceMeta(html, 'property', 'og:image:width', '1200');
+  html = replaceMeta(html, 'property', 'og:image:height', '630');
+  html = replaceMeta(html, 'name', 'twitter:card', 'summary_large_image');
   html = replaceMeta(html, 'property', 'og:image', image);
   html = replaceMeta(html, 'property', 'og:image:secure_url', image);
+  html = replaceMeta(html, 'property', 'og:image:type', /\.png(\?|$)/i.test(image) ? 'image/png' : 'image/jpeg');
   html = replaceMeta(html, 'property', 'og:image:alt', title);
   html = replaceMeta(html, 'name', 'twitter:title', title);
   html = replaceMeta(html, 'name', 'twitter:description', description);
@@ -80,8 +85,16 @@ async function main() {
   const events = await fetchRows('events', 'id,title,description,date,venue,city,image_url,price,lineup,status,tickets_total,tickets_sold');
   const artists = await fetchRows('artists', 'name,slug,type,bio,genres,image_url,social_links');
   const organizers = await fetchRows('organizers', 'name,slug,type,bio,city,image_url,social_links');
+  // Los artículos pueden no tener aún la columna slug si esta migración no
+  // corrió; se aísla para no tumbar el resto del prerender.
+  let articles = [];
+  try {
+    articles = await fetchRows('blog_articles', 'id,slug,title,excerpt,category,author,cover_url,published_at,created_at');
+  } catch (error) {
+    console.warn(`SEO prerender: artículos omitidos (${error.message})`);
+  }
 
-  if (events.length === 0 && artists.length === 0 && organizers.length === 0) {
+  if (events.length === 0 && artists.length === 0 && organizers.length === 0 && articles.length === 0) {
     console.log('SEO prerender: sin datos remotos, se conserva dist/index.html');
     return;
   }
@@ -148,7 +161,35 @@ async function main() {
     writePage(`organizadores/${organizer.slug}`, pageHtml(template, { title: `${organizer.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
   }
 
-  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores`);
+  for (const article of articles) {
+    if (!article.slug) continue;
+    const canonical = `${SITE_URL}/blog/${article.slug}`;
+    // Imagen social branded en JPG (og.jpg vive junto a las imágenes del
+    // artículo). Fallback a la portada o al cover por defecto.
+    const image = `${SITE_URL}/blog/${article.slug}/og.jpg`;
+    const published = article.published_at || article.created_at;
+    const description = article.excerpt
+      ? String(article.excerpt).slice(0, 300)
+      : `${article.title} — Archivo editorial POLYFAUNA.`;
+    const schema = {
+      '@context': 'https://schema.org', '@type': 'Article',
+      headline: article.title, description, image: [image],
+      ...(published ? { datePublished: published, dateModified: published } : {}),
+      author: { '@type': 'Organization', name: article.author || 'POLYFAUNA', url: `${SITE_URL}/` },
+      publisher: {
+        '@type': 'Organization', name: 'POLYFAUNA',
+        logo: { '@type': 'ImageObject', url: `${SITE_URL}/icons/og-cover.png` },
+      },
+      ...(article.category ? { articleSection: article.category } : {}),
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+      url: canonical,
+    };
+    writePage(`blog/${article.slug}`, pageHtml(template, {
+      title: `${article.title} — POLYFAUNA`, description, canonical, image, type: 'article', schema,
+    }));
+  }
+
+  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores · ${articles.filter(a => a.slug).length} artículos`);
 }
 
 main().catch(error => {

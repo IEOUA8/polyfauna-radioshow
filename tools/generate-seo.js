@@ -56,6 +56,7 @@ async function main() {
   let events = [];
   let artists = [];
   let organizers = [];
+  let articles = [];
   let remoteError = null;
   try {
     [events, artists, organizers] = await Promise.all([
@@ -66,6 +67,12 @@ async function main() {
   } catch (error) {
     remoteError = error;
     console.warn(`SEO sitemap: no se pudo consultar Supabase (${error.message})`);
+  }
+  // Artículos aparte: si la columna slug aún no existe, no debe tumbar todo.
+  try {
+    articles = await fetchRows('blog_articles', 'slug,published_at,created_at');
+  } catch (error) {
+    console.warn(`SEO sitemap: artículos omitidos (${error.message})`);
   }
 
   if (remoteError && fs.existsSync(sitemapPath)) {
@@ -84,6 +91,9 @@ async function main() {
   }
   for (const organizer of organizers) {
     if (organizer.slug) entries.push(urlEntry(`${SITE_URL}/organizadores/${organizer.slug}`, organizer.created_at, 'weekly', '0.7'));
+  }
+  for (const article of articles) {
+    if (article.slug) entries.push(urlEntry(`${SITE_URL}/blog/${article.slug}`, article.published_at || article.created_at, 'monthly', '0.6'));
   }
 
   fs.writeFileSync(sitemapPath,

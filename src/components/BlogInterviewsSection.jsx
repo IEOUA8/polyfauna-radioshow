@@ -1,9 +1,89 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CalendarDays, ExternalLink, FileText, Mic, Play, Video } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ExternalLink, FileText, Heart, Mic, Play, Share2, Video } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { useToast } from '@/components/ui/use-toast';
 import { CardSkeleton, EmptyState, ErrorState, LoadingSkeleton } from '@/components/SectionStates';
+
+const SITE_URL = 'https://www.polyfauna.com';
+const LIKED_KEY = 'pf_liked_articles_v1';
+
+function readLikedIds() {
+  try { return JSON.parse(localStorage.getItem(LIKED_KEY) || '[]'); } catch { return []; }
+}
+function writeLikedIds(ids) {
+  try { localStorage.setItem(LIKED_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
+}
+
+// Barra de acciones del artículo: corazón (like con contador, apto para
+// invitados vía RPC + guardia localStorage) y compartir (hoja nativa del SO
+// —WhatsApp, redes— con fallback a copiar el enlace).
+function ArticleActions({ article }) {
+  const { toast } = useToast();
+  const [liked, setLiked] = useState(() => readLikedIds().includes(article.id));
+  const [count, setCount] = useState(article.like_count || 0);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = article.slug ? `${SITE_URL}/blog/${article.slug}` : SITE_URL;
+
+  const toggleLike = async () => {
+    if (busy) return;
+    setBusy(true);
+    const next = !liked;
+    // Optimista.
+    setLiked(next);
+    setCount(c => Math.max(0, c + (next ? 1 : -1)));
+    const ids = readLikedIds().filter(id => id !== article.id);
+    writeLikedIds(next ? [...ids, article.id] : ids);
+    try {
+      const { data, error } = await supabase.rpc('toggle_article_like', { p_article_id: article.id, p_liked: next });
+      if (error) throw error;
+      if (typeof data === 'number') setCount(data);
+    } catch {
+      // Revertir si falla el servidor.
+      setLiked(!next);
+      setCount(c => Math.max(0, c + (next ? -1 : 1)));
+      writeLikedIds(next ? ids : [...ids, article.id]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const share = async () => {
+    const payload = { title: `${article.title} — POLYFAUNA`, text: article.excerpt || article.title, url: shareUrl };
+    try {
+      if (navigator.share) { await navigator.share(payload); return; }
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: 'Enlace copiado', description: 'Ya puedes pegarlo donde quieras compartirlo.' });
+    } catch { /* usuario canceló la hoja de compartir */ }
+  };
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <button type="button" onClick={toggleLike} aria-pressed={liked}
+        aria-label={liked ? 'Quitar me gusta' : 'Me gusta'}
+        className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
+        style={{
+          background: liked ? 'rgba(255,138,31,0.14)' : 'rgba(255,255,255,0.06)',
+          border: `1px solid ${liked ? 'rgba(255,138,31,0.4)' : 'rgba(255,255,255,0.12)'}`,
+          color: liked ? '#FF8A1F' : 'rgba(255,255,255,0.75)',
+        }}>
+        <Heart className="w-4 h-4" style={{ fill: liked ? '#FF8A1F' : 'transparent' }} />
+        {count > 0 && <span className="tabular-nums">{count}</span>}
+      </button>
+      <button type="button" onClick={share} aria-label="Compartir artículo"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' }}>
+        {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+        <span>{copied ? 'Copiado' : 'Compartir'}</span>
+      </button>
+    </div>
+  );
+}
 
 const BLOG_FALLBACK  = 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=600&auto=format&fit=crop';
 const IVTW_FALLBACK  = 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=600&auto=format&fit=crop';
@@ -179,6 +259,7 @@ function ArticleDetail({ article, onBack }) {
       {article.excerpt && (
         <p className="text-sm text-white/60 leading-relaxed font-medium">{article.excerpt}</p>
       )}
+      <ArticleActions article={article} />
       {blocks
         ? <ArticleBody blocks={blocks} />
         : article.content && (
@@ -361,6 +442,14 @@ export default function BlogInterviewsSection() {
     const match = interviews.find(i => i.id === interviewParam);
     if (match) openItem({ ...match, _type: 'interview' });
   }, [interviews]);
+
+  // Deep-link desde /blog/:slug (abre el artículo por slug, o por id de respaldo)
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get('article');
+    if (!param || !articles?.length) return;
+    const match = articles.find(a => a.slug === param || a.id === param);
+    if (match) openItem({ ...match, _type: 'article' });
+  }, [articles]);
 
   const goBack   = () => { setSelected(null); setSelectedType(null); };
 

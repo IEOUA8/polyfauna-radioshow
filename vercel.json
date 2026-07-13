@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/e/:eventId", "destination": "/e/:eventId/index.html" },
     { "source": "/artist/:slug", "destination": "/artist/:slug/index.html" },
+    { "source": "/blog/:slug", "destination": "/blog/:slug/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
