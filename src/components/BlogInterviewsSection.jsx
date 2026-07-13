@@ -241,7 +241,7 @@ function ArticleDetail({ article, onBack }) {
         className="flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors">
         <ArrowLeft className="w-4 h-4" /> Blog & Entrevistas
       </button>
-      <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 220 }}>
+      <div className="relative aspect-video rounded-2xl overflow-hidden">
         <img src={coverOf(article)} alt={article.title}
           className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
