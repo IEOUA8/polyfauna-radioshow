@@ -20,8 +20,9 @@ const BlogManager = () => {
   const [editingArticle, setEditingArticle] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
+    excerpt: '',
     content: '',
-    featured_image_url: '',
+    cover_url: '',
     category: '',
   });
 
@@ -96,8 +97,9 @@ const BlogManager = () => {
     setEditingArticle(article);
     setFormData({
       title: article.title,
+      excerpt: article.excerpt || '',
       content: article.content,
-      featured_image_url: article.featured_image_url || '',
+      cover_url: article.cover_url || article.featured_image_url || '',
       category: article.category || '',
     });
     setIsDialogOpen(true);
@@ -134,8 +136,9 @@ const BlogManager = () => {
     setEditingArticle(null);
     setFormData({
       title: '',
+      excerpt: '',
       content: '',
-      featured_image_url: '',
+      cover_url: '',
       category: '',
     });
   };
@@ -192,6 +195,16 @@ const BlogManager = () => {
                 />
               </div>
               <div>
+                <Label htmlFor="excerpt">Extracto</Label>
+                <textarea
+                  id="excerpt"
+                  value={formData.excerpt}
+                  onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                  className="w-full min-h-[70px] bg-background border border-border text-foreground rounded-md p-3"
+                  placeholder="Resumen breve que aparece bajo el título"
+                />
+              </div>
+              <div>
                 <Label htmlFor="content">Contenido</Label>
                 <textarea
                   id="content"
@@ -202,11 +215,11 @@ const BlogManager = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="featured_image_url">URL de imagen destacada</Label>
+                <Label htmlFor="cover_url">URL de imagen destacada</Label>
                 <Input
-                  id="featured_image_url"
-                  value={formData.featured_image_url}
-                  onChange={(e) => setFormData({ ...formData, featured_image_url: e.target.value })}
+                  id="cover_url"
+                  value={formData.cover_url}
+                  onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })}
                   className="bg-background border-border text-foreground"
                 />
               </div>
@@ -233,7 +246,9 @@ const BlogManager = () => {
               >
                 <div className="flex-1">
                   <h3 className="text-foreground font-semibold">{article.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-1">{article.content}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">
+                    {article.excerpt || (article.content_format === 'blocks' ? 'Artículo con contenido enriquecido' : article.content)}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button

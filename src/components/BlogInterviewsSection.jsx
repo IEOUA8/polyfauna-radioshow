@@ -21,9 +21,136 @@ function formatDate(str) {
   return new Date(str).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// La portada usó cover_url durante mucho tiempo pero la tabla real guarda
+// featured_image_url; aceptamos ambas para no romper datos viejos ni nuevos.
+function coverOf(item, fallback = BLOG_FALLBACK) {
+  return item.cover_url || item.featured_image_url || fallback;
+}
+
+// ── Cuerpo editorial rico (content_format === 'blocks') ───────────────────────
+// El contenido llega como un arreglo JSON de bloques tipados. Cada tipo se
+// pinta con su propio tratamiento tipográfico —capitular, cita, secciones,
+// la tabla de hábitats, figuras— honrando el diseño del archivo editorial
+// pero en una sola columna apta para el panel angosto de la app.
+
+const MONO = "'IBM Plex Mono', monospace";
+const DISPLAY = "'Jost', sans-serif";
+
+function FigureBlock({ src, alt, caption }) {
+  return (
+    <figure className="my-6">
+      {src ? (
+        <img src={src} alt={alt || caption || ''}
+          className="w-full rounded-xl object-cover"
+          style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
+      ) : (
+        <div className="rounded-xl flex items-end p-4" style={{
+          height: 200,
+          background: 'repeating-linear-gradient(135deg,rgba(255,255,255,0.05) 0 2px,transparent 2px 12px)',
+          border: '1px solid rgba(255,255,255,0.10)',
+        }}>
+          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+            [ imagen pendiente ]
+          </span>
+        </div>
+      )}
+      {caption && (
+        <figcaption className="mt-2" style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', color: 'rgba(255,255,255,0.32)' }}>
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+function ArticleBody({ blocks }) {
+  return (
+    <div className="space-y-1">
+      {blocks.map((b, i) => {
+        switch (b.type) {
+          case 'section':
+            return (
+              <div key={i} className="pt-2 pb-1" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
+                § {b.label}
+              </div>
+            );
+          case 'p':
+            return (
+              <p key={i} className="text-[15px] leading-[1.85]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty', marginTop: b.dropcap ? 4 : 12 }}>
+                {b.dropcap && (
+                  <span style={{ float: 'left', fontFamily: DISPLAY, fontWeight: 300, fontSize: 62, lineHeight: 0.8, color: '#ECECEC', margin: '4px 12px -4px 0' }}>
+                    {b.text.charAt(0)}
+                  </span>
+                )}
+                {b.dropcap ? b.text.slice(1) : b.text}
+              </p>
+            );
+          case 'pullquote':
+            return (
+              <blockquote key={i} className="my-6 pl-5"
+                style={{ borderLeft: '1px solid rgba(255,255,255,0.22)', fontFamily: DISPLAY, fontWeight: 300, fontSize: 26, lineHeight: 1.3, color: '#ECECEC', textWrap: 'balance' }}>
+                «{b.text}»
+              </blockquote>
+            );
+          case 'heading':
+            return (
+              <h2 key={i} className="mt-8 mb-1" style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 34, lineHeight: 1.05, color: '#ECECEC' }}>
+                {b.text}
+              </h2>
+            );
+          case 'lead':
+            return (
+              <p key={i} className="mb-4 text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {b.text}
+              </p>
+            );
+          case 'habitats':
+            return (
+              <div key={i} className="my-4">
+                {b.items.map((it, j) => (
+                  <div key={j} className="py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                      <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>{it.code}</span>
+                      <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 300, fontSize: 22, color: '#ECECEC' }}>{it.species}</span>
+                      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>· {it.city}</span>
+                    </div>
+                    <p className="mt-2 text-[14.5px] leading-[1.8]" style={{ color: 'rgba(255,255,255,0.68)', textWrap: 'pretty' }}>{it.text}</p>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }} />
+              </div>
+            );
+          case 'figure':
+            return <FigureBlock key={i} src={b.src} alt={b.alt} caption={b.caption} />;
+          case 'signoff':
+            return (
+              <div key={i} className="mt-8 pt-5 flex items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+                <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', lineHeight: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
+                  {b.text}
+                </span>
+              </div>
+            );
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+}
+
 // ── Blog article detail ───────────────────────────────────────────────────────
 
 function ArticleDetail({ article, onBack }) {
+  // content_format 'blocks' → cuerpo editorial estructurado. Cualquier otra
+  // cosa (o JSON inválido) cae al render de texto plano legado.
+  let blocks = null;
+  if (article.content_format === 'blocks' && article.content) {
+    try {
+      const parsed = JSON.parse(article.content);
+      if (Array.isArray(parsed)) blocks = parsed;
+    } catch { /* cae a texto plano */ }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }}
@@ -35,7 +162,7 @@ function ArticleDetail({ article, onBack }) {
         <ArrowLeft className="w-4 h-4" /> Blog & Entrevistas
       </button>
       <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 220 }}>
-        <img src={article.cover_url || BLOG_FALLBACK} alt={article.title}
+        <img src={coverOf(article)} alt={article.title}
           className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-5">
@@ -46,17 +173,19 @@ function ArticleDetail({ article, onBack }) {
             </span>
           )}
           <h1 className="text-xl font-black text-white leading-tight">{article.title}</h1>
-          <p className="text-xs text-white/50 mt-1.5">{formatDate(article.published_at)}{article.author ? ` · ${article.author}` : ''}</p>
+          <p className="text-xs text-white/50 mt-1.5">{formatDate(article.published_at || article.created_at)}{article.author ? ` · ${article.author}` : ''}</p>
         </div>
       </div>
       {article.excerpt && (
         <p className="text-sm text-white/60 leading-relaxed font-medium">{article.excerpt}</p>
       )}
-      {article.content && (
-        <div className="text-sm text-white/50 leading-relaxed space-y-3 whitespace-pre-wrap">
-          {article.content}
-        </div>
-      )}
+      {blocks
+        ? <ArticleBody blocks={blocks} />
+        : article.content && (
+            <div className="text-sm text-white/50 leading-relaxed space-y-3 whitespace-pre-wrap">
+              {article.content}
+            </div>
+          )}
       {article.external_url && (
         <a href={article.external_url} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-xl transition-all"
@@ -129,7 +258,7 @@ function ContentCard({ item, onClick, idx }) {
   const FormatIcon  = FORMAT_ICONS[item.format?.toLowerCase()] || (isInterview ? Mic : FileText);
   const tagColor    = isInterview ? '#D946EF' : (CATEGORY_COLORS[item.category] || 'rgba(255,255,255,0.9)');
   const tag         = isInterview ? (item.format || 'Entrevista') : item.category;
-  const cover       = item.cover_url || item.image_url || (isInterview ? IVTW_FALLBACK : BLOG_FALLBACK);
+  const cover       = item.cover_url || item.featured_image_url || item.image_url || (isInterview ? IVTW_FALLBACK : BLOG_FALLBACK);
 
   return (
     <motion.div
