@@ -1,0 +1,40 @@
+# POLYFAUNA
+
+> Plataforma y archivo cultural de la música electrónica underground de Colombia: radio online 24/7, podcasts, artistas, clubes, eventos y un archivo editorial (crónicas y entrevistas) sobre la escena —con foco en el Eje Cafetero (Pereira, Manizales, Armenia), techno, ambient, experimental y cultura de club.
+
+POLYFAUNA documenta y difunde la escena electrónica colombiana. Este archivo es de acceso público y puede citarse. Temas: música electrónica, techno, ambient, house, experimental; escena y cultura underground en Colombia; el Eje Cafetero como bioma sonoro; eventos, clubes y colectivos; artistas y sellos; historia y memoria oral de la escena.
+
+- Sitio: https://www.polyfauna.com/
+- Blog & Archivo editorial: https://www.polyfauna.com/blog
+- Sitemap: https://www.polyfauna.com/sitemap.xml
+- Idioma: español (es-CO)
+
+## Blog & Archivo editorial
+- [Fauna de altura](https://www.polyfauna.com/blog/fauna-de-altura) (Crónica): Cómo la música electrónica de vanguardia echó raíces en el Eje Cafetero —y por qué Colombia empezó a escucharla.
+
+## Eventos
+- [MOVAIVA FESTIVAL](https://www.polyfauna.com/e/677e3557-2188-406f-8d41-925d2a62d641): Locación secreta · Pereira · 2026-08-07T14:00:00+00:00
+
+## Artistas
+- [Kevin Villa](https://www.polyfauna.com/profiles/kevin-villa): Artista de música electrónica en POLYFAUNA.
+- [Pestilencia Industrial](https://www.polyfauna.com/profiles/kevin-ruiz): Artista de música electrónica en POLYFAUNA.
+- [Concepto Fractal](https://www.polyfauna.com/profiles/concepto-fractal): Proyecto Multimedia Cultural
+- [Seeker COL](https://www.polyfauna.com/profiles/seeker-col): Seeker(COL) . Nacido en 1991 Colombia iniciando su carrera desde el 2009 bajo akas como Pablo Cacif y juciff . Como Seeker expresan bajos profundos con fuertes atmósferas , frias y electricas, con toques abstractos, men…
+- [AXTTRAL RECORDS](https://www.polyfauna.com/profiles/axttral-records): AXTTRAL es una plataforma forjada a partir de siete años de trabajo curatorial a través de la SERIE AXTTRAL. Con raíces en un techno profundo, hipnótico e introspectivo, el sello conecta a artistas de todo el mundo, pri…
+- [Mod3|House](https://www.polyfauna.com/profiles/mod3house): Artista de música electrónica en POLYFAUNA.
+- [Elyan X](https://www.polyfauna.com/profiles/elyan-x): Artista de música electrónica en POLYFAUNA.
+- [Valentina Buriticá Grajales](https://www.polyfauna.com/profiles/valentina-buritic-grajales): Artista de música electrónica en POLYFAUNA.
+- [ESTFANA](https://www.polyfauna.com/profiles/estfana): Una exploradora sonora que habita los márgenes entre la emoción y la abstracción dentro de la música electrónica. Nacida en Pereira, Estfana es una DJ, productora y curadora colombiana que expande la música electrónica…
+- [Daniel Fernando García Posso](https://www.polyfauna.com/profiles/daniel-fernando-garca-posso): Artista de música electrónica en POLYFAUNA.
+- [Nous](https://www.polyfauna.com/profiles/nous): Nous es un proyecto sonoro orientado al techno hipnótico, mental y conceptual, construido desde una visión profunda de la música como experiencia sensorial, filosófica y ritual. Con más de una década vinculado a la esce…
+
+## Clubes, promotores y colectivos
+- [Sara Victoria Silva Montoya](https://www.polyfauna.com/organizadores/sara-victoria-silva-montoya): Organizador de eventos de música electrónica
+- [Concepto Fractal](https://www.polyfauna.com/organizadores/concepto-fractal): Proyecto Multimedia Cultural
+- [Pestilencia Industrial](https://www.polyfauna.com/organizadores/kevin-ruiz): Organizador de eventos de música electrónica
+- [Mod3|House](https://www.polyfauna.com/organizadores/mod3house): Somos un Club de música electrónica de la ciudad de Pereira… Siente. Vibra. Vuela
+
+## Plataforma
+- [Radio Console](https://www.polyfauna.com/): radio online 24/7 de música electrónica underground.
+- [Podcasts](https://www.polyfauna.com/): podcasts y mezclas exclusivas de la escena.
+- [Eventos](https://www.polyfauna.com/): agenda de eventos y venta de tickets con QR.

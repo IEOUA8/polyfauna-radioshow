@@ -1,182 +1,119 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
-import path from 'path';
+// Genera /llms.txt (formato llmstxt.org): un mapa curado y legible por máquinas
+// para que asistentes de IA (ChatGPT, Claude, Perplexity, Gemini…) descubran y
+// citen POLYFAUNA en búsquedas e investigación. Se alimenta de Supabase; si no
+// hay datos, escribe una versión base con la marca y las secciones clave.
 
-const CLEAN_CONTENT_REGEX = {
-  comments: /\/\*[\s\S]*?\*\/|\/\/.*$/gm,
-  templateLiterals: /`[\s\S]*?`/g,
-  strings: /'[^']*'|"[^"]*"/g,
-  jsxExpressions: /\{.*?\}/g,
-  htmlEntities: {
-    quot: /&quot;/g,
-    amp: /&amp;/g,
-    lt: /&lt;/g,
-    gt: /&gt;/g,
-    apos: /&apos;/g
+import fs from 'node:fs';
+import path from 'node:path';
+
+const SITE_URL = 'https://www.polyfauna.com';
+
+function loadLocalEnv() {
+  const envPath = path.join(process.cwd(), '.env');
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (match && !process.env[match[1]]) process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
   }
-};
-
-const EXTRACTION_REGEX = {
-  route: /<Route\s+[^>]*>/g,
-  path: /path=["']([^"']+)["']/,
-  element: /element=\{<(\w+)[^}]*\/?\s*>\}/,
-  helmet: /<Helmet[^>]*?>([\s\S]*?)<\/Helmet>/i,
-  helmetTest: /<Helmet[\s\S]*?<\/Helmet>/i,
-  title: /<title[^>]*?>\s*(.*?)\s*<\/title>/i,
-  description: /<meta\s+name=["']description["']\s+content=["'](.*?)["']/i
-};
-
-function cleanContent(content) {
-  return content
-    .replace(CLEAN_CONTENT_REGEX.comments, '')
-    .replace(CLEAN_CONTENT_REGEX.templateLiterals, '""')
-    .replace(CLEAN_CONTENT_REGEX.strings, '""');
 }
 
-function cleanText(text) {
-  if (!text) return text;
-  
-  return text
-    .replace(CLEAN_CONTENT_REGEX.jsxExpressions, '')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.quot, '"')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.amp, '&')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.lt, '<')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.gt, '>')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.apos, "'")
-    .trim();
+function clean(value, max = 220) {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
-function extractRoutes(appJsxPath) {
-  if (!fs.existsSync(appJsxPath)) return new Map();
-
+async function fetchRows(table, select) {
+  const baseUrl = process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!baseUrl || !anonKey) return [];
   try {
-    const content = fs.readFileSync(appJsxPath, 'utf8');
-    const routes = new Map();
-    const routeMatches = [...content.matchAll(EXTRACTION_REGEX.route)];
-    
-    for (const match of routeMatches) {
-      const routeTag = match[0];
-      const pathMatch = routeTag.match(EXTRACTION_REGEX.path);
-      const elementMatch = routeTag.match(EXTRACTION_REGEX.element);
-      const isIndex = routeTag.includes('index');
-      
-      if (elementMatch) {
-        const componentName = elementMatch[1];
-        let routePath;
-        
-        if (isIndex) {
-          routePath = '/';
-        } else if (pathMatch) {
-          routePath = pathMatch[1].startsWith('/') ? pathMatch[1] : `/${pathMatch[1]}`;
-        }
-        
-        routes.set(componentName, routePath);
-      }
-    }
-
-    return routes;
+    const response = await fetch(`${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
   } catch (error) {
-    return new Map();
+    console.warn(`llms.txt: ${table} omitido (${error.message})`);
+    return [];
   }
 }
 
-function findReactFiles(dir) {
-  return fs.readdirSync(dir).map(item => path.join(dir, item));
+function section(title, items) {
+  if (!items.length) return '';
+  return `\n## ${title}\n${items.join('\n')}\n`;
 }
 
-function extractHelmetData(content, filePath, routes) {
-  const cleanedContent = cleanContent(content);
-  
-  if (!EXTRACTION_REGEX.helmetTest.test(cleanedContent)) {
-    return null;
-  }
-  
-  const helmetMatch = content.match(EXTRACTION_REGEX.helmet);
-  if (!helmetMatch) return null;
-  
-  const helmetContent = helmetMatch[1];
-  const titleMatch = helmetContent.match(EXTRACTION_REGEX.title);
-  const descMatch = helmetContent.match(EXTRACTION_REGEX.description);
-  
-  const title = cleanText(titleMatch?.[1]);
-  const description = cleanText(descMatch?.[1]);
-  
-  const fileName = path.basename(filePath, path.extname(filePath));
-  const url = routes.length && routes.has(fileName) 
-    ? routes.get(fileName) 
-    : generateFallbackUrl(fileName);
-  
-  return {
-    url,
-    title: title || 'Untitled Page',
-    description: description || 'No description available'
-  };
-}
+async function main() {
+  loadLocalEnv();
 
-function generateFallbackUrl(fileName) {
-  const cleanName = fileName.replace(/Page$/, '').toLowerCase();
-  return cleanName === 'app' ? '/' : `/${cleanName}`;
-}
+  const [events, artists, organizers, articles] = await Promise.all([
+    fetchRows('events', 'id,title,description,date,venue,city'),
+    fetchRows('artists', 'name,slug,bio,genres'),
+    fetchRows('organizers', 'name,slug,bio,city'),
+    fetchRows('blog_articles', 'slug,title,excerpt,category,published_at,created_at'),
+  ]);
 
-function generateLlmsTxt(pages) {
-  const sortedPages = pages.sort((a, b) => a.title.localeCompare(b.title));
-  const pageEntries = sortedPages.map(page => 
-    `- [${page.title}](${page.url}): ${page.description}`
-  ).join('\n');
-  
-  return `## Pages\n${pageEntries}`;
-}
+  const header =
+`# POLYFAUNA
 
-function ensureDirectoryExists(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-}
+> Plataforma y archivo cultural de la música electrónica underground de Colombia: radio online 24/7, podcasts, artistas, clubes, eventos y un archivo editorial (crónicas y entrevistas) sobre la escena —con foco en el Eje Cafetero (Pereira, Manizales, Armenia), techno, ambient, experimental y cultura de club.
 
-function processPageFile(filePath, routes) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    return extractHelmetData(content, filePath, routes);
-  } catch (error) {
-    console.error(`❌ Error processing ${filePath}:`, error.message);
-    return null;
-  }
-}
+POLYFAUNA documenta y difunde la escena electrónica colombiana. Este archivo es de acceso público y puede citarse. Temas: música electrónica, techno, ambient, house, experimental; escena y cultura underground en Colombia; el Eje Cafetero como bioma sonoro; eventos, clubes y colectivos; artistas y sellos; historia y memoria oral de la escena.
 
-function main() {
-  const pagesDir = path.join(process.cwd(), 'src', 'pages');
-  const appJsxPath = path.join(process.cwd(), 'src', 'App.jsx');
+- Sitio: ${SITE_URL}/
+- Blog & Archivo editorial: ${SITE_URL}/blog
+- Sitemap: ${SITE_URL}/sitemap.xml
+- Idioma: español (es-CO)
+`;
 
-  let pages = [];
-  
-  if (!fs.existsSync(pagesDir)) {
-    pages.push(processPageFile(appJsxPath, []))
-    pages = pages.filter(Boolean);
-  } else {
-    const routes = extractRoutes(appJsxPath);
-    const reactFiles = findReactFiles(pagesDir);
+  const blog = section('Blog & Archivo editorial',
+    articles
+      .filter(a => a.slug)
+      .sort((a, b) => new Date(b.published_at || b.created_at || 0) - new Date(a.published_at || a.created_at || 0))
+      .map(a => `- [${clean(a.title, 120)}](${SITE_URL}/blog/${a.slug})${a.category ? ` (${clean(a.category, 40)})` : ''}: ${clean(a.excerpt || 'Artículo del archivo editorial POLYFAUNA.')}`),
+  );
 
-    pages = reactFiles
-      .map(filePath => processPageFile(filePath, routes))
-      .filter(Boolean);
-  }
+  const eventItems = section('Eventos',
+    events
+      .filter(e => e.id)
+      .map(e => `- [${clean(e.title, 120)}](${SITE_URL}/e/${e.id}): ${clean([e.venue, e.city, e.date].filter(Boolean).join(' · ') || e.description || 'Evento de música electrónica en Colombia.')}`),
+  );
 
-  if (pages.length === 0) {
-    console.error('❌ No pages with Helmet components found!');
-    process.exit(1);
-  }
+  const artistItems = section('Artistas',
+    artists
+      .filter(a => a.slug)
+      .map(a => `- [${clean(a.name, 120)}](${SITE_URL}/profiles/${a.slug}): ${clean(a.bio || (Array.isArray(a.genres) ? a.genres.join(', ') : a.genres) || 'Artista de música electrónica en POLYFAUNA.')}`),
+  );
 
+  const organizerItems = section('Clubes, promotores y colectivos',
+    organizers
+      .filter(o => o.slug)
+      .map(o => `- [${clean(o.name, 120)}](${SITE_URL}/organizadores/${o.slug}): ${clean(o.bio || [o.city, 'Organizador de eventos de música electrónica'].filter(Boolean).join(' · '))}`),
+  );
 
-  const llmsTxtContent = generateLlmsTxt(pages);
+  const platform = section('Plataforma',
+    [
+      `- [Radio Console](${SITE_URL}/): radio online 24/7 de música electrónica underground.`,
+      `- [Podcasts](${SITE_URL}/): podcasts y mezclas exclusivas de la escena.`,
+      `- [Eventos](${SITE_URL}/): agenda de eventos y venta de tickets con QR.`,
+    ],
+  );
+
+  const output = [header, blog, eventItems, artistItems, organizerItems, platform]
+    .filter(Boolean)
+    .join('')
+    .trimEnd() + '\n';
+
   const outputPath = path.join(process.cwd(), 'public', 'llms.txt');
-  
-  ensureDirectoryExists(path.dirname(outputPath));
-  fs.writeFileSync(outputPath, llmsTxtContent, 'utf8');
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, output, 'utf8');
+
+  console.log(`llms.txt: ${articles.filter(a => a.slug).length} artículos · ${events.filter(e => e.id).length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores`);
 }
 
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-
-if (isMainModule) {
-  main();
-}
+main().catch(error => {
+  console.error(`llms.txt generation failed: ${error.message}`);
+  // No rompe el build: el pipeline lo invoca con "|| true".
+});

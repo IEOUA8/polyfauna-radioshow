@@ -39,9 +39,26 @@ function urlEntry(location, lastModified, changefreq, priority) {
   return `  <url>\n    <loc>${xml(location)}</loc>${lastModified ? `\n    <lastmod>${xml(lastModified.slice(0, 10))}</lastmod>` : ''}\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
 }
 
+// Crawlers de IA/investigación a los que damos bienvenida explícita para que
+// POLYFAUNA aparezca en respuestas de ChatGPT, Claude, Perplexity, Gemini, etc.
+const AI_CRAWLERS = [
+  'GPTBot', 'OAI-SearchBot', 'ChatGPT-User',       // OpenAI
+  'ClaudeBot', 'Claude-Web', 'anthropic-ai',       // Anthropic
+  'PerplexityBot', 'Perplexity-User',              // Perplexity
+  'Google-Extended', 'Googlebot',                  // Google (Gemini / Search)
+  'Applebot-Extended', 'Applebot',                 // Apple
+  'Bingbot', 'CCBot', 'Amazonbot', 'Bytespider', 'DuckAssistBot', 'cohere-ai', 'Meta-ExternalAgent',
+];
+
 function writeRobots() {
+  const aiBlocks = AI_CRAWLERS.map(bot => `User-agent: ${bot}\nAllow: /`).join('\n\n');
   fs.writeFileSync(robotsPath,
-    `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+    `# POLYFAUNA — archivo abierto de la escena electrónica colombiana.\n` +
+    `# Buscadores y asistentes de IA pueden rastrear e indexar libremente.\n` +
+    `# Mapa curado para IA: ${SITE_URL}/llms.txt\n\n` +
+    `User-agent: *\nAllow: /\n\n` +
+    `${aiBlocks}\n\n` +
+    `Sitemap: ${SITE_URL}/sitemap.xml\nHost: ${SITE_URL}\n`);
 }
 
 function countSitemapUrls() {
@@ -83,6 +100,14 @@ async function main() {
 
   const today = new Date().toISOString();
   const entries = [urlEntry(`${SITE_URL}/`, today, 'daily', '1.0')];
+  // Índice del blog: solo si hay artículos publicados (la página /blog se
+  // prerenderiza en ese caso).
+  const latestArticle = articles
+    .filter(a => a.slug)
+    .map(a => a.published_at || a.created_at)
+    .sort()
+    .pop();
+  if (latestArticle) entries.push(urlEntry(`${SITE_URL}/blog`, latestArticle, 'weekly', '0.8'));
   for (const event of events) {
     if (event.id) entries.push(urlEntry(`${SITE_URL}/e/${event.id}`, event.created_at, 'weekly', '0.8'));
   }

@@ -6,6 +6,13 @@ import path from 'node:path';
 const SITE_URL = 'https://www.polyfauna.com';
 const DEFAULT_COVER = `${SITE_URL}/icons/og-cover.png`;
 
+// Palabras clave transversales de la marca: refuerzan el posicionamiento
+// temático (música electrónica, escena, archivo cultural) en cada artículo.
+const BASE_KEYWORDS = [
+  'música electrónica', 'techno', 'ambient', 'escena electrónica', 'cultura underground',
+  'Eje Cafetero', 'Colombia', 'eventos de música electrónica', 'archivo cultural', 'POLYFAUNA',
+];
+
 const SOCIAL_BUILDERS = {
   instagram:  (h) => `https://instagram.com/${h}`,
   twitter:    (h) => `https://x.com/${h}`,
@@ -29,6 +36,66 @@ function escapeHtml(value) {
   }[char]));
 }
 
+// ── Cuerpo rico (content_format='blocks') → texto/HTML para crawlers ──────────
+// El SPA pinta el artículo en cliente; los buscadores y —sobre todo— los
+// crawlers de IA (GPTBot, ClaudeBot, PerplexityBot…) leen el HTML crudo. Aquí
+// aplanamos los bloques a texto plano (para schema.org articleBody) y a HTML
+// semántico (para un <noscript> indexable). Así el contenido completo viaja en
+// la respuesta estática, no solo el título.
+function parseBlocks(content, contentFormat) {
+  if (contentFormat !== 'blocks' || !content) return null;
+  try {
+    const blocks = JSON.parse(content);
+    return Array.isArray(blocks) ? blocks : null;
+  } catch {
+    return null;
+  }
+}
+
+function blocksToPlainText(blocks) {
+  if (!blocks) return '';
+  const parts = [];
+  for (const b of blocks) {
+    switch (b.type) {
+      case 'section':   parts.push(`§ ${b.label || ''}`); break;
+      case 'heading':   parts.push(b.text); break;
+      case 'lead':      parts.push(b.text); break;
+      case 'p':         parts.push(b.text); break;
+      case 'pullquote': parts.push(`«${b.text}»`); break;
+      case 'stratum':   parts.push([b.marker, b.label, b.text, b.note].filter(Boolean).join(' — ')); break;
+      case 'habitats':  (b.items || []).forEach(it => parts.push(`${it.species} · ${it.city}: ${it.text}`)); break;
+      case 'figure':    if (b.caption) parts.push(b.caption); break;
+      case 'signoff':   parts.push(b.text); break;
+      default:          break;
+    }
+  }
+  return parts.filter(Boolean).join('\n\n');
+}
+
+function blocksToHtml(blocks) {
+  if (!blocks) return '';
+  const out = [];
+  for (const b of blocks) {
+    switch (b.type) {
+      case 'section':   out.push(`<h2>${escapeHtml(b.label)}</h2>`); break;
+      case 'heading':   out.push(`<h2>${escapeHtml(b.text)}</h2>`); break;
+      case 'lead':      out.push(`<p><em>${escapeHtml(b.text)}</em></p>`); break;
+      case 'p':         out.push(`<p>${escapeHtml(b.text)}</p>`); break;
+      case 'pullquote': out.push(`<blockquote>${escapeHtml(b.text)}</blockquote>`); break;
+      case 'stratum':   out.push(`<p><strong>${escapeHtml([b.marker, b.label].filter(Boolean).join(' '))}</strong> — ${escapeHtml(b.text)}${b.note ? ` <small>${escapeHtml(b.note)}</small>` : ''}</p>`); break;
+      case 'habitats':  (b.items || []).forEach(it => out.push(`<h3>${escapeHtml(it.species)} · ${escapeHtml(it.city)}</h3><p>${escapeHtml(it.text)}</p>`)); break;
+      case 'figure':    if (b.src) out.push(`<figure><img src="${escapeHtml(String(b.src).startsWith('http') ? b.src : SITE_URL + b.src)}" alt="${escapeHtml(b.alt || b.caption || '')}" loading="lazy" />${b.caption ? `<figcaption>${escapeHtml(b.caption)}</figcaption>` : ''}</figure>`); break;
+      case 'signoff':   out.push(`<footer>${escapeHtml(b.text)}</footer>`); break;
+      default:          break;
+    }
+  }
+  return out.join('\n');
+}
+
+function countWords(text) {
+  return text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+}
+
 async function fetchRows(table, select) {
   const baseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -46,10 +113,20 @@ function replaceMeta(html, attribute, key, content) {
   return pattern.test(html) ? html.replace(pattern, tag) : html.replace('</head>', `    ${tag}\n  </head>`);
 }
 
-function pageHtml(template, { title, description, canonical, image, type, schema }) {
+function appendHead(html, snippet) {
+  return html.replace('</head>', `    ${snippet}\n  </head>`);
+}
+
+function pageHtml(template, opts) {
+  const {
+    title, description, canonical, image, type, schema,
+    keywords, extraSchemas = [], noscriptBody, articleMeta,
+  } = opts;
+
   let html = template.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
   html = replaceMeta(html, 'name', 'description', description);
-  html = replaceMeta(html, 'name', 'robots', 'index, follow, max-image-preview:large');
+  if (keywords) html = replaceMeta(html, 'name', 'keywords', keywords);
+  html = replaceMeta(html, 'name', 'robots', 'index, follow, max-image-preview:large, max-snippet:-1');
   html = replaceMeta(html, 'property', 'og:site_name', 'POLYFAUNA');
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -66,7 +143,26 @@ function pageHtml(template, { title, description, canonical, image, type, schema
   html = replaceMeta(html, 'name', 'twitter:description', description);
   html = replaceMeta(html, 'name', 'twitter:image', image);
   html = html.replace(/<link rel="canonical"[^>]*>/i, `<link rel="canonical" href="${escapeHtml(canonical)}" data-react-helmet="true" />`);
-  html = html.replace('</head>', `    <script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>\n  </head>`);
+
+  // Metadatos específicos de artículo (Open Graph "article").
+  if (articleMeta) {
+    if (articleMeta.publishedTime) html = appendHead(html, `<meta property="article:published_time" content="${escapeHtml(articleMeta.publishedTime)}" data-react-helmet="true" />`);
+    if (articleMeta.modifiedTime)  html = appendHead(html, `<meta property="article:modified_time" content="${escapeHtml(articleMeta.modifiedTime)}" data-react-helmet="true" />`);
+    if (articleMeta.section)       html = appendHead(html, `<meta property="article:section" content="${escapeHtml(articleMeta.section)}" data-react-helmet="true" />`);
+    for (const tag of (articleMeta.tags || [])) html = appendHead(html, `<meta property="article:tag" content="${escapeHtml(tag)}" data-react-helmet="true" />`);
+  }
+
+  // JSON-LD principal + esquemas extra (breadcrumbs, etc.).
+  for (const s of [schema, ...extraSchemas]) {
+    html = html.replace('</head>', `    <script type="application/ld+json">${JSON.stringify(s).replace(/</g, '\\u003c')}</script>\n  </head>`);
+  }
+
+  // Contenido indexable sin JS: los crawlers de IA leen el HTML crudo. Va en
+  // <noscript> —fallback legítimo de una SPA, sin cloaking— justo tras <body>.
+  if (noscriptBody) {
+    html = html.replace(/(<body[^>]*>)/i, `$1\n    <noscript>\n${noscriptBody}\n    </noscript>`);
+  }
+
   return html;
 }
 
@@ -89,7 +185,7 @@ async function main() {
   // corrió; se aísla para no tumbar el resto del prerender.
   let articles = [];
   try {
-    articles = await fetchRows('blog_articles', 'id,slug,title,excerpt,category,author,cover_url,published_at,created_at');
+    articles = await fetchRows('blog_articles', 'id,slug,title,excerpt,category,author,cover_url,content,content_format,published_at,created_at');
   } catch (error) {
     console.warn(`SEO prerender: artículos omitidos (${error.message})`);
   }
@@ -161,8 +257,46 @@ async function main() {
     writePage(`organizadores/${organizer.slug}`, pageHtml(template, { title: `${organizer.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
   }
 
-  for (const article of articles) {
-    if (!article.slug) continue;
+  // ── Índice del Blog (/blog) ────────────────────────────────────────────────
+  const publishedArticles = articles
+    .filter(a => a.slug)
+    .sort((a, b) => new Date(b.published_at || b.created_at || 0) - new Date(a.published_at || a.created_at || 0));
+
+  if (publishedArticles.length > 0) {
+    const canonical = `${SITE_URL}/blog`;
+    const description = 'Crónicas, entrevistas y archivo cultural de la escena de música electrónica en Colombia: techno, ambient, eventos y cultura underground del Eje Cafetero, documentados por POLYFAUNA.';
+    const itemList = {
+      '@type': 'ItemList',
+      itemListElement: publishedArticles.map((a, i) => ({
+        '@type': 'ListItem', position: i + 1, url: `${SITE_URL}/blog/${a.slug}`, name: a.title,
+      })),
+    };
+    const schema = {
+      '@context': 'https://schema.org', '@type': 'Blog',
+      '@id': `${canonical}#blog`, name: 'Blog & Archivo editorial POLYFAUNA',
+      description, url: canonical, inLanguage: 'es-CO',
+      publisher: { '@type': 'Organization', name: 'POLYFAUNA', url: `${SITE_URL}/` },
+      mainEntity: itemList,
+    };
+    const breadcrumb = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Blog', item: canonical },
+      ],
+    };
+    const noscriptBody = `      <main><h1>Blog &amp; Archivo editorial POLYFAUNA</h1><p>${escapeHtml(description)}</p><ul>\n${
+      publishedArticles.map(a => `        <li><a href="${SITE_URL}/blog/${a.slug}">${escapeHtml(a.title)}</a>${a.excerpt ? ` — ${escapeHtml(String(a.excerpt))}` : ''}</li>`).join('\n')
+    }\n      </ul></main>`;
+    writePage('blog', pageHtml(template, {
+      title: 'Blog & Archivo editorial — POLYFAUNA',
+      description, canonical, image: DEFAULT_COVER, type: 'website',
+      keywords: [...new Set(['blog música electrónica', 'archivo cultural', 'crónica', 'entrevistas', ...BASE_KEYWORDS])].join(', '),
+      schema, extraSchemas: [breadcrumb], noscriptBody,
+    }));
+  }
+
+  for (const article of publishedArticles) {
     const canonical = `${SITE_URL}/blog/${article.slug}`;
     // Imagen social branded en JPG (og.jpg vive junto a las imágenes del
     // artículo). Fallback a la portada o al cover por defecto.
@@ -171,9 +305,15 @@ async function main() {
     const description = article.excerpt
       ? String(article.excerpt).slice(0, 300)
       : `${article.title} — Archivo editorial POLYFAUNA.`;
+
+    const blocks = parseBlocks(article.content, article.content_format);
+    const bodyText = blocksToPlainText(blocks) || String(article.content || '');
+    const bodyHtml = blocksToHtml(blocks);
+    const keywords = [...new Set([article.category, ...BASE_KEYWORDS].filter(Boolean))].join(', ');
+
     const schema = {
       '@context': 'https://schema.org', '@type': 'Article',
-      headline: article.title, description, image: [image],
+      headline: article.title, description, image: [image], inLanguage: 'es-CO',
       ...(published ? { datePublished: published, dateModified: published } : {}),
       author: { '@type': 'Organization', name: article.author || 'POLYFAUNA', url: `${SITE_URL}/` },
       publisher: {
@@ -181,15 +321,39 @@ async function main() {
         logo: { '@type': 'ImageObject', url: `${SITE_URL}/icons/og-cover.png` },
       },
       ...(article.category ? { articleSection: article.category } : {}),
+      keywords,
+      about: [
+        { '@type': 'Thing', name: 'Música electrónica' },
+        { '@type': 'Place', name: 'Eje Cafetero, Colombia' },
+      ],
+      ...(bodyText ? { articleBody: bodyText, wordCount: countWords(bodyText) } : {}),
+      isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/blog#blog`, name: 'Blog & Archivo editorial POLYFAUNA' },
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
       url: canonical,
     };
+    const breadcrumb = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog` },
+        { '@type': 'ListItem', position: 3, name: article.title, item: canonical },
+      ],
+    };
+    const noscriptBody = `      <main><article><h1>${escapeHtml(article.title)}</h1>${
+      article.excerpt ? `<p><em>${escapeHtml(String(article.excerpt))}</em></p>` : ''
+    }\n${bodyHtml || `<p>${escapeHtml(bodyText)}</p>`}\n      </article></main>`;
+
     writePage(`blog/${article.slug}`, pageHtml(template, {
-      title: `${article.title} — POLYFAUNA`, description, canonical, image, type: 'article', schema,
+      title: `${article.title} — POLYFAUNA`, description, canonical, image, type: 'article',
+      keywords, schema, extraSchemas: [breadcrumb], noscriptBody,
+      articleMeta: {
+        publishedTime: published, modifiedTime: published, section: article.category,
+        tags: [...new Set([article.category, ...BASE_KEYWORDS].filter(Boolean))],
+      },
     }));
   }
 
-  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores · ${articles.filter(a => a.slug).length} artículos`);
+  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores · ${publishedArticles.length} artículos${publishedArticles.length ? ' + índice /blog' : ''}`);
 }
 
 main().catch(error => {

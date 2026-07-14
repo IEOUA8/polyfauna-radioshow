@@ -111,6 +111,7 @@ function App() {
                   <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
                   <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
                   <Route path="/entrevistas/:interview" element={<InternalRouteRedirect section="blog" param="interview" />} />
+                  <Route path="/blog" element={<Navigate to="/?section=blog" replace />} />
                   <Route path="/blog/:slug" element={<InternalRouteRedirect section="blog" param="article" routeParam="slug" />} />
                   <Route path="/e/:event"   element={<InternalRouteRedirect section="events" param="event" />} />
                   <Route path="/dashboard" element={
