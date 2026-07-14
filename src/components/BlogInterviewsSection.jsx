@@ -115,27 +115,67 @@ function coverOf(item, fallback = BLOG_FALLBACK) {
 
 const MONO = "'IBM Plex Mono', monospace";
 const DISPLAY = "'Jost', sans-serif";
+const BODY = "'Inter', sans-serif";
+
+// Paleta editorial del «pliego de espécimen» Polyfauna (tomada del archivo
+// impreso): hoja casi negra, reglas tenues y una jerarquía de grises.
+const INK    = '#ECECEC'; // títulos / acento
+const TXT    = '#C9C9C9'; // cuerpo
+const TXT_HI = '#E4E4E4'; // párrafo de entrada (el de la capitular)
+const MUTED  = '#8C8C8C'; // etiquetas secundarias
+const FAINT  = '#5E5E5E'; // meta, folios y pies de figura
+const LINE   = '#1E1E1E'; // reglas y bordes
+const SHEET  = '#0A0A0A'; // fondo de hoja
+
+// Glifo Polyfauna (la criatura del archivo). Puramente decorativo.
+function PfGlyph({ size = 44, color = INK }) {
+  return (
+    <svg viewBox="0 0 240 240" width={size} height={size} aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
+      <g fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M112 100 Q104 64 92 36" /><path d="M129 100 Q140 64 150 38" />
+        <path d="M100 130 Q86 132 72 130" /><path d="M110 154 Q102 178 96 200" /><path d="M132 152 Q146 176 152 198" />
+      </g>
+      <path d="M120 98 C137 98 145 112 144 126 C143 144 136 156 120 156 C104 156 97 144 97 126 C97 112 103 98 120 98 Z" fill={color} />
+      <circle cx="129" cy="132" r="5" fill={SHEET} />
+      <g fill={color}>
+        <circle cx="92" cy="36" r="5.5" /><circle cx="150" cy="38" r="5.5" /><circle cx="72" cy="130" r="4.8" />
+        <circle cx="96" cy="200" r="5.5" /><circle cx="152" cy="198" r="5.5" />
+      </g>
+    </svg>
+  );
+}
+
+// Encabezado corrido de página: título del artículo + folio, con regla —el
+// gesto que convierte cada sección en una «página» del pliego.
+function RunningHeader({ title, folio, first }) {
+  return (
+    <div className="flex justify-between items-center gap-4"
+      style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.22em', textTransform: 'uppercase',
+               color: FAINT, borderBottom: `1px solid ${LINE}`, paddingBottom: 15, marginTop: first ? 0 : 54 }}>
+      <span className="truncate">{title}</span>
+      <span style={{ flex: 'none' }}>{String(folio).padStart(2, '0')}</span>
+    </div>
+  );
+}
 
 function FigureBlock({ src, alt, caption }) {
   return (
-    <figure className="my-9">
+    <figure className="my-8">
       {src ? (
         <img src={src} alt={alt || caption || ''} loading="lazy" decoding="async"
-          className="w-full rounded-xl object-cover"
-          style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
+          className="w-full object-cover" style={{ border: `1px solid ${LINE}` }} />
       ) : (
-        <div className="rounded-xl flex items-end p-4" style={{
-          height: 200,
-          background: 'repeating-linear-gradient(135deg,rgba(255,255,255,0.05) 0 2px,transparent 2px 12px)',
-          border: '1px solid rgba(255,255,255,0.10)',
+        <div className="flex items-end p-5" style={{
+          height: 220, border: `1px solid ${LINE}`, background: '#0C0C0C',
+          backgroundImage: 'repeating-linear-gradient(135deg,#141414 0 2px,transparent 2px 12px)',
         }}>
-          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: FAINT }}>
             [ imagen pendiente ]
           </span>
         </div>
       )}
       {caption && (
-        <figcaption className="mt-2" style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', color: 'rgba(255,255,255,0.32)' }}>
+        <figcaption className="mt-2.5" style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', color: FAINT }}>
           {caption}
         </figcaption>
       )}
@@ -143,90 +183,102 @@ function FigureBlock({ src, alt, caption }) {
   );
 }
 
-function ArticleBody({ blocks }) {
+function ArticleBody({ blocks, title }) {
+  // Cada 'section'/'heading' abre una nueva «página» del pliego → folio corrido
+  // (la portada es la 01). La primera abre sin salto superior.
+  let n = 1;
+  const folioOf = blocks.map(b => (b.type === 'section' || b.type === 'heading') ? ++n : null);
+  const firstBreak = folioOf.findIndex(f => f !== null);
+  // El primer párrafo de cada sección lleva capitular (como abre cada página
+  // del archivo impreso). Es puro tratamiento visual: no altera el texto.
+  const dropcapIdx = new Set();
+  blocks.forEach((b, k) => {
+    if (b.type !== 'section') return;
+    for (let m = k + 1; m < blocks.length; m++) {
+      if (blocks[m].type === 'p') { dropcapIdx.add(m); break; }
+      if (blocks[m].type !== 'section') break;
+    }
+  });
+
   return (
-    <div>
+    <div className="px-5 sm:px-8 pt-5 pb-9" style={{ border: `1px solid ${LINE}`, background: SHEET }}>
       {blocks.map((b, i) => {
         switch (b.type) {
           case 'section':
             return (
-              <div key={i} className="pt-10 pb-3" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
-                § {b.label}
+              <div key={i}>
+                <RunningHeader title={title} folio={folioOf[i]} first={i === firstBreak} />
+                <div className="pt-8 pb-3" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: MUTED }}>
+                  § {b.label}
+                </div>
               </div>
             );
-          case 'p':
+          case 'p': {
+            const drop = b.dropcap || dropcapIdx.has(i);
             return (
-              <p key={i} className="text-[15px] leading-[1.9]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty', marginTop: b.dropcap ? 6 : 20 }}>
-                {b.dropcap && (
-                  <span style={{ float: 'left', fontFamily: DISPLAY, fontWeight: 300, fontSize: 62, lineHeight: 0.8, color: '#ECECEC', margin: '4px 12px -4px 0' }}>
+              <p key={i} style={{ fontFamily: BODY, fontSize: drop ? 16.5 : 15.5, lineHeight: 1.85, color: drop ? TXT_HI : TXT, textWrap: 'pretty', marginTop: drop ? 6 : 20 }}>
+                {drop && (
+                  <span style={{ float: 'left', fontFamily: DISPLAY, fontWeight: 200, fontSize: 74, lineHeight: 0.72, color: INK, margin: '6px 14px -6px 0' }}>
                     {b.text.charAt(0)}
                   </span>
                 )}
-                {b.dropcap ? b.text.slice(1) : b.text}
+                {drop ? b.text.slice(1) : b.text}
               </p>
             );
+          }
           case 'pullquote':
             return (
-              <blockquote key={i} className="my-9 pl-5"
-                style={{ borderLeft: '1px solid rgba(255,255,255,0.22)', fontFamily: DISPLAY, fontWeight: 300, fontSize: 26, lineHeight: 1.35, color: '#ECECEC', textWrap: 'balance' }}>
-                «{b.text}»
+              <blockquote key={i} style={{ borderLeft: '1px solid #2A2A2A', paddingLeft: 26, margin: '40px 0', fontFamily: DISPLAY, fontWeight: 300, fontSize: 30, lineHeight: 1.3, color: INK, textWrap: 'balance' }}>
+                {/^\s*«/.test(b.text) ? b.text : `«${b.text}»`}
               </blockquote>
             );
           case 'heading':
             return (
-              <h2 key={i} className="mt-12 mb-2" style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 34, lineHeight: 1.1, color: '#ECECEC' }}>
-                {b.text}
-              </h2>
+              <div key={i}>
+                <RunningHeader title={title} folio={folioOf[i]} first={i === firstBreak} />
+                <h2 style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 40, lineHeight: 1.04, color: INK, marginTop: 34, marginBottom: 8 }}>
+                  {b.text}
+                </h2>
+              </div>
             );
           case 'lead':
             return (
-              <p key={i} className="mb-6 text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <p key={i} style={{ fontFamily: BODY, fontSize: 15, lineHeight: 1.65, color: MUTED, marginBottom: 22, maxWidth: '52ch' }}>
                 {b.text}
               </p>
             );
           case 'habitats':
             return (
-              <div key={i} className="my-7">
+              <div key={i} className="my-6">
                 {b.items.map((it, j) => (
-                  <div key={j} className="py-6" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                    <div className="flex items-baseline gap-2.5 flex-wrap">
-                      <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>{it.code}</span>
-                      <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 300, fontSize: 22, color: '#ECECEC' }}>{it.species}</span>
-                      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>· {it.city}</span>
+                  <div key={j} className="py-6 flex flex-col gap-3 sm:grid sm:gap-8 sm:items-start" style={{ borderTop: `1px solid ${LINE}`, gridTemplateColumns: '150px 1fr' }}>
+                    <div>
+                      <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.18em', textTransform: 'uppercase', color: FAINT }}>{it.code}</div>
+                      <div style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 300, fontSize: 27, color: INK, marginTop: 6 }}>{it.species}</div>
+                      <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: MUTED, marginTop: 6 }}>{it.city}</div>
                     </div>
-                    <p className="mt-3 text-[14.5px] leading-[1.85]" style={{ color: 'rgba(255,255,255,0.68)', textWrap: 'pretty' }}>{it.text}</p>
+                    <p style={{ fontFamily: BODY, fontSize: 15, lineHeight: 1.8, color: TXT, textWrap: 'pretty' }}>{it.text}</p>
                   </div>
                 ))}
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }} />
+                <div style={{ borderTop: `1px solid ${LINE}` }} />
               </div>
             );
           case 'stratum':
-            // Bloque de mención destacado: marcador grande (p. ej. ≈1999) +
-            // etiqueta, separado por una línea del texto, con una nota-fuente
-            // debajo del recuadro. Reproduce la marginalia del diseño impreso.
+            // Recuadro de mención: marcador grande (≈1999) + etiqueta, línea
+            // divisoria y texto; con nota-fuente debajo. En móvil se apila.
             return (
-              <div key={i} className="my-9">
-                <div className="rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-stretch gap-4 sm:gap-6"
-                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
-                  <div className="flex flex-col justify-center items-center shrink-0 text-center pb-4 sm:pb-0 sm:pr-6 border-b sm:border-b-0 sm:border-r"
-                    style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
-                    <span style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 44, lineHeight: 1, color: '#ECECEC', whiteSpace: 'nowrap' }}>
-                      {b.marker}
-                    </span>
+              <div key={i} className="my-8">
+                <div className="flex flex-col sm:flex-row sm:items-stretch gap-4 sm:gap-8" style={{ border: `1px solid ${LINE}`, padding: '26px 28px' }}>
+                  <div className="flex flex-col justify-center items-center shrink-0 text-center pb-4 sm:pb-0 sm:pr-8 border-b sm:border-b-0 sm:border-r" style={{ borderColor: LINE }}>
+                    <span style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 46, lineHeight: 1, color: INK, whiteSpace: 'nowrap' }}>{b.marker}</span>
                     {b.label && (
-                      <span className="mt-2" style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
-                        {b.label}
-                      </span>
+                      <span className="mt-2.5" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: FAINT }}>{b.label}</span>
                     )}
                   </div>
-                  <p className="self-center text-[14.5px] leading-[1.8]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty' }}>
-                    {b.text}
-                  </p>
+                  <p className="self-center" style={{ fontFamily: BODY, fontSize: 14.5, lineHeight: 1.78, color: TXT, textWrap: 'pretty' }}>{b.text}</p>
                 </div>
                 {b.note && (
-                  <div className="mt-2" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.08em', color: 'rgba(255,255,255,0.3)' }}>
-                    {b.note}
-                  </div>
+                  <div className="mt-2.5" style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', color: FAINT }}>{b.note}</div>
                 )}
               </div>
             );
@@ -234,8 +286,9 @@ function ArticleBody({ blocks }) {
             return <FigureBlock key={i} src={b.src} alt={b.alt} caption={b.caption} />;
           case 'signoff':
             return (
-              <div key={i} className="mt-12 pt-6 flex items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', lineHeight: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
+              <div key={i} className="mt-12 pt-8 flex items-center gap-5" style={{ borderTop: `1px solid ${LINE}` }}>
+                <PfGlyph size={44} />
+                <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.12em', lineHeight: 1.9, color: FAINT, textTransform: 'uppercase' }}>
                   {b.text}
                 </span>
               </div>
@@ -271,28 +324,62 @@ function ArticleDetail({ article, onBack }) {
         className="flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors">
         <ArrowLeft className="w-4 h-4" /> Blog & Entrevistas
       </button>
-      <div className="relative aspect-video rounded-2xl overflow-hidden">
-        <img src={coverOf(article)} alt={article.title}
-          loading="eager" fetchPriority="high" decoding="async"
-          className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          {article.category && (
-            <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded mb-2"
-              style={{ background: 'rgba(0,0,0,0.55)', color: CATEGORY_COLORS[article.category] || 'white' }}>
-              {article.category}
-            </span>
-          )}
-          <h1 className="text-xl font-black text-white leading-tight">{article.title}</h1>
-          <p className="text-xs text-white/50 mt-1.5">{formatDate(article.published_at || article.created_at)}{article.author ? ` · ${article.author}` : ''}</p>
+      {blocks ? (
+        // Portada editorial — pliego de espécimen Polyfauna.
+        <div style={{ border: `1px solid ${LINE}`, background: SHEET }}>
+          <div className="flex justify-between items-center gap-3" style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '.22em', textTransform: 'uppercase', color: FAINT, padding: '18px 20px 0' }}>
+            <span className="truncate">Polyfauna · Archivo editorial</span>
+            {article.category && <span style={{ flex: 'none', color: MUTED }}>{article.category}</span>}
+          </div>
+          <div style={{ padding: '26px 20px 0' }}>
+            <div className="flex items-center gap-3" style={{ marginBottom: 20 }}>
+              <PfGlyph size={38} />
+              {article.author && (
+                <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em', textTransform: 'uppercase', color: MUTED }}>{article.author}</span>
+              )}
+            </div>
+            <h1 style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 'clamp(46px, 13vw, 72px)', lineHeight: 0.95, letterSpacing: '.005em', color: INK }}>
+              {article.title}
+            </h1>
+            {article.excerpt && (
+              <p style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 18, lineHeight: 1.5, color: MUTED, maxWidth: '34ch', marginTop: 24, textWrap: 'pretty' }}>
+                {article.excerpt}
+              </p>
+            )}
+            <p style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: FAINT, marginTop: 20 }}>
+              {formatDate(article.published_at || article.created_at)}
+            </p>
+          </div>
+          <div className="relative aspect-video overflow-hidden" style={{ marginTop: 26, borderTop: `1px solid ${LINE}`, background: '#0C0C0C', backgroundImage: 'repeating-linear-gradient(135deg,#141414 0 2px,transparent 2px 12px)' }}>
+            <img src={coverOf(article)} alt={article.title}
+              loading="eager" fetchPriority="high" decoding="async"
+              className="absolute inset-0 w-full h-full object-cover" />
+          </div>
         </div>
-      </div>
-      {article.excerpt && (
+      ) : (
+        <div className="relative aspect-video rounded-2xl overflow-hidden">
+          <img src={coverOf(article)} alt={article.title}
+            loading="eager" fetchPriority="high" decoding="async"
+            className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            {article.category && (
+              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded mb-2"
+                style={{ background: 'rgba(0,0,0,0.55)', color: CATEGORY_COLORS[article.category] || 'white' }}>
+                {article.category}
+              </span>
+            )}
+            <h1 className="text-xl font-black text-white leading-tight">{article.title}</h1>
+            <p className="text-xs text-white/50 mt-1.5">{formatDate(article.published_at || article.created_at)}{article.author ? ` · ${article.author}` : ''}</p>
+          </div>
+        </div>
+      )}
+      {!blocks && article.excerpt && (
         <p className="text-sm text-white/60 leading-relaxed font-medium">{article.excerpt}</p>
       )}
       <ArticleActions article={article} />
       {blocks
-        ? <ArticleBody blocks={blocks} />
+        ? <ArticleBody blocks={blocks} title={article.title} />
         : article.content && (
             <div className="text-sm text-white/50 leading-relaxed space-y-3 whitespace-pre-wrap">
               {article.content}
