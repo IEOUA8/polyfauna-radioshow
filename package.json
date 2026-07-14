@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "vite --host :: --port 5173 --strictPort",
-    "build": "node tools/generate-llms.js || true && node tools/generate-seo.js || true && vite build && node tools/prerender-seo.js",
+    "build": "node tools/generate-llms.js || true && node tools/generate-seo.js || true && vite build && node tools/prerender-seo.js && node tools/indexnow-submit.js",
+    "seo:indexnow": "INDEXNOW_FORCE=1 node tools/indexnow-submit.js",
     "preview": "vite preview --host :: --port 5173 --strictPort",
     "lint": "eslint . --quiet",
     "test": "node --test tests/*.test.js",
