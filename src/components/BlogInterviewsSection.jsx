@@ -118,7 +118,7 @@ const DISPLAY = "'Jost', sans-serif";
 
 function FigureBlock({ src, alt, caption }) {
   return (
-    <figure className="my-6">
+    <figure className="my-9">
       {src ? (
         <img src={src} alt={alt || caption || ''} loading="lazy" decoding="async"
           className="w-full rounded-xl object-cover"
@@ -145,18 +145,18 @@ function FigureBlock({ src, alt, caption }) {
 
 function ArticleBody({ blocks }) {
   return (
-    <div className="space-y-1">
+    <div>
       {blocks.map((b, i) => {
         switch (b.type) {
           case 'section':
             return (
-              <div key={i} className="pt-2 pb-1" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
+              <div key={i} className="pt-10 pb-3" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
                 § {b.label}
               </div>
             );
           case 'p':
             return (
-              <p key={i} className="text-[15px] leading-[1.85]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty', marginTop: b.dropcap ? 4 : 12 }}>
+              <p key={i} className="text-[15px] leading-[1.9]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty', marginTop: b.dropcap ? 6 : 20 }}>
                 {b.dropcap && (
                   <span style={{ float: 'left', fontFamily: DISPLAY, fontWeight: 300, fontSize: 62, lineHeight: 0.8, color: '#ECECEC', margin: '4px 12px -4px 0' }}>
                     {b.text.charAt(0)}
@@ -167,34 +167,34 @@ function ArticleBody({ blocks }) {
             );
           case 'pullquote':
             return (
-              <blockquote key={i} className="my-6 pl-5"
-                style={{ borderLeft: '1px solid rgba(255,255,255,0.22)', fontFamily: DISPLAY, fontWeight: 300, fontSize: 26, lineHeight: 1.3, color: '#ECECEC', textWrap: 'balance' }}>
+              <blockquote key={i} className="my-9 pl-5"
+                style={{ borderLeft: '1px solid rgba(255,255,255,0.22)', fontFamily: DISPLAY, fontWeight: 300, fontSize: 26, lineHeight: 1.35, color: '#ECECEC', textWrap: 'balance' }}>
                 «{b.text}»
               </blockquote>
             );
           case 'heading':
             return (
-              <h2 key={i} className="mt-8 mb-1" style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 34, lineHeight: 1.05, color: '#ECECEC' }}>
+              <h2 key={i} className="mt-12 mb-2" style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 34, lineHeight: 1.1, color: '#ECECEC' }}>
                 {b.text}
               </h2>
             );
           case 'lead':
             return (
-              <p key={i} className="mb-4 text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <p key={i} className="mb-6 text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 {b.text}
               </p>
             );
           case 'habitats':
             return (
-              <div key={i} className="my-4">
+              <div key={i} className="my-7">
                 {b.items.map((it, j) => (
-                  <div key={j} className="py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+                  <div key={j} className="py-6" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                     <div className="flex items-baseline gap-2.5 flex-wrap">
                       <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>{it.code}</span>
                       <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 300, fontSize: 22, color: '#ECECEC' }}>{it.species}</span>
                       <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>· {it.city}</span>
                     </div>
-                    <p className="mt-2 text-[14.5px] leading-[1.8]" style={{ color: 'rgba(255,255,255,0.68)', textWrap: 'pretty' }}>{it.text}</p>
+                    <p className="mt-3 text-[14.5px] leading-[1.85]" style={{ color: 'rgba(255,255,255,0.68)', textWrap: 'pretty' }}>{it.text}</p>
                   </div>
                 ))}
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }} />
@@ -205,12 +205,12 @@ function ArticleBody({ blocks }) {
             // etiqueta, separado por una línea del texto, con una nota-fuente
             // debajo del recuadro. Reproduce la marginalia del diseño impreso.
             return (
-              <div key={i} className="my-6">
-                <div className="rounded-xl p-4 sm:p-5 flex items-stretch gap-4"
+              <div key={i} className="my-9">
+                <div className="rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-stretch gap-4 sm:gap-6"
                   style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
-                  <div className="flex flex-col justify-center items-center shrink-0 pr-4 text-center"
-                    style={{ borderRight: '1px solid rgba(255,255,255,0.12)' }}>
-                    <span style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 40, lineHeight: 1, color: '#ECECEC', whiteSpace: 'nowrap' }}>
+                  <div className="flex flex-col justify-center items-center shrink-0 text-center pb-4 sm:pb-0 sm:pr-6 border-b sm:border-b-0 sm:border-r"
+                    style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+                    <span style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 44, lineHeight: 1, color: '#ECECEC', whiteSpace: 'nowrap' }}>
                       {b.marker}
                     </span>
                     {b.label && (
@@ -219,7 +219,7 @@ function ArticleBody({ blocks }) {
                       </span>
                     )}
                   </div>
-                  <p className="self-center text-[14px] leading-[1.75]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty' }}>
+                  <p className="self-center text-[14.5px] leading-[1.8]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty' }}>
                     {b.text}
                   </p>
                 </div>
@@ -234,7 +234,7 @@ function ArticleBody({ blocks }) {
             return <FigureBlock key={i} src={b.src} alt={b.alt} caption={b.caption} />;
           case 'signoff':
             return (
-              <div key={i} className="mt-8 pt-5 flex items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+              <div key={i} className="mt-12 pt-6 flex items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                 <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', lineHeight: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
                   {b.text}
                 </span>
