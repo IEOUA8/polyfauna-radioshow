@@ -1,29 +1,21 @@
 -- ─────────────────────────────────────────────────────────────
--- SEED · Primer artículo editorial: «Fauna de altura»
+-- UPDATE · Reescritura editorial de «Fauna de altura»
 -- ─────────────────────────────────────────────────────────────
--- Espécimen textual N.º 01 del Archivo editorial Polyfauna.
--- content_format = 'blocks': el cuerpo es un arreglo JSON de bloques
--- que el lector rico (ArticleDetail) interpreta uno por uno.
---   · section   → marcador de sección  (§ Hábitat, § Porvenir)
---   · p         → párrafo (dropcap:true agrega la letra capitular)
---   · pullquote → cita destacada
---   · heading   → título grande dentro del cuerpo
---   · lead      → bajada/subtítulo del heading
---   · habitats  → lista de las tres ciudades (especie/ciudad/reseña)
---   · figure    → imagen + pie (src null = placeholder hasta subirla)
---   · signoff   → firma de cierre del archivo
--- cover_url y las figuras van en null: las imágenes se suben al bucket
--- blog-images en un paso posterior y se rellenan con un UPDATE.
+-- Actualiza SOLO el texto (excerpt + bloques de content) del primer
+-- artículo, conservando la misma estructura de bloques y las mismas
+-- imágenes (cover_url y los src de las dos figuras webp no se tocan).
+-- Cambios respecto al seed original:
+--   · Párrafos de § Hábitat ampliados.
+--   · Nueva sección § Raíz (radio, casete y camino de finca, ≈1999)
+--     cerrada con una firma «Memoria oral».
+--   · Bloque de clubes (Garden Underground, Tunnel, Kowel, Hangar
+--     Nuclear, Marte Electronic Room, Transition…) y hábitats ampliados.
+--   · § Porvenir reescrito.
+-- Se localiza por slug (estable) para no depender del id.
 
-INSERT INTO public.blog_articles (title, excerpt, category, author, cover_url, content_format, content)
-SELECT
-  'Fauna de altura',
-  'Cómo la música electrónica de vanguardia echó raíces en el Eje Cafetero —y por qué Colombia empezó a escucharla.',
-  'Crónica',
-  'Polyfauna Editorial',
-  '/blog/fauna-de-altura/portada.webp',
-  'blocks',
-  $json$[
+UPDATE public.blog_articles
+   SET excerpt = 'Cómo la música electrónica de vanguardia echó raíces en el Eje Cafetero —y por qué Colombia empezó a escucharla.',
+       content = $json$[
     { "type": "section", "label": "Hábitat" },
     { "type": "p", "dropcap": true, "text": "Durante casi un siglo, estas montañas se midieron en cargas de café. El grano bajaba por las laderas, cruzaba el mundo y volvía convertido en prestigio. Hoy, en las mismas colinas, algo distinto sube: un pulso grave y constante que no aparece en ningún mapa turístico. El Eje Cafetero aprendió a sonar." },
     { "type": "p", "text": "Lo que hoy llamamos escena no nació de un plan. Nació de la necesidad de un puñado de personas que querían escuchar —y bailar— algo que las emisoras no ponían. Desde finales de los noventa y durante los primeros años del nuevo siglo, la música llegaba en discos, casetes, archivos compartidos y relatos de quienes viajaban a Bogotá, Medellín o Cali. Empezó como casi todo lo vivo: en los márgenes. Fiestas privadas, bodegas, fincas, sistemas de sonido prestados y carteles que circulaban de mano en mano antes que por una pantalla." },
@@ -57,6 +49,4 @@ SELECT
     { "type": "p", "text": "Polyfauna existe para eso: para registrar cada espécimen antes de que el ruido lo borre. Porque una escena, como un bioma, solo sobrevive si alguien se toma el trabajo de nombrarla." },
     { "type": "signoff", "text": "Archivo editorial Polyfauna · Espécimen textual N.º 01 · Escrito en el Eje Cafetero, Colombia · 2026" }
   ]$json$
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.blog_articles WHERE title = 'Fauna de altura'
-);
+ WHERE slug = 'fauna-de-altura';

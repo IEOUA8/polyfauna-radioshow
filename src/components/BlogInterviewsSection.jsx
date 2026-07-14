@@ -200,6 +200,36 @@ function ArticleBody({ blocks }) {
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }} />
               </div>
             );
+          case 'stratum':
+            // Bloque de mención destacado: marcador grande (p. ej. ≈1999) +
+            // etiqueta, separado por una línea del texto, con una nota-fuente
+            // debajo del recuadro. Reproduce la marginalia del diseño impreso.
+            return (
+              <div key={i} className="my-6">
+                <div className="rounded-xl p-4 sm:p-5 flex items-stretch gap-4"
+                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div className="flex flex-col justify-center items-center shrink-0 pr-4 text-center"
+                    style={{ borderRight: '1px solid rgba(255,255,255,0.12)' }}>
+                    <span style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: 40, lineHeight: 1, color: '#ECECEC', whiteSpace: 'nowrap' }}>
+                      {b.marker}
+                    </span>
+                    {b.label && (
+                      <span className="mt-2" style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
+                        {b.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className="self-center text-[14px] leading-[1.75]" style={{ color: 'rgba(255,255,255,0.72)', textWrap: 'pretty' }}>
+                    {b.text}
+                  </p>
+                </div>
+                {b.note && (
+                  <div className="mt-2" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.08em', color: 'rgba(255,255,255,0.3)' }}>
+                    {b.note}
+                  </div>
+                )}
+              </div>
+            );
           case 'figure':
             return <FigureBlock key={i} src={b.src} alt={b.alt} caption={b.caption} />;
           case 'signoff':
