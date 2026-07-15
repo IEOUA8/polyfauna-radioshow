@@ -69,6 +69,11 @@ test('guardar el evento informa los campos Early pendientes en vez de bloquear e
   assert.match(eventManager, /Al guardar verás el detalle del campo pendiente/);
 });
 
+test('el recargo Early acepta valores redondos en miles de pesos', () => {
+  assert.match(eventManager, /placeholder="10000" min="1000" step="1000"/);
+  assert.doesNotMatch(eventManager, /min="1" step="1000"/);
+});
+
 test('el correo Early explica hora límite, recargo y estado del QR', () => {
   assert.match(ticketEmailRules, /timeZone: 'America\/Bogota'/);
   assert.match(ticketEmailRules, /Regla de ingreso Early/);

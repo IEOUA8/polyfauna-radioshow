@@ -980,7 +980,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                                 <Input type="number" value={ticket.late_entry_fee || ''}
                                   onChange={(e) => updateTicketType(index, 'late_entry_fee', e.target.value)}
                                   className="bg-background border-border text-foreground mt-1"
-                                  placeholder="10000" min="1" step="1000"
+                                  placeholder="10000" min="1000" step="1000"
                                   aria-label="Recargo ingreso Early" required />
                               </div>
                             </div>
