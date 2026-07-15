@@ -49,7 +49,7 @@ test('el edge function void-ticket traduce errores conocidos y expone el total a
 test('el edge function transfer-ticket envía la plantilla correcta según pending y notifica in-app', () => {
   assert.match(transferFunction, /transfer_ticket/);
   assert.match(transferFunction, /courtesyPendingActivation/);
-  assert.match(transferFunction, /ticketPurchased/);
+  assert.match(transferFunction, /renderTicketPurchasedEmail/);
   assert.match(transferFunction, /create_notification/);
   assert.match(transferFunction, /action_section: 'tickets'|p_action_section: 'tickets'/);
 });

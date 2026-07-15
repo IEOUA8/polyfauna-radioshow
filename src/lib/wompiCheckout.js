@@ -38,6 +38,7 @@ export function buildWompiCheckoutUrl(paymentData, origin = globalThis.location?
     ['amount-in-cents', normalizeAmount(paymentData?.amount_in_cents)],
     ['reference', requireString(paymentData?.reference, 'reference')],
     ['signature:integrity', requireString(paymentData?.signature, 'signature')],
+    ['expiration-time', requireString(paymentData?.expiration_time, 'expiration_time')],
   ];
 
   const redirectUrl = redirectUrlForOrigin(origin);

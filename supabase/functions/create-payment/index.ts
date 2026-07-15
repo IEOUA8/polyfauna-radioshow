@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     // Obtener evento y sus tipos de entrada
     const { data: event, error: evErr } = await supabase
       .from('events')
-      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, date, status')
+      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, date, ends_at, status')
       .eq('id', event_id)
       .single();
 
@@ -104,6 +104,17 @@ Deno.serve(async (req) => {
     const tierCapacity = Number(tier.capacity);
     if (!Number.isFinite(tierPrice) || tierPrice < 0 || !Number.isInteger(tierCapacity) || tierCapacity < 1)
       return new Response(JSON.stringify({ error: 'Configuración de entrada inválida' }), { status: 500, headers: CORS });
+
+    const salesEndAt = typeof tier.sales_end_at === 'string' && tier.sales_end_at
+      ? new Date(tier.sales_end_at)
+      : new Date(event.date);
+    if (!Number.isFinite(salesEndAt.getTime()))
+      return new Response(JSON.stringify({ error: 'La entrada no tiene un límite de venta válido' }), { status: 500, headers: CORS });
+    if (Date.now() > salesEndAt.getTime())
+      return new Response(
+        JSON.stringify({ error: 'La venta digital de esta entrada ya finalizó. Consulta disponibilidad en la puerta del evento.', code: 'TICKET_SALES_CLOSED' }),
+        { status: 400, headers: CORS },
+      );
 
     const sold  = event.tickets_sold ?? 0;
     const total = event.tickets_total ?? 0;
@@ -199,7 +210,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Error creando transacción' }), { status: 500, headers: CORS });
     }
 
-    const signature = await sha256hex(`${reference}${amount_in_cents}COP${INTEGRITY_KEY}`);
+    // Wompi exige que expiration-time también forme parte de la firma. Así un
+    // checkout creado antes del cierre no puede completarse después del límite.
+    const expiration_time = salesEndAt.toISOString();
+    const signature = await sha256hex(`${reference}${amount_in_cents}COP${expiration_time}${INTEGRITY_KEY}`);
 
     return new Response(
       JSON.stringify({
@@ -207,6 +221,7 @@ Deno.serve(async (req) => {
         amount_in_cents,
         currency:    'COP',
         signature,
+        expiration_time,
         public_key:  PUBLIC_KEY,
         event_title: event.title,
         ticket_type: tierName,

@@ -8,15 +8,18 @@ import { downloadEventPack, getOfflineScannerState, syncOfflineScans, validateTi
 import { useAuth } from '@/contexts/AuthContext';
 
 /* ── Pantalla de resultado fullscreen ── */
-function ResultScreen({ result, onScanNext }) {
+function ResultScreen({ result, onScanNext, onApproveEarly, approvingEarly, online }) {
   const isValid = result.code === 'VALID';
   const isUsed  = result.code === 'ALREADY_USED';
+  const isEarlyLate = result.code === 'EARLY_ENTRY_WINDOW_EXPIRED';
 
   const bg    = isValid
     ? 'radial-gradient(circle at 50% 30%, #4ade80 0%, #16a34a 42%, #052e16 100%)'
-    : '#150505';
-  const color = isValid ? '#ffffff' : '#ef4444';
-  const Icon  = isValid ? CheckCircle : XCircle;
+    : isEarlyLate
+      ? 'radial-gradient(circle at 50% 30%, #92400e 0%, #451a03 48%, #140b03 100%)'
+      : '#150505';
+  const color = isValid ? '#ffffff' : isEarlyLate ? '#fbbf24' : '#ef4444';
+  const Icon  = isValid ? CheckCircle : isEarlyLate ? AlertTriangle : XCircle;
 
   return (
     <motion.div
@@ -37,7 +40,13 @@ function ResultScreen({ result, onScanNext }) {
 
       <div>
         <p className="text-2xl font-black text-white">
-          {isValid ? (result.offline ? 'Acceso offline registrado' : '¡Acceso autorizado!') : isUsed ? 'Ticket ya usado' : 'Ticket inválido'}
+          {isValid
+            ? (result.offline ? 'Acceso offline registrado' : '¡Acceso autorizado!')
+            : isUsed
+              ? 'Ticket ya usado'
+              : isEarlyLate
+                ? 'Early fuera de horario'
+                : 'Ticket inválido'}
         </p>
         {result.event_title && (
           <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -72,9 +81,29 @@ function ResultScreen({ result, onScanNext }) {
           </p>
         )}
         {!isValid && (
-          <p className="text-xs mt-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {result.error}
-          </p>
+          <>
+            <p className="text-xs mt-3" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              {result.error}
+            </p>
+            {isEarlyLate && (
+              <div className="mt-4 rounded-2xl px-6 py-4" style={{ background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(251,191,36,0.38)' }}>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#fbbf24' }}>Recargo requerido</p>
+                <p className="text-3xl font-black text-white mt-1">
+                  ${Number(result.late_entry_fee || 0).toLocaleString('es-CO')} COP
+                </p>
+                <p className="text-[11px] text-white/50 mt-1">No se consumió el ticket. Cobra el recargo antes de autorizar el ingreso.</p>
+                <button
+                  type="button"
+                  onClick={() => onApproveEarly(result)}
+                  disabled={!online || approvingEarly}
+                  className="w-full mt-4 py-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 disabled:opacity-45"
+                  style={{ background: '#fbbf24', color: '#271500' }}
+                >
+                  {approvingEarly ? <><Loader2 className="w-4 h-4 animate-spin" /> Registrando…</> : online ? 'Recargo cobrado · Autorizar ingreso' : 'Reconéctate para registrar el cobro'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -243,6 +272,7 @@ export default function ValidatePage() {
   const [online, setOnline] = useState(() => navigator.onLine);
   const [offlineState, setOfflineState] = useState({ ready: false, pending: 0, ticketCount: 0, cachedAt: null });
   const [offlineBusy, setOfflineBusy] = useState(false);
+  const [approvingEarly, setApprovingEarly] = useState(false);
 
   const refreshOfflineState = useCallback(async () => {
     setOfflineState(await getOfflineScannerState(eventId));
@@ -335,6 +365,21 @@ export default function ValidatePage() {
   const handleDetected = useCallback((rawText) => {
     handleValidate(rawText);
   }, [handleValidate]);
+
+  const handleApproveEarly = useCallback(async (lateResult) => {
+    if (!navigator.onLine || approvingEarly) return;
+    setApprovingEarly(true);
+    const { data, error } = await supabase.rpc('admit_early_ticket_with_surcharge', {
+      p_ticket_id: lateResult.ticket_id,
+      p_event_id: lateResult.event_id || eventId,
+    });
+    if (error || !data?.success) {
+      setResult({ ...lateResult, error: error?.message || data?.error || 'No se pudo registrar el recargo' });
+    } else {
+      setResult(data);
+    }
+    setApprovingEarly(false);
+  }, [approvingEarly, eventId]);
 
   const handleScanNext = () => {
     setResult(null);
@@ -432,7 +477,14 @@ export default function ValidatePage() {
         )}
         <AnimatePresence mode="wait">
           {phase === 'result' && result ? (
-            <ResultScreen key="result" result={result} onScanNext={handleScanNext} />
+            <ResultScreen
+              key="result"
+              result={result}
+              onScanNext={handleScanNext}
+              onApproveEarly={handleApproveEarly}
+              approvingEarly={approvingEarly}
+              online={online}
+            />
           ) : (
             <motion.div
               key={`scanner-${scanKey}`}

@@ -80,7 +80,7 @@ test('checkout de pago conserva límites y referencias firmadas', () => {
   assert.match(createPayment, /quantity debe estar entre 1 y/);
   assert.match(createPayment, /count_user_event_tickets/);
   assert.match(createPayment, /checkout pendiente/);
-  assert.match(createPayment, /sha256hex\(`\$\{reference\}\$\{amount_in_cents\}COP\$\{INTEGRITY_KEY\}`\)/);
+  assert.match(createPayment, /sha256hex\(`\$\{reference\}\$\{amount_in_cents\}COP\$\{expiration_time\}\$\{INTEGRITY_KEY\}`\)/);
   assert.doesNotMatch(createPayment, /detail: txErr\.message/);
 });
 
@@ -103,6 +103,7 @@ test('checkout Wompi se construye solo contra el dominio oficial', () => {
     amount_in_cents: 12000000,
     reference: 'evt/abc 123',
     signature: 'abc123signature',
+    expiration_time: '2026-07-20T02:00:00.000Z',
   }, 'https://www.polyfauna.com');
 
   const url = new URL(checkoutUrl);
@@ -112,6 +113,7 @@ test('checkout Wompi se construye solo contra el dominio oficial', () => {
   assert.equal(url.searchParams.get('currency'), 'COP');
   assert.equal(url.searchParams.get('amount-in-cents'), '12000000');
   assert.equal(url.searchParams.get('reference'), 'evt/abc 123');
+  assert.equal(url.searchParams.get('expiration-time'), '2026-07-20T02:00:00.000Z');
   assert.equal(url.searchParams.get('redirect-url'), 'https://www.polyfauna.com/');
 });
 
@@ -121,6 +123,7 @@ test('checkout Wompi no envía redirect local y rechaza montos inválidos', () =
     amount_in_cents: 1000,
     reference: 'local-ref',
     signature: 'local-signature',
+    expiration_time: '2026-07-20T02:00:00.000Z',
   }, 'http://127.0.0.1:3000');
 
   assert.equal(new URL(localCheckoutUrl).searchParams.has('redirect-url'), false);
@@ -154,7 +157,7 @@ test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', (
   assert.match(claimFreeTicketFunction, /Number\(tier\.price\) !== 0/);
   assert.match(claimFreeTicketFunction, /rpc\('purchase_ticket'/);
   assert.match(claimFreeTicketFunction, /confirmation_email_sent_at: claimedAt/);
-  assert.match(claimFreeTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
+  assert.match(claimFreeTicketFunction, /renderTicketPurchasedEmail/);
   assert.match(eventTerminal, /claimFreeTicket\(\{/);
   assert.match(eventTerminal, /!isFree/);
   assert.match(claimFreeTicketFunction, /Las cortesías solo pueden ser emitidas por el organizador/);
@@ -220,7 +223,7 @@ test('organizadores administran asistentes y emiten transferencias manuales audi
   assert.match(organizerOperations, /TO service_role/);
   assert.match(manualTicketFunction, /issue_manual_transfer_ticket/);
   assert.match(manualTicketFunction, /signTicketToken/);
-  assert.match(manualTicketFunction, /renderEmailTemplate\('ticketPurchased'/);
+  assert.match(manualTicketFunction, /renderTicketPurchasedEmail/);
   assert.match(adminDashboard, /Generar ticket manual/);
 });
 

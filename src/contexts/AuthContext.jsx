@@ -247,30 +247,39 @@ export const AuthProvider = ({ children }) => {
     try {
       const requestedRole = role === 'collective' ? 'promoter' : role;
       const organizerType = role === 'collective' ? 'collective' : role === 'promoter' ? 'promoter' : role === 'club' ? 'club' : null;
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, requested_role: requestedRole, organizer_type: organizerType },
-          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/?verified=1` : undefined,
-        },
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name, requested_role: requestedRole, organizer_type: organizerType },
+            emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/?verified=1` : undefined,
+          },
+        }),
+        20000,
+        'El registro tardó demasiado. Revisa tu correo antes de volver a intentarlo.'
+      );
       if (error) throw error;
 
       // The database trigger creates the request even when email confirmation
       // means Supabase has not issued a session yet. The function verifies the
       // fresh signup against the auth user before sending either notification.
       if (role !== 'citizen' && data?.user?.id) {
-        const { error: notificationError } = await supabase.functions.invoke('send-role-request', {
+        // La solicitud ya quedó guardada por el trigger de base de datos. El
+        // correo es secundario y no debe retener al usuario en el formulario
+        // si Resend o la Edge Function están lentos.
+        supabase.functions.invoke('send-role-request', {
           body: { userId: data.user.id, email },
-        });
-        if (notificationError) {
+        }).then(({ error: notificationError }) => {
+          if (!notificationError) return;
           console.error('Role request notification could not be sent:', notificationError);
           toast({
             title: 'Solicitud registrada',
             description: 'La notificación será reintentada cuando inicies sesión.',
           });
-        }
+        }).catch((notificationError) => {
+          console.error('Role request notification could not be sent:', notificationError);
+        });
       }
 
       // Send welcome email

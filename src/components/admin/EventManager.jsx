@@ -22,7 +22,37 @@ const EMPTY = {
 
 const TICKET_TYPES = ['General', 'VIP', 'Early', 'Anytime', 'Gratis'];
 const FREE_TICKET_TYPES = new Set(['Gratis']);
-const DEFAULT_TICKET_TYPES = [{ name: 'General', price: '', capacity: '100' }];
+const DEFAULT_TICKET_TYPES = [{ name: 'General', price: '', capacity: '100', sales_end_at: '' }];
+
+function toDateTimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function addHoursToLocal(value, hours) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  date.setHours(date.getHours() + hours);
+  return toDateTimeLocal(date);
+}
+
+function addMinutesToLocal(value, minutes) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  date.setMinutes(date.getMinutes() + minutes);
+  return toDateTimeLocal(date);
+}
+
+function getDefaultEarlyCutoff(start, end) {
+  const proposed = addHoursToLocal(start, 2);
+  if (!proposed || !end) return proposed;
+  return new Date(proposed) <= new Date(end) ? proposed : end;
+}
 
 /* ── Attendees Modal ─────────────────────────────────────── */
 function AttendeesModal({ event, onClose }) {
@@ -537,10 +567,41 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
     setSaving(true);
     setFormError('');
     try {
+      const eventStart = new Date(formData.date);
+      const eventEnd = new Date(formData.ends_at);
+      if (!formData.ends_at || eventEnd <= eventStart) {
+        throw new Error('La fecha de finalización debe ser posterior al inicio.');
+      }
+
+      const invalidSalesWindow = ticketTypes.find(ticket => {
+        const salesEnd = new Date(ticket.sales_end_at);
+        return !ticket.sales_end_at || !Number.isFinite(salesEnd.getTime()) || salesEnd > eventEnd;
+      });
+      if (invalidSalesWindow) {
+        throw new Error(`Define una fecha límite de venta digital válida para ${invalidSalesWindow.name}. No puede superar la finalización del evento.`);
+      }
+
+      const earlyTicket = ticketTypes.find(ticket => /^early$/i.test(ticket.name));
+      if (earlyTicket) {
+        const entryCutoff = new Date(earlyTicket.entry_cutoff_at);
+        const lateEntryFee = Number(earlyTicket.late_entry_fee);
+        if (!earlyTicket.entry_cutoff_at || !Number.isFinite(entryCutoff.getTime()) || entryCutoff <= eventStart || entryCutoff > eventEnd) {
+          throw new Error('La hora límite de ingreso Early debe ser posterior al inicio y no superar la finalización del evento.');
+        }
+        if (!Number.isFinite(lateEntryFee) || lateEntryFee <= 0) {
+          throw new Error('Define un recargo mayor a cero para ingresos Early fuera de horario.');
+        }
+      }
+
       const normalizedTicketTypes = ticketTypes.map(ticket => ({
         name: ticket.name,
         price: FREE_TICKET_TYPES.has(ticket.name) ? 0 : Math.max(0, Number(ticket.price) || 0),
         capacity: Math.max(0, parseInt(ticket.capacity, 10) || 0),
+        sales_end_at: new Date(ticket.sales_end_at).toISOString(),
+        ...(/^early$/i.test(ticket.name) ? {
+          entry_cutoff_at: new Date(ticket.entry_cutoff_at).toISOString(),
+          late_entry_fee: Math.round(Number(ticket.late_entry_fee)),
+        } : {}),
       }));
       const invalidTicket = normalizedTicketTypes.find((ticket, index) =>
         ticket.capacity < Math.max(1, ticketSales[ticket.name] || 0)
@@ -574,10 +635,6 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
         status: editingEvent?.status || 'upcoming',
         lineup:         formData.lineup || [],
       };
-
-      if (!formData.ends_at || new Date(formData.ends_at) <= new Date(formData.date)) {
-        throw new Error('La fecha de finalización debe ser posterior al inicio.');
-      }
 
       if (editingEvent) {
         const { error } = await supabase.from('events').update(payload).eq('id', editingEvent.id);
@@ -624,12 +681,17 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
       name: ticket.name || 'General',
       price: String(FREE_TICKET_TYPES.has(ticket.name) ? 0 : (ticket.price ?? event.price ?? '')),
       capacity: String(ticket.capacity || publicCapacity),
+      sales_end_at: toDateTimeLocal(ticket.sales_end_at || event.date),
+      ...(/^early$/i.test(ticket.name) ? {
+        entry_cutoff_at: toDateTimeLocal(ticket.entry_cutoff_at),
+        late_entry_fee: String(ticket.late_entry_fee ?? ''),
+      } : {}),
     })));
     setTicketSales({});
     setFormData({
       title:          event.title || '',
-      date:           event.date ? event.date.slice(0, 16) : '',
-      ends_at:        event.ends_at ? event.ends_at.slice(0, 16) : '',
+      date:           toDateTimeLocal(event.date),
+      ends_at:        toDateTimeLocal(event.ends_at),
       venue:          event.venue || '',
       city:           event.city || '',
       lineup:         event.lineup || [],
@@ -690,7 +752,16 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
   const addTicketType = (name) => {
     setTicketTypes(current => current.some(ticket => ticket.name === name)
       ? current
-      : [...current, { name, price: FREE_TICKET_TYPES.has(name) ? '0' : '', capacity: '50' }]);
+      : [...current, {
+        name,
+        price: FREE_TICKET_TYPES.has(name) ? '0' : '',
+        capacity: '50',
+        sales_end_at: formData.date || '',
+        ...(/^early$/i.test(name) ? {
+          entry_cutoff_at: getDefaultEarlyCutoff(formData.date, formData.ends_at),
+          late_entry_fee: '10000',
+        } : {}),
+      }]);
   };
   const removeTicketType = (name) => {
     if (ticketSales[name]) return;
@@ -701,10 +772,24 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
     name: ticket.name,
     price: FREE_TICKET_TYPES.has(ticket.name) ? 0 : Math.max(0, Number(ticket.price) || 0),
     capacity: Math.max(0, parseInt(ticket.capacity, 10) || 0),
+    sales_end_at: ticket.sales_end_at,
+    entry_cutoff_at: ticket.entry_cutoff_at,
+    late_entry_fee: Number(ticket.late_entry_fee),
   }));
+  const eventStartMs = new Date(formData.date).getTime();
+  const eventEndMs = new Date(formData.ends_at).getTime();
   const ticketTypesValid = normalizedTicketTypes.length > 0
     && normalizedTicketTypes.every((ticket, index) =>
       ticket.capacity >= Math.max(1, ticketSales[ticket.name] || 0)
+      && Number.isFinite(new Date(ticket.sales_end_at).getTime())
+      && Number.isFinite(eventEndMs)
+      && new Date(ticket.sales_end_at).getTime() <= eventEndMs
+      && (!/^early$/i.test(ticket.name) || (
+        Number.isFinite(new Date(ticket.entry_cutoff_at).getTime())
+        && new Date(ticket.entry_cutoff_at).getTime() > eventStartMs
+        && new Date(ticket.entry_cutoff_at).getTime() <= eventEndMs
+        && ticket.late_entry_fee > 0
+      ))
       && (FREE_TICKET_TYPES.has(ticket.name) || (
         ticketTypes[index].price !== '' && Number(ticketTypes[index].price) >= 0
       ))
@@ -792,7 +877,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                     <div className="min-w-0 flex-1">
                       <Label>Tipos de entrada</Label>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Agrega, edita precios y ajusta cupos sin bajar del inventario ya emitido.
+                        Configura precio, cupo y cierre de venta digital. Early también exige hora límite de ingreso y recargo.
                       </p>
                     </div>
                     <div className="w-36 shrink-0">
@@ -833,37 +918,73 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                       const sold = ticketSales[ticket.name] || 0;
                       const isFree = FREE_TICKET_TYPES.has(ticket.name);
                       return (
-                        <div key={ticket.name} className="grid grid-cols-1 sm:grid-cols-[minmax(100px,1fr)_1fr_1fr_auto] gap-3 items-end rounded-xl p-3"
+                        <div key={ticket.name} className="rounded-xl p-3 space-y-3"
                           style={{ background: 'rgba(4,10,10,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                          <div className="self-center">
-                            <p className="text-sm font-bold text-foreground">{ticket.name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {sold > 0 ? `${sold} emitidos` : isFree ? 'Sin costo' : 'Sin ventas'}
-                            </p>
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-bold text-foreground">{ticket.name}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {sold > 0 ? `${sold} emitidos` : isFree ? 'Sin costo' : 'Sin ventas'}
+                              </p>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon"
+                              onClick={() => removeTicketType(ticket.name)}
+                              disabled={ticketTypes.length === 1 || sold > 0}
+                              className="text-destructive hover:text-destructive/80 disabled:opacity-25"
+                              title={sold > 0 ? 'No se puede eliminar un tipo con tickets emitidos' : `Eliminar ${ticket.name}`}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <div>
-                            <Label className="text-xs">Precio COP</Label>
-                            <Input type="number" value={ticket.price}
-                              onChange={(e) => updateTicketType(index, 'price', e.target.value)}
-                              className="bg-background border-border text-foreground mt-1"
-                              placeholder="35000" min="0" step="1000" disabled={isFree}
-                              aria-label={`Precio ${ticket.name}`} />
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                            <div>
+                              <Label className="text-xs">Precio COP</Label>
+                              <Input type="number" value={ticket.price}
+                                onChange={(e) => updateTicketType(index, 'price', e.target.value)}
+                                className="bg-background border-border text-foreground mt-1"
+                                placeholder="35000" min="0" step="1000" disabled={isFree}
+                                aria-label={`Precio ${ticket.name}`} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Cupo</Label>
+                              <Input type="number" value={ticket.capacity}
+                                onChange={(e) => updateTicketType(index, 'capacity', e.target.value)}
+                                className="bg-background border-border text-foreground mt-1"
+                                placeholder="100" min={Math.max(1, sold)}
+                                aria-label={`Cupo ${ticket.name}`} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Venta digital hasta *</Label>
+                              <Input type="datetime-local" value={ticket.sales_end_at || ''}
+                                max={formData.ends_at || undefined}
+                                onChange={(e) => updateTicketType(index, 'sales_end_at', e.target.value)}
+                                className="bg-background border-border text-foreground mt-1"
+                                aria-label={`Límite de venta ${ticket.name}`} required />
+                            </div>
                           </div>
-                          <div>
-                            <Label className="text-xs">Cupo</Label>
-                            <Input type="number" value={ticket.capacity}
-                              onChange={(e) => updateTicketType(index, 'capacity', e.target.value)}
-                              className="bg-background border-border text-foreground mt-1"
-                              placeholder="100" min={Math.max(1, sold)}
-                              aria-label={`Cupo ${ticket.name}`} />
-                          </div>
-                          <Button type="button" variant="ghost" size="icon"
-                            onClick={() => removeTicketType(ticket.name)}
-                            disabled={ticketTypes.length === 1 || sold > 0}
-                            className="text-destructive hover:text-destructive/80 disabled:opacity-25"
-                            title={sold > 0 ? 'No se puede eliminar un tipo con tickets emitidos' : `Eliminar ${ticket.name}`}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {/early/i.test(ticket.name) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg p-3"
+                              style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.16)' }}>
+                              <div>
+                                <Label className="text-xs">Ingreso Early hasta *</Label>
+                                <Input type="datetime-local" value={ticket.entry_cutoff_at || ''}
+                                  min={addMinutesToLocal(formData.date, 1) || undefined} max={formData.ends_at || undefined}
+                                  onChange={(e) => updateTicketType(index, 'entry_cutoff_at', e.target.value)}
+                                  className="bg-background border-border text-foreground mt-1"
+                                  aria-label="Límite de ingreso Early" required />
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  Debe ser posterior al inicio y no superar la finalización.
+                                </p>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Recargo fuera de horario COP *</Label>
+                                <Input type="number" value={ticket.late_entry_fee || ''}
+                                  onChange={(e) => updateTicketType(index, 'late_entry_fee', e.target.value)}
+                                  className="bg-background border-border text-foreground mt-1"
+                                  placeholder="10000" min="1" step="1000"
+                                  aria-label="Recargo ingreso Early" required />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -939,10 +1060,15 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                 )}
 
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0"
-                  disabled={saving || loadingTicketSales || !ticketTypesValid}>
+                  disabled={saving || loadingTicketSales}>
                   {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   {loadingTicketSales ? 'Cargando inventario…' : editingEvent ? 'Guardar todos los cambios' : 'Crear Evento'}
                 </Button>
+                {!loadingTicketSales && !ticketTypesValid && (
+                  <p className="text-xs text-amber-300/80 text-center -mt-2">
+                    Revisa precio, cupo, cierre de venta y, para Early, límite de ingreso y recargo. Al guardar verás el detalle del campo pendiente.
+                  </p>
+                )}
               </form>
 
               {editingEvent && <CoPromotersManager eventId={editingEvent.id} />}

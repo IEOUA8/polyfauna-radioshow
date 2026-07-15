@@ -18,6 +18,7 @@ const pack = {
     { id: TICKET_ID, number: 'PF-001', type: 'GA', status: 'valid', full_name: 'Ana Pérez', document_type: 'CC', document_number: '12345678' },
     { id: '423e4567-e89b-42d3-a456-426614174000', number: 'PF-002', type: 'VIP', status: 'used' },
     { id: '523e4567-e89b-42d3-a456-426614174000', number: 'PF-003', type: 'GA', status: 'refunded' },
+    { id: '723e4567-e89b-42d3-a456-426614174000', number: 'PF-004', type: 'Early', status: 'valid', entry_cutoff_at: '2026-07-16T02:00:00.000Z', late_entry_fee: 15000 },
   ],
 };
 
@@ -28,6 +29,22 @@ test('requiere evento seleccionado y QR firmado válido para validar offline', (
     eventId: EVENT_ID,
     pack,
   }).code, 'OFFLINE_UNSIGNED');
+});
+
+test('un Early vencido exige recargo y no se marca como acceso offline válido', () => {
+  const earlyVerified = {
+    valid: true,
+    payload: { tid: '723e4567-e89b-42d3-a456-426614174000', eid: EVENT_ID },
+  };
+  const result = evaluateOfflineTicket({
+    verified: earlyVerified,
+    eventId: EVENT_ID,
+    pack,
+    now: '2026-07-16T02:01:00.000Z',
+  });
+  assert.equal(result.code, 'EARLY_ENTRY_WINDOW_EXPIRED');
+  assert.equal(result.success, undefined);
+  assert.equal(result.late_entry_fee, 15000);
 });
 
 test('rechaza tickets de otro evento o que no estén en el paquete descargado', () => {

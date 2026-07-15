@@ -1,7 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { CORS_HEADERS, json, requireUser } from '../_shared/auth.ts';
 import { sendEmail } from '../_shared/resend.ts';
-import { publicEmailUrl, renderEmailTemplate } from '../_shared/email-templates.ts';
+import { publicEmailUrl } from '../_shared/email-templates.ts';
+import { renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -125,7 +126,7 @@ Deno.serve(async (req) => {
               })
             : '';
 
-          const html = renderEmailTemplate('ticketPurchased', {
+          const html = renderTicketPurchasedEmail({
             user_name: profile?.display_name || user.email.split('@')[0],
             event_name: event.title,
             event_date: formattedDate,
@@ -134,7 +135,7 @@ Deno.serve(async (req) => {
             ticket_id: ticket.ticket_number,
             qr_url: publicEmailUrl(qrDataUrl),
             ticket_url: `${appUrl}/?section=tickets`,
-          });
+          }, tier);
           await sendEmail({
             to: user.email,
             subject: `Ticket confirmado · ${String(event.title).replace(/[\r\n]/g, ' ')}`,

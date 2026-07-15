@@ -15,6 +15,7 @@ import { getFunctionErrorMessage } from '@/lib/functionErrors';
 import { claimFreeTicket } from '@/lib/freeTickets';
 import { buildWompiCheckoutUrl, isWompiCheckoutUrl } from '@/lib/wompiCheckout';
 import { loadTicketIdentity } from '@/lib/ticketIdentity';
+import { hasOpenTicketSales, isEventVisibleInTerminal, isTicketSaleOpen } from '@/lib/eventTicketRules';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -40,6 +41,9 @@ function getTicketTypes(event) {
         name: String(ticket.name),
         price: Math.max(0, Number(ticket.price) || 0),
         capacity: Math.max(1, Number(ticket.capacity) || 1),
+        sales_end_at: ticket.sales_end_at || event?.date || null,
+        entry_cutoff_at: ticket.entry_cutoff_at || null,
+        late_entry_fee: Math.max(0, Number(ticket.late_entry_fee) || 0),
       }));
     if (configured.length > 0) return configured;
   }
@@ -47,7 +51,15 @@ function getTicketTypes(event) {
     name: 'General',
     price: Math.max(0, Number(event?.price) || 0),
     capacity: Math.max(1, Number(event?.tickets_total) || 1),
+    sales_end_at: event?.date || null,
   }];
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleString('es-CO', {
+    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+  });
 }
 
 /* ── Modal de compra ── */
@@ -63,16 +75,25 @@ function BuyModal({ event, onClose }) {
   const [assignedEmails, setAssignedEmails] = useState({ 2: '', 3: '', 4: '' });
   const [identity, setIdentity] = useState({ fullName: '', documentNumber: '' });
   const [loadingIdentity, setLoadingIdentity] = useState(false);
+  const [clock, setClock] = useState(Date.now());
   const ticketTypes = useMemo(() => getTicketTypes(event), [event]);
-  const [selectedType, setSelectedType] = useState(() => ticketTypes[0]?.name || 'General');
+  const [selectedType, setSelectedType] = useState(() =>
+    ticketTypes.find(ticket => isTicketSaleOpen(ticket, event))?.name || ticketTypes[0]?.name || 'General'
+  );
   const selectedTicket = ticketTypes.find(ticket => ticket.name === selectedType) || ticketTypes[0];
 
   const isFree = selectedTicket.price === 0;
   const eventAvailable = (event.tickets_total || 0) - (event.tickets_sold || 0);
   const availableLeft = Math.min(eventAvailable, selectedTicket.capacity);
   const isSoldOut = availableLeft <= 0;
+  const isSaleClosed = !isTicketSaleOpen(selectedTicket, event, clock);
   const isBusy = status === 'buying' || status === 'processing';
   const totalPrice = selectedTicket.price * quantity;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -115,6 +136,12 @@ function BuyModal({ event, onClose }) {
       quantity,
       status: currentUser ? 'started' : 'auth_required',
     });
+
+    if (isSaleClosed) {
+      setStatus('error');
+      setErrorMsg('La venta digital de esta entrada ya finalizó. Consulta disponibilidad directamente en la puerta del evento.');
+      return;
+    }
 
     if (!currentUser) {
       onClose();
@@ -324,6 +351,7 @@ function BuyModal({ event, onClose }) {
                 <div className="grid grid-cols-2 gap-2">
                   {ticketTypes.map(ticket => {
                     const selected = ticket.name === selectedTicket.name;
+                    const saleOpen = isTicketSaleOpen(ticket, event, clock);
                     return (
                       <button
                         key={ticket.name}
@@ -333,8 +361,8 @@ function BuyModal({ event, onClose }) {
                           setQuantity(1);
                           setErrorMsg('');
                         }}
-                        disabled={isBusy}
-                        className="rounded-xl p-3 text-left transition-all"
+                        disabled={isBusy || !saleOpen}
+                        className="rounded-xl p-3 text-left transition-all disabled:opacity-45 disabled:cursor-not-allowed"
                         style={{
                           background: selected ? 'rgba(255,138,31,0.14)' : 'rgba(255,255,255,0.045)',
                           border: selected ? '1px solid rgba(255,138,31,0.5)' : '1px solid rgba(255,255,255,0.1)',
@@ -343,6 +371,9 @@ function BuyModal({ event, onClose }) {
                       >
                         <span className="block text-xs font-black">{ticket.name}</span>
                         <span className="block text-sm font-black mt-1">{formatPrice(ticket.price)}</span>
+                        <span className="block text-[9px] mt-1.5 opacity-70">
+                          {saleOpen ? `Venta hasta ${formatDateTime(ticket.sales_end_at)}` : 'Venta digital cerrada'}
+                        </span>
                       </button>
                     );
                   })}
@@ -476,7 +507,13 @@ function BuyModal({ event, onClose }) {
                 </div>
               )}
 
-              {!currentUser ? (
+              {isSaleClosed ? (
+                <button type="button" disabled
+                  className="w-full py-3 rounded-xl text-sm font-black opacity-60 cursor-not-allowed"
+                  style={{ background: 'rgba(245,158,11,0.12)', color: '#FBBF24', border: '1px solid rgba(245,158,11,0.22)' }}>
+                  Venta digital finalizada · disponible en puerta
+                </button>
+              ) : !currentUser ? (
                 <button type="button" onClick={handleConfirm}
                   className="w-full py-3 rounded-xl text-sm font-black"
                   style={{ background: 'rgba(255,255,255,0.95)', color: '#06090A' }}>
@@ -515,7 +552,8 @@ function BuyModal({ event, onClose }) {
 
 /* ── Event grid card (memoizado: la carga automática del banner destacado cada
    8s no debe re-renderizar toda la grilla de eventos) ── */
-const EventCard = React.memo(function EventCard({ event, index, isFavorite, onToggleFavorite, onSelect, onBuy }) {
+const EventCard = React.memo(function EventCard({ event, index, isFavorite, onToggleFavorite, onSelect, onBuy, now }) {
+  const salesOpen = hasOpenTicketSales(event, now);
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -575,9 +613,10 @@ const EventCard = React.memo(function EventCard({ event, index, isFavorite, onTo
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onBuy(event); }}
-            className="btn-cta text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200"
+            disabled={!salesOpen}
+            className="btn-cta text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 disabled:opacity-45 disabled:cursor-not-allowed"
           >
-            Comprar
+            {salesOpen ? 'Comprar' : 'Venta cerrada'}
           </button>
         </div>
       </div>
@@ -589,6 +628,7 @@ const EventCard = React.memo(function EventCard({ event, index, isFavorite, onTo
 function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], setCurrentSection }) {
   const [linkCopied, setLinkCopied] = React.useState(false);
   const lineup = resolveLineupArtists(event.lineup, artists);
+  const salesOpen = hasOpenTicketSales(event);
 
   const openArtist = (artist) => {
     if (!artist?.id) return;
@@ -741,12 +781,13 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
         <motion.button
           type="button"
           onClick={onBuy}
+          disabled={!salesOpen}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="btn-cta flex-1 py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3 transition-all duration-200"
+          className="btn-cta flex-1 py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3 transition-all duration-200 disabled:opacity-45 disabled:cursor-not-allowed"
         >
           <Ticket className="w-5 h-5" />
-          Comprar Ticket
+          {salesOpen ? 'Comprar Ticket' : 'Venta digital cerrada'}
         </motion.button>
         <motion.button
           type="button"
@@ -776,6 +817,7 @@ export default function EventTerminal({ setCurrentSection }) {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [search, setSearch] = useState('');
   const [organizerTypeFilter, setOrganizerTypeFilter] = useState(null);
+  const [clock, setClock] = useState(Date.now());
   const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
@@ -802,10 +844,19 @@ export default function EventTerminal({ setCurrentSection }) {
     return map;
   }, [eventOrganizers]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const visibleEvents = useMemo(
+    () => (events || []).filter(event => isEventVisibleInTerminal(event, clock)),
+    [events, clock]
+  );
+
   const filteredEvents = useMemo(() => {
-    if (!events) return [];
     const q = search.trim().toLowerCase();
-    return events.filter(e => {
+    return visibleEvents.filter(e => {
       const matchesSearch = !q
         || e.title?.toLowerCase().includes(q)
         || e.city?.toLowerCase().includes(q)
@@ -815,38 +866,42 @@ export default function EventTerminal({ setCurrentSection }) {
         || organizerTypeByEvent.get(e.id)?.has(organizerTypeFilter);
       return matchesSearch && matchesOrganizerType;
     });
-  }, [events, search, organizerTypeFilter, organizerTypeByEvent]);
+  }, [visibleEvents, search, organizerTypeFilter, organizerTypeByEvent]);
 
   // Eventos que aparecen en el banner: los marcados como featured ordenados por featured_order.
   // Si ninguno tiene featured=true, muestra todos (comportamiento por defecto).
   const bannerEvents = useMemo(() => {
-    if (!events) return [];
-    const featured = events
+    const featured = visibleEvents
       .filter(e => e.featured)
       .sort((a, b) => (a.featured_order ?? 999) - (b.featured_order ?? 999));
-    return featured.length > 0 ? featured : events;
-  }, [events]);
+    return featured.length > 0 ? featured : visibleEvents;
+  }, [visibleEvents]);
 
   // Deep-link desde búsqueda global
   useEffect(() => {
     const handler = async (e) => {
       const { type, id } = e.detail || {};
       if (type !== 'events') return;
-      const inList = (events || []).find(ev => ev.id === id);
+      const inList = visibleEvents.find(ev => ev.id === id);
       if (inList) { setSelectedEvent(inList); return; }
       const { data } = await supabase.from('events').select('*').eq('id', id).single();
-      if (data) setSelectedEvent(data);
+      if (data && isEventVisibleInTerminal(data, clock)) setSelectedEvent(data);
     };
     window.addEventListener('pf:open-item', handler);
     return () => window.removeEventListener('pf:open-item', handler);
-  }, [events]);
+  }, [visibleEvents, clock]);
 
   useEffect(() => {
     const eventParam = new URLSearchParams(window.location.search).get('event');
-    if (!eventParam || !events?.length) return;
-    const inList = events.find(ev => ev.id === eventParam || ev.slug === eventParam);
+    if (!eventParam || !visibleEvents.length) return;
+    const inList = visibleEvents.find(ev => ev.id === eventParam || ev.slug === eventParam);
     if (inList) setSelectedEvent(inList);
-  }, [events]);
+  }, [visibleEvents]);
+
+  useEffect(() => {
+    if (selectedEvent && !isEventVisibleInTerminal(selectedEvent, clock)) setSelectedEvent(null);
+    if (buyingEvent && !isEventVisibleInTerminal(buyingEvent, clock)) setBuyingEvent(null);
+  }, [selectedEvent, buyingEvent, clock]);
 
   // Link de un co-promotor (?ref=...) — se guarda para que la compra, aunque
   // el comprador navegue dentro de la app antes de pagar, se atribuya a él.
@@ -899,7 +954,7 @@ export default function EventTerminal({ setCurrentSection }) {
     );
   }
 
-  if (!events || events.length === 0) {
+  if (visibleEvents.length === 0) {
     return (
       <div className="p-5">
         <EmptyState label="No hay eventos disponibles" icon={Calendar} />
@@ -1033,10 +1088,11 @@ export default function EventTerminal({ setCurrentSection }) {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setBuyingEvent(featured); }}
-                      className="btn-cta flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+                      disabled={!hasOpenTicketSales(featured, clock)}
+                      className="btn-cta flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 disabled:opacity-45 disabled:cursor-not-allowed"
                     >
                       <Ticket className="w-4 h-4" />
-                      Comprar Ticket
+                      {hasOpenTicketSales(featured, clock) ? 'Comprar Ticket' : 'Venta digital cerrada'}
                     </button>
                     <button
                       type="button"
@@ -1144,6 +1200,7 @@ export default function EventTerminal({ setCurrentSection }) {
                     onToggleFavorite={toggleFavorite}
                     onSelect={setSelectedEvent}
                     onBuy={setBuyingEvent}
+                    now={clock}
                   />
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import { CORS_HEADERS, json, requireUser } from '../_shared/auth.ts';
 import { sendEmail } from '../_shared/resend.ts';
-import { publicEmailUrl, renderEmailTemplate } from '../_shared/email-templates.ts';
+import { publicEmailUrl } from '../_shared/email-templates.ts';
+import { findTicketTier, renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
 
 Deno.serve(async (req) => {
@@ -60,13 +61,19 @@ Deno.serve(async (req) => {
       const qrPayload = await signTicketToken(ticket.ticket_id, eventId, ticket.event_date);
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
       const appUrl = Deno.env.get('APP_URL') || 'https://polyfauna.com';
+      const { data: eventConfig } = await admin
+        .from('events')
+        .select('ticket_types')
+        .eq('id', eventId)
+        .maybeSingle();
+      const ticketTier = findTicketTier(eventConfig?.ticket_types, ticket.ticket_type);
       const formattedDate = ticket.event_date
         ? new Date(ticket.event_date).toLocaleDateString('es-CO', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
           })
         : '';
 
-      const html = renderEmailTemplate('ticketPurchased', {
+      const html = renderTicketPurchasedEmail({
         user_name: profile?.display_name || ticketUser.email.split('@')[0],
         event_name: ticket.event_title,
         event_date: formattedDate,
@@ -75,7 +82,7 @@ Deno.serve(async (req) => {
         ticket_id: ticket.ticket_number,
         qr_url: publicEmailUrl(qrDataUrl),
         ticket_url: `${appUrl}/?section=tickets`,
-      });
+      }, ticketTier);
 
       await sendEmail({
         to: ticketUser.email,

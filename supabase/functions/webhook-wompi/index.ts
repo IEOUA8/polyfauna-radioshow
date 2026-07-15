@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
   // ── Buscar transacción ────────────────────────────────────────
   const { data: transaction, error: findErr } = await supabase
     .from('transactions')
-    .select('*, events(date, title, city, owner_id)')
+    .select('*, events(date, title, city, owner_id, ticket_types)')
     .eq('wompi_reference', reference)
     .single();
 
@@ -168,6 +168,12 @@ Deno.serve(async (req) => {
           const ticketCode = issuedTicket?.ticket_number || firstTicketId;
           const qrPayload  = await signTicketToken(firstTicketId, transaction.event_id, transaction.events?.date);
           const qrDataUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
+          const ticketTier = Array.isArray(transaction.events?.ticket_types)
+            ? transaction.events.ticket_types.find((tier: Record<string, unknown>) =>
+                typeof tier?.name === 'string'
+                && tier.name.toLowerCase() === String(issuedTicket?.ticket_type || '').toLowerCase()
+              )
+            : null;
 
           await supabase.functions.invoke('send-ticket-confirmation', {
             body: {
@@ -179,6 +185,8 @@ Deno.serve(async (req) => {
               ticketCode,
               ticketType: issuedTicket?.ticket_type || 'GA',
               qrDataUrl,
+              entryCutoffAt: ticketTier?.entry_cutoff_at || null,
+              lateEntryFee: ticketTier?.late_entry_fee || null,
             },
           });
 

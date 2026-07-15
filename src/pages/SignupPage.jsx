@@ -61,6 +61,24 @@ const ROLES = [
   },
 ];
 
+function getSignupErrorMessage(error) {
+  const rawMessage = error?.message;
+  const message = typeof rawMessage === 'string' ? rawMessage.trim() : '';
+  if (!message || message === '{}' || message === '[object Object]') {
+    return 'No pudimos completar el registro por un problema temporal. Intenta nuevamente en unos minutos.';
+  }
+  if (/already registered|already exists/i.test(message)) {
+    return 'Ya existe una cuenta con este correo. Intenta iniciar sesión o recuperar tu contraseña.';
+  }
+  if (/rate limit|too many requests|security purposes/i.test(message)) {
+    return 'Se hicieron demasiados intentos. Espera unos minutos y vuelve a intentarlo.';
+  }
+  if (/password should|weak password/i.test(message)) {
+    return 'La contraseña no cumple los requisitos de seguridad.';
+  }
+  return message;
+}
+
 function StrengthBar({ password }) {
   const checks = [
     password.length >= 8,
@@ -362,7 +380,10 @@ const SignupPage = () => {
     const { data, error } = await signup(formData.email, formData.password, formData.name, selectedRole);
     setIsLoading(false);
 
-    if (error) return;
+    if (error) {
+      setFormError(getSignupErrorMessage(error));
+      return;
+    }
 
     if (selectedRole === 'citizen' && data?.session) {
       navigate(nextPath);

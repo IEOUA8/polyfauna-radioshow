@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const authContext = readFileSync('src/contexts/AuthContext.jsx', 'utf8');
 const loginPage = readFileSync('src/pages/LoginPage.jsx', 'utf8');
+const signupPage = readFileSync('src/pages/SignupPage.jsx', 'utf8');
 
 test('el handler de onAuthStateChange nunca deja isLoading atascado en true', () => {
   // Bug: sin try/catch/finally, un error sin capturar en cualquier llamada
@@ -43,6 +44,38 @@ test('recoveryMode se detecta leyendo la URL en el primer render, no solo espera
 
 test('signup() redirige la confirmacion de correo a ?verified=1', () => {
   assert.match(authContext, /emailRedirectTo: typeof window !== 'undefined' \? `\$\{window\.location\.origin\}\/\?verified=1` : undefined/);
+});
+
+test('signup() tiene timeout para que el formulario nunca quede cargando indefinidamente', () => {
+  const signupBody = authContext.slice(
+    authContext.indexOf("const signup = useCallback"),
+    authContext.indexOf("const login = useCallback")
+  );
+  assert.match(signupBody, /withTimeout\(\s*supabase\.auth\.signUp\(/);
+  assert.match(signupBody, /El registro tardó demasiado/);
+});
+
+test('la notificacion de solicitud de rol no bloquea el resultado del registro', () => {
+  const signupBody = authContext.slice(
+    authContext.indexOf("const signup = useCallback"),
+    authContext.indexOf("const login = useCallback")
+  );
+  assert.match(signupBody, /supabase\.functions\.invoke\('send-role-request'/);
+  assert.doesNotMatch(signupBody, /await supabase\.functions\.invoke\('send-role-request'/);
+});
+
+test('el formulario de registro muestra de forma persistente el error devuelto', () => {
+  const submitBody = signupPage.slice(
+    signupPage.indexOf('const handleSubmit = async'),
+    signupPage.indexOf('return (', signupPage.indexOf('const handleSubmit = async'))
+  );
+  assert.match(submitBody, /if \(error\) \{\s*setFormError\(getSignupErrorMessage\(error\)\);\s*return;/);
+  assert.match(signupPage, /\{formError\}/);
+});
+
+test('el formulario nunca muestra respuestas vacias de Supabase como {}', () => {
+  assert.match(signupPage, /message === '\{\}'/);
+  assert.match(signupPage, /problema temporal/);
 });
 
 test('SIGNED_IN con ?verified=1 en la URL activa justVerified y limpia el parametro', () => {

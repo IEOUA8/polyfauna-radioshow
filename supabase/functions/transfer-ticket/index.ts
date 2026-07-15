@@ -1,6 +1,7 @@
 import { CORS_HEADERS, json, requireUser } from '../_shared/auth.ts';
 import { sendEmail } from '../_shared/resend.ts';
 import { publicEmailUrl, renderEmailTemplate } from '../_shared/email-templates.ts';
+import { findTicketTier, injectEarlyTicketRules, renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
 
 Deno.serve(async (req) => {
@@ -47,6 +48,12 @@ Deno.serve(async (req) => {
       const qrPayload = await signTicketToken(result.ticket_id, result.event_id, result.event_date);
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
       const appUrl = Deno.env.get('APP_URL') || 'https://www.polyfauna.com';
+      const { data: eventConfig } = await admin
+        .from('events')
+        .select('ticket_types')
+        .eq('id', result.event_id)
+        .maybeSingle();
+      const ticketTier = findTicketTier(eventConfig?.ticket_types, result.ticket_type);
       const formattedDate = result.event_date
         ? new Date(result.event_date).toLocaleDateString('es-CO', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -54,7 +61,7 @@ Deno.serve(async (req) => {
         : '';
 
       if (isPending) {
-        const html = renderEmailTemplate('courtesyPendingActivation', {
+        const pendingHtml = renderEmailTemplate('courtesyPendingActivation', {
           event_name: result.event_title,
           event_date: formattedDate,
           event_venue: result.event_city || 'Por confirmar',
@@ -63,6 +70,7 @@ Deno.serve(async (req) => {
           recipient_email: result.recipient_email,
           signup_url: `${appUrl}/signup?email=${encodeURIComponent(result.recipient_email)}`,
         });
+        const html = injectEarlyTicketRules(pendingHtml, result.ticket_type, ticketTier);
         await sendEmail({
           to: result.recipient_email,
           subject: `Tienes una entrada esperando · ${String(result.event_title).replace(/[\r\n]/g, ' ')}`,
@@ -76,7 +84,7 @@ Deno.serve(async (req) => {
           .eq('user_id', result.user_id)
           .maybeSingle();
 
-        const html = renderEmailTemplate('ticketPurchased', {
+        const html = renderTicketPurchasedEmail({
           user_name: identity?.full_name || result.recipient_email.split('@')[0],
           event_name: result.event_title,
           event_date: formattedDate,
@@ -85,7 +93,7 @@ Deno.serve(async (req) => {
           ticket_id: result.ticket_number,
           qr_url: publicEmailUrl(qrDataUrl),
           ticket_url: `${appUrl}/?section=tickets`,
-        });
+        }, ticketTier);
         await sendEmail({
           to: result.recipient_email,
           subject: `Te transfirieron una entrada · ${String(result.event_title).replace(/[\r\n]/g, ' ')}`,
