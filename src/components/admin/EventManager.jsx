@@ -99,7 +99,9 @@ function AttendeesModal({ event, onClose }) {
   // Solo tickets manuales/cortesia (sin referencia Wompi real) pueden
   // anularse o transferirse desde aqui; los pagados por pasarela usan
   // el flujo de devoluciones.
-  const isVoidable = (a) => !a.wompi_reference || a.wompi_reference.startsWith('BANK-');
+  const isVoidable = (a) => !a.wompi_reference
+    || a.wompi_reference.startsWith('BANK-')
+    || a.wompi_reference.startsWith('MANUAL-');
 
   const submitVoid = async (reason) => {
     try {
@@ -282,7 +284,7 @@ function AttendeesModal({ event, onClose }) {
                         <div className="flex items-center gap-2 min-w-0">
                           <Hash className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="text-[11px] font-mono text-muted-foreground truncate">
-                            {a.wompi_reference || a.ticket_number?.slice(0, 20) || '—'}
+                            {a.sale_reference || a.wompi_reference || a.ticket_number?.slice(0, 20) || '—'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 min-w-0 sm:col-span-2">

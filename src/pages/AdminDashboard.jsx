@@ -1021,6 +1021,7 @@ function ManualTicketModal({ event, onClose, onIssued }) {
   const [ticketType, setTicketType] = useState(ticketTypes[0]?.name || 'General');
   const [reference, setReference] = useState('');
   const [saving, setSaving] = useState(false);
+  const issuanceKey = useRef(crypto.randomUUID());
 
   const issueTicket = async (submitEvent) => {
     submitEvent.preventDefault();
@@ -1032,6 +1033,7 @@ function ManualTicketModal({ event, onClose, onIssued }) {
         userEmail: email.trim(),
         ticketType,
         paymentReference: reference.trim(),
+        issuanceKey: issuanceKey.current,
       },
     });
     setSaving(false);
@@ -1046,9 +1048,15 @@ function ManualTicketModal({ event, onClose, onIssued }) {
     }
 
     toast({
-      title: data.alreadyProcessed ? 'Ticket ya registrado' : 'Ticket generado',
+      title: data.alreadyProcessed
+        ? 'Ticket ya registrado'
+        : data.pending
+          ? 'Ticket enviado · pendiente de activación'
+          : 'Ticket generado',
       description: data.emailSent
-        ? `#${data.ticketNumber} · correo enviado`
+        ? data.pending
+          ? `#${data.ticketNumber} · el destinatario debe registrarse con ${email.trim().toLowerCase()}`
+          : `#${data.ticketNumber} · correo enviado`
         : `#${data.ticketNumber} · ${data.emailWarning || 'correo pendiente'}`,
       variant: data.emailSent ? undefined : 'destructive',
     });
@@ -1065,7 +1073,7 @@ function ManualTicketModal({ event, onClose, onIssued }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-base font-black text-white">Generar ticket manual</p>
-            <p className="text-xs text-white/40 mt-1">{event.title} · transferencia bancaria verificada</p>
+            <p className="text-xs text-white/40 mt-1">{event.title} · venta directa verificada</p>
           </div>
           <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ background: 'rgba(255,255,255,0.06)' }}>
@@ -1079,7 +1087,7 @@ function ManualTicketModal({ event, onClose, onIssued }) {
             placeholder="usuario@correo.com"
             className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.11)' }} />
-          <span className="block text-[10px] text-white/28">El correo debe pertenecer a una cuenta registrada en PolyFauna.</span>
+          <span className="block text-[10px] text-white/28">Si el correo no tiene cuenta, recibirá el QR y deberá registrarse con esta misma dirección para activarlo.</span>
         </label>
 
         <label className="block space-y-1.5">
@@ -1096,15 +1104,15 @@ function ManualTicketModal({ event, onClose, onIssued }) {
         </label>
 
         <label className="block space-y-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Referencia bancaria</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Referencia de venta</span>
           <input required value={reference} onChange={e => setReference(e.target.value)}
-            placeholder="Ej. TRX-458921"
+            placeholder="Ej. Efectivo, transferencia, cortesía comercial…"
             className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.11)' }} />
         </label>
 
         <button type="submit" disabled={saving || !email.trim() || !reference.trim()}
-          title={!email.trim() || !reference.trim() ? 'Completa correo y referencia bancaria para continuar' : undefined}
+          title={!email.trim() || !reference.trim() ? 'Completa correo y referencia de venta para continuar' : undefined}
           className="w-full rounded-xl py-3 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-40"
           style={{ background: '#EAF0ED', color: '#07100D' }}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
@@ -1275,7 +1283,9 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   // Solo tickets manuales/cortesia (sin referencia Wompi real) pueden
   // anularse o transferirse desde aqui; los pagados por pasarela usan
   // el flujo de devoluciones.
-  const isVoidable = (t) => !t.wompi_reference || t.wompi_reference.startsWith('BANK-');
+  const isVoidable = (t) => !t.wompi_reference
+    || t.wompi_reference.startsWith('BANK-')
+    || t.wompi_reference.startsWith('MANUAL-');
 
   const submitVoid = async (reason) => {
     const { eventId, ticket: t } = voidTarget;

@@ -71,3 +71,11 @@ export function renderTicketPurchasedEmail(
   const html = renderEmailTemplate('ticketPurchased', variables);
   return injectEarlyTicketRules(html, variables.ticket_type, tier);
 }
+
+export function renderPendingTicketActivationEmail(
+  variables: Record<string, unknown>,
+  tier: TicketTier,
+): string {
+  const html = renderEmailTemplate('manualTicketPendingActivation', variables);
+  return injectEarlyTicketRules(html, variables.ticket_type, tier);
+}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es" style="margin:0;padding:0;">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="supported-color-schemes" content="dark light">
+<title>Activa tu ticket — Polyfauna</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  body,table,td{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  img{ border:0; line-height:100%; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+  a{ color:#ECECEC; }
+  @media only screen and (max-width:600px){
+    .px{ padding-left:24px !important; padding-right:24px !important; }
+    .h1{ font-size:24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#0A0A0A;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#0A0A0A;font-size:1px;line-height:1px;">Tu ticket para {{event_name}} está listo — actívalo creando tu cuenta en Polyfauna.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0A0A0A" style="background:#0A0A0A;">
+<tr><td align="center" style="padding:34px 14px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#0E0E0E;border:1px solid #1E1E1E;border-radius:18px;">
+<tr><td align="center" class="px" style="padding:38px 40px 6px;">
+<img src="{{logo_url}}" alt="POLYFAUNA" width="188" style="display:block;width:188px;max-width:60%;height:auto;">
+</td></tr>
+<tr><td class="px" style="padding:26px 40px 0;"><p style="margin:0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;font-weight:500;letter-spacing:3px;color:#A78BFA;text-transform:uppercase;">{{ticket_type}} &#183; pendiente de activación</p></td></tr>
+<tr><td class="px" style="padding:10px 40px 0;"><h1 class="h1" style="margin:0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-weight:300;font-size:29px;line-height:1.22;color:#ECECEC;letter-spacing:.2px;">{{event_name}}</h1></td></tr>
+<tr><td class="px" style="padding:16px 40px 0;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.72;color:#9A9A9A;">Te enviaron un ticket para este evento. El código QR queda <strong style="color:#ECECEC;">pendiente de activación</strong> hasta que crees tu cuenta en Polyfauna usando este mismo correo: <strong style="color:#ECECEC;">{{recipient_email}}</strong>.</p></td></tr>
+<tr><td class="px" style="padding:20px 40px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#171224;border:1px solid #594882;border-radius:14px;"><tr><td style="padding:16px 20px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#D6CBFB;">Al registrarte con {{recipient_email}}, el ticket se activa automáticamente y aparece en tu Ticket Vault. El QR de este correo será el mismo y quedará listo para validarse en la entrada.</td></tr></table></td></tr>
+<tr><td class="px" style="padding:20px 40px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#141414;border:1px solid #222;border-radius:14px;"><tr><td style="padding:22px 26px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:7px 0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;letter-spacing:1.5px;color:#6E6E6E;text-transform:uppercase;">Fecha</td><td align="right" style="padding:7px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#ECECEC;">{{event_date}}</td></tr></table>
+<div style="height:1px;background:#222;margin:4px 0;"></div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:7px 0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;letter-spacing:1.5px;color:#6E6E6E;text-transform:uppercase;">Lugar</td><td align="right" style="padding:7px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#ECECEC;">{{event_venue}}</td></tr></table>
+<div style="height:1px;background:#222;margin:4px 0;"></div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:7px 0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;letter-spacing:1.5px;color:#6E6E6E;text-transform:uppercase;">Entrada</td><td align="right" style="padding:7px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#ECECEC;">{{ticket_type}}</td></tr></table>
+</td></tr></table></td></tr>
+<tr><td class="px" style="padding:24px 40px 0;" align="center"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;border-radius:14px;padding:16px;"><img src="{{qr_url}}" alt="Código QR pendiente de activación" width="170" style="display:block;width:170px;height:170px;"></td></tr></table></td></tr>
+<tr><td class="px" style="padding:12px 40px 0;" align="center"><p style="margin:0 0 6px;font-family:'IBM Plex Mono','Courier New',monospace;font-size:10px;letter-spacing:2px;color:#5E5E5E;text-transform:uppercase;">Se activa al crear tu cuenta</p><p style="margin:0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:11px;letter-spacing:2px;color:#6E6E6E;">TICKET {{ticket_id}}</p></td></tr>
+<tr><td class="px" style="padding:30px 40px 6px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#ECECEC" style="border-radius:10px;"><a href="{{signup_url}}" target="_blank" style="display:inline-block;padding:15px 30px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#0A0A0A;text-decoration:none;letter-spacing:.4px;border-radius:10px;">Crear mi cuenta y activar ticket</a></td></tr></table></td></tr>
+<tr><td class="px" style="padding:14px 40px 0;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#7A7A7A;">Es indispensable registrarte con {{recipient_email}}. Si utilizas otro correo, el ticket no podrá vincularse automáticamente.</p></td></tr>
+<tr><td class="px" style="padding:22px 40px 0;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.72;color:#9A9A9A;">Guarda este correo. Después de activar tu cuenta, la entrada es de un solo uso y el Ticket Vault mostrará su estado en vivo.</p></td></tr>
+<tr><td class="px" style="padding:34px 40px 0;"><div style="height:1px;background:#1E1E1E;line-height:1px;font-size:0;">&nbsp;</div></td></tr>
+<tr><td class="px" style="padding:22px 40px 4px;"><p style="margin:0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-weight:300;letter-spacing:7px;font-size:14px;color:#ECECEC;">POLYFAUNA</p></td></tr>
+<tr><td class="px" style="padding:6px 40px 0;"><p style="margin:0;font-family:'IBM Plex Mono','Courier New',monospace;font-size:10px;letter-spacing:2px;color:#5E5E5E;text-transform:uppercase;">RADIO &#183; PODCASTS &#183; EVENTS</p></td></tr>
+<tr><td class="px" style="padding:18px 40px 38px;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;line-height:1.7;color:#4E4E4E;">Recibes este correo porque un vendedor emitió un ticket a esta dirección.<br><a href="{{unsubscribe_url}}" style="color:#6E6E6E;text-decoration:underline;">Dejar de recibir</a> &#183; <a href="https://polyfauna.com" style="color:#6E6E6E;text-decoration:underline;">polyfauna.com</a><br>&copy; 2026 Polyfauna &#183; Pereira, Colombia</p></td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

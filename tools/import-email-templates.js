@@ -15,6 +15,7 @@ const sources = {
   radioSpecial: join(clientRoot, 'files 5/05-programa-radio-especial.html'),
   upcomingEvents: join(clientRoot, 'files 5/06-eventos-proximos.html'),
   courtesyPendingActivation: join(clientRoot, 'plantillas/07-cortesia-pendiente.html'),
+  manualTicketPendingActivation: join(root, 'supabase/email-template-sources/manualTicketPendingActivation.html'),
 };
 
 mkdirSync(templatesDir, { recursive: true });

@@ -1,7 +1,7 @@
 import { CORS_HEADERS, json, requireUser } from '../_shared/auth.ts';
 import { sendEmail } from '../_shared/resend.ts';
-import { publicEmailUrl, renderEmailTemplate } from '../_shared/email-templates.ts';
-import { findTicketTier, injectEarlyTicketRules, renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
+import { publicEmailUrl } from '../_shared/email-templates.ts';
+import { findTicketTier, renderPendingTicketActivationEmail, renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
 
 Deno.serve(async (req) => {
@@ -61,16 +61,16 @@ Deno.serve(async (req) => {
         : '';
 
       if (isPending) {
-        const pendingHtml = renderEmailTemplate('courtesyPendingActivation', {
+        const html = renderPendingTicketActivationEmail({
           event_name: result.event_title,
           event_date: formattedDate,
           event_venue: result.event_city || 'Por confirmar',
+          ticket_type: result.ticket_type,
           ticket_id: result.ticket_number,
           qr_url: publicEmailUrl(qrDataUrl),
           recipient_email: result.recipient_email,
           signup_url: `${appUrl}/signup?email=${encodeURIComponent(result.recipient_email)}`,
-        });
-        const html = injectEarlyTicketRules(pendingHtml, result.ticket_type, ticketTier);
+        }, ticketTier);
         await sendEmail({
           to: result.recipient_email,
           subject: `Tienes una entrada esperando · ${String(result.event_title).replace(/[\r\n]/g, ' ')}`,

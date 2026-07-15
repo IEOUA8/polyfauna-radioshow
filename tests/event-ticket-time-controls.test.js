@@ -123,6 +123,6 @@ test('todos los flujos de emisión con tipo configurable aplican las reglas Earl
   assert.match(manualTicket, /findTicketTier\(eventConfig\?\.ticket_types, ticket\.ticket_type\)/);
   assert.match(manualTicket, /renderTicketPurchasedEmail/);
   assert.match(transferredTicket, /findTicketTier\(eventConfig\?\.ticket_types, result\.ticket_type\)/);
-  assert.match(transferredTicket, /injectEarlyTicketRules/);
+  assert.match(transferredTicket, /renderPendingTicketActivationEmail/);
   assert.match(transferredTicket, /renderTicketPurchasedEmail/);
 });

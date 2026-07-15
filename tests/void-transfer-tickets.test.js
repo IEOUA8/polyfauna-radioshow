@@ -48,14 +48,14 @@ test('el edge function void-ticket traduce errores conocidos y expone el total a
 
 test('el edge function transfer-ticket envía la plantilla correcta según pending y notifica in-app', () => {
   assert.match(transferFunction, /transfer_ticket/);
-  assert.match(transferFunction, /courtesyPendingActivation/);
+  assert.match(transferFunction, /renderPendingTicketActivationEmail/);
   assert.match(transferFunction, /renderTicketPurchasedEmail/);
   assert.match(transferFunction, /create_notification/);
   assert.match(transferFunction, /action_section: 'tickets'|p_action_section: 'tickets'/);
 });
 
 test('EventManager solo ofrece anular/transferir para tickets manuales o de cortesía, no de pasarela', () => {
-  assert.match(eventManager, /const isVoidable = \(a\) => !a\.wompi_reference \|\| a\.wompi_reference\.startsWith\('BANK-'\);/);
+  assert.match(eventManager, /const isVoidable = \(a\) => !a\.wompi_reference[\s\S]*startsWith\('BANK-'\)[\s\S]*startsWith\('MANUAL-'\)/);
   assert.match(eventManager, /functions\.invoke\('void-ticket'/);
   assert.match(eventManager, /functions\.invoke\('transfer-ticket'/);
   assert.match(eventManager, /'ANULADO'/);
