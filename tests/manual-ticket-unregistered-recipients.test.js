@@ -21,7 +21,7 @@ test('la venta manual separa la referencia libre de la llave tecnica idempotente
   assert.match(migration, /'manual_sale', v_reference, v_sale_reference/);
   assert.match(migration, /v_reference := 'MANUAL-'/);
   assert.match(migration, /p_issuance_key TEXT/);
-  assert.match(edgeFunction, /p_issuance_key: issuanceKey\.trim\(\)/);
+  assert.match(edgeFunction, /p_issuance_key: normalizedIssuanceKey/);
   assert.match(adminDashboard, /Referencia de venta/);
   assert.match(adminDashboard, /Efectivo, transferencia, cortesía comercial/);
 });
@@ -39,6 +39,22 @@ test('el correo pendiente explica el registro y conserva las reglas Early', () =
   assert.match(edgeFunction, /Activa tu ticket/);
   assert.match(edgeFunction, /signup\?email=/);
   assert.match(edgeFunction, /pending: isPending/);
+});
+
+test('todos los tipos configurados usan el mismo correo pendiente con QR', () => {
+  assert.match(edgeFunction, /const requestedTier = findTicketTier\(eventConfig\?\.ticket_types, ticketType\.trim\(\)\)/);
+  assert.match(edgeFunction, /if \(isPending\) \{[\s\S]*renderPendingTicketActivationEmail\(\{[\s\S]*qr_url:[\s\S]*signup_url:/);
+  assert.match(ticketEmailRules, /if \(!\/\^early\$\/i\.test\(String\(ticketType \?\? ''\)\.trim\(\)\)\) return html/);
+  for (const ticketType of ['General', 'VIP', 'Early', 'Anytime', 'Gratis']) {
+    assert.doesNotMatch(edgeFunction, new RegExp(`ticketType\\s*[!=]==?\\s*['\"]${ticketType}['\"]`));
+  }
+});
+
+test('formularios antiguos sin issuanceKey no bloquean Anytime ni otros tipos', () => {
+  assert.match(edgeFunction, /issuanceKey === undefined \|\| issuanceKey === null \|\| issuanceKey === ''/);
+  assert.match(edgeFunction, /crypto\.randomUUID\(\)/);
+  assert.match(edgeFunction, /p_issuance_key: normalizedIssuanceKey/);
+  assert.doesNotMatch(edgeFunction, /\|\| typeof issuanceKey !== 'string'/);
 });
 
 test('el lector informa que cualquier ticket pendiente debe activarse', () => {

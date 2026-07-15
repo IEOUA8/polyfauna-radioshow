@@ -17,6 +17,15 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'Unauthorized' }, 401);
 
     const { eventId, userEmail, ticketType, paymentReference, issuanceKey } = await req.json();
+    // Compatibilidad con versiones anteriores del formulario que pueden seguir
+    // abiertas o servidas desde el service worker. Los clientes actuales envían
+    // una llave estable para reintentos; los antiguos reciben una llave segura
+    // por solicitud para que ningún tipo de ticket quede bloqueado.
+    const normalizedIssuanceKey = issuanceKey === undefined || issuanceKey === null || issuanceKey === ''
+      ? crypto.randomUUID()
+      : typeof issuanceKey === 'string' && /^[0-9a-f-]{20,80}$/i.test(issuanceKey.trim())
+        ? issuanceKey.trim()
+        : null;
     if (
       typeof eventId !== 'string'
       || typeof userEmail !== 'string'
@@ -24,8 +33,7 @@ Deno.serve(async (req) => {
       || typeof ticketType !== 'string'
       || typeof paymentReference !== 'string'
       || !paymentReference.trim()
-      || typeof issuanceKey !== 'string'
-      || !/^[0-9a-f-]{20,80}$/i.test(issuanceKey.trim())
+      || !normalizedIssuanceKey
     ) {
       return json({ error: 'Datos de emisión inválidos' }, 400);
     }
@@ -46,7 +54,7 @@ Deno.serve(async (req) => {
       p_user_email: userEmail.trim().toLowerCase(),
       p_ticket_type: ticketType.trim(),
       p_payment_reference: paymentReference.trim(),
-      p_issuance_key: issuanceKey.trim(),
+      p_issuance_key: normalizedIssuanceKey,
     });
 
     if (error || !ticket?.success) {
