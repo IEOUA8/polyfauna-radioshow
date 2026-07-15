@@ -1011,8 +1011,11 @@ function SupportCasesSection() {
 /* ─────────────────────── TICKETS SECTION ─────────────────────── */
 function ManualTicketModal({ event, onClose, onIssued }) {
   const { toast } = useToast();
-  const ticketTypes = Array.isArray(event.ticket_types) && event.ticket_types.length > 0
-    ? event.ticket_types
+  const activeTicketTypes = Array.isArray(event.ticket_types)
+    ? event.ticket_types.filter(type => type?.active !== false)
+    : [];
+  const ticketTypes = activeTicketTypes.length > 0
+    ? activeTicketTypes
     : [{ name: 'General', price: event.price || 0, capacity: event.tickets_total || 1 }];
   const [email, setEmail] = useState('');
   const [ticketType, setTicketType] = useState(ticketTypes[0]?.name || 'General');

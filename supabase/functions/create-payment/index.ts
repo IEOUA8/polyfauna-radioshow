@@ -94,7 +94,9 @@ Deno.serve(async (req) => {
 
     const tiers = Array.isArray(event.ticket_types) ? event.ticket_types : [];
     const tier = tiers.find((item: Record<string, unknown>) =>
-      typeof item?.name === 'string' && item.name.toLowerCase() === requestedType.toLowerCase()
+      typeof item?.name === 'string'
+      && item.active !== false
+      && item.name.toLowerCase() === requestedType.toLowerCase()
     );
     if (!tier)
       return new Response(JSON.stringify({ error: 'Tipo de entrada no disponible' }), { status: 400, headers: CORS });

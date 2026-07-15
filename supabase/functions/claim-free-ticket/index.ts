@@ -53,7 +53,9 @@ Deno.serve(async (req) => {
 
     const tiers = Array.isArray(event.ticket_types) ? event.ticket_types : [];
     const tier = tiers.find((item: Record<string, unknown>) =>
-      typeof item?.name === 'string' && item.name.toLowerCase() === normalizedType.toLowerCase()
+      typeof item?.name === 'string'
+      && item.active !== false
+      && item.name.toLowerCase() === normalizedType.toLowerCase()
     );
     if (!tier) return json({ error: 'Tipo de entrada no disponible' }, 400);
     if (Number(tier.price) !== 0) return json({ error: 'Esta entrada requiere pago' }, 400);

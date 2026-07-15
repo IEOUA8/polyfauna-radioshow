@@ -23,6 +23,16 @@ Deno.serve(async (req) => {
       return json({ error: 'Datos de emisión inválidos' }, 400);
     }
 
+    const { data: eventConfig } = await admin
+      .from('events')
+      .select('ticket_types')
+      .eq('id', eventId)
+      .maybeSingle();
+    const requestedTier = findTicketTier(eventConfig?.ticket_types, ticketType.trim());
+    if (!requestedTier || requestedTier.active === false) {
+      return json({ error: 'El tipo de entrada no está disponible' }, 400);
+    }
+
     const { data: ticket, error } = await admin.rpc('issue_manual_transfer_ticket', {
       p_actor_id: user.id,
       p_event_id: eventId,
@@ -61,11 +71,6 @@ Deno.serve(async (req) => {
       const qrPayload = await signTicketToken(ticket.ticket_id, eventId, ticket.event_date);
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
       const appUrl = Deno.env.get('APP_URL') || 'https://polyfauna.com';
-      const { data: eventConfig } = await admin
-        .from('events')
-        .select('ticket_types')
-        .eq('id', eventId)
-        .maybeSingle();
       const ticketTier = findTicketTier(eventConfig?.ticket_types, ticket.ticket_type);
       const formattedDate = ticket.event_date
         ? new Date(ticket.event_date).toLocaleDateString('es-CO', {

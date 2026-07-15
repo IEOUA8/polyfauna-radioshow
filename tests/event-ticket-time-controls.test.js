@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   EVENT_TERMINAL_RETENTION_MS,
   getEarlyEntryRule,
+  hasOpenTicketSales,
   isEventVisibleInTerminal,
   isTicketSaleOpen,
 } from '../src/lib/eventTicketRules.js';
@@ -20,6 +21,7 @@ const wompiWebhook = readFileSync('supabase/functions/webhook-wompi/index.ts', '
 const freeTicket = readFileSync('supabase/functions/claim-free-ticket/index.ts', 'utf8');
 const manualTicket = readFileSync('supabase/functions/issue-manual-ticket/index.ts', 'utf8');
 const transferredTicket = readFileSync('supabase/functions/transfer-ticket/index.ts', 'utf8');
+const adminDashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
 
 test('Event Terminal conserva un evento hasta cinco horas después de finalizar', () => {
   assert.equal(EVENT_TERMINAL_RETENTION_MS, 18_000_000);
@@ -72,6 +74,33 @@ test('guardar el evento informa los campos Early pendientes en vez de bloquear e
 test('el recargo Early acepta valores redondos en miles de pesos', () => {
   assert.match(eventManager, /placeholder="10000" min="1000" step="1000"/);
   assert.doesNotMatch(eventManager, /min="1" step="1000"/);
+});
+
+test('un tipo retirado deja de venderse sin invalidar sus tickets emitidos', () => {
+  const event = {
+    date: '2026-07-16T03:00:00.000Z',
+    ticket_types: [
+      { name: 'General', capacity: 100, active: false, sales_end_at: '2026-07-16T01:00:00.000Z' },
+      { name: 'Early', capacity: 50, active: true, sales_end_at: '2026-07-16T01:00:00.000Z' },
+    ],
+  };
+  assert.equal(hasOpenTicketSales({ ...event, ticket_types: [event.ticket_types[0]] }, '2026-07-15T20:00:00.000Z'), false);
+  assert.match(eventManager, /active: false, sales_end_at: toDateTimeLocal\(new Date\(\)\)/);
+  assert.doesNotMatch(eventManager, /disabled=\{ticketTypes\.length === 1 \|\| sold > 0\}/);
+  assert.match(eventTerminal, /ticket\?\.active !== false/);
+  assert.match(createPayment, /item\.active !== false/);
+  assert.match(freeTicket, /item\.active !== false/);
+  assert.match(manualTicket, /requestedTier\.active === false/);
+  assert.match(adminDashboard, /type\?\.active !== false/);
+});
+
+test('mover el inicio y final reconcilia los horarios dependientes y guarda ISO', () => {
+  assert.match(eventManager, /function shiftLocalDateTime/);
+  assert.match(eventManager, /function reconcileTicketWindows/);
+  assert.match(eventManager, /onChange=\{\(e\) => updateEventStart\(e\.target\.value\)\}/);
+  assert.match(eventManager, /onChange=\{\(e\) => updateEventEnd\(e\.target\.value\)\}/);
+  assert.match(eventManager, /date: eventStart\.toISOString\(\)/);
+  assert.match(eventManager, /ends_at: eventEnd\.toISOString\(\)/);
 });
 
 test('el correo Early explica hora límite, recargo y estado del QR', () => {

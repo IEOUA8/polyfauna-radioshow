@@ -32,7 +32,7 @@ export function isTicketSaleOpen(ticket, event, now = Date.now()) {
 
 export function hasOpenTicketSales(event, now = Date.now()) {
   const ticketTypes = Array.isArray(event?.ticket_types) && event.ticket_types.length > 0
-    ? event.ticket_types
+    ? event.ticket_types.filter(ticket => ticket?.active !== false)
     : [{ name: 'General', sales_end_at: event?.date }];
   return ticketTypes.some(ticket => Number(ticket?.capacity ?? 1) > 0 && isTicketSaleOpen(ticket, event, now));
 }

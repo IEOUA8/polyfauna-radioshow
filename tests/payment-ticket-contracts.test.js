@@ -151,7 +151,7 @@ test('tipos de entrada conservan precio, cupo e inventario independientes', () =
 
 test('entradas gratis se emiten sin Wompi y limitan la compra pública a una', () => {
   assert.match(eventManager, /FREE_TICKET_TYPES = new Set\(\['Gratis'\]\)/);
-  assert.match(eventManager, /ticketTypes\[index\]\.price !== ''/);
+  assert.match(eventManager, /activeTicketTypes\[index\]\.price !== ''/);
   assert.match(freeTicketsClient, /functions\.invoke\('claim-free-ticket'/);
   assert.match(freeTicketConfirmation, /confirmation_email_sent_at TIMESTAMPTZ/);
   assert.match(claimFreeTicketFunction, /Number\(tier\.price\) !== 0/);
