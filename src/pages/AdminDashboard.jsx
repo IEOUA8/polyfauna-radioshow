@@ -16,6 +16,7 @@ import Logo from '@/components/Logo';
 import { TransferTicketModal, VoidTicketModal } from '@/components/admin/TicketActionModals';
 import { useConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { lazyImport } from '@/lib/lazyImport';
+import { getTicketSaleAmount, sumTicketRevenue } from '@/lib/ticketPricing';
 
 const EventManager     = lazy(lazyImport(() => import('@/components/admin/EventManager')));
 const PodcastManager   = lazy(lazyImport(() => import('@/components/admin/PodcastManager')));
@@ -300,15 +301,18 @@ function DashboardSection({ ownerId }) {
       // Tickets + ingresos en una sola consulta agregada, escopeada al dueño
       // cuando aplica (antes eran 2 consultas extra sin límite y SIN filtrar
       // por ownerId, así que un promotor veía el total de toda la plataforma).
-      let ticketsAggQuery = supabase.from('user_tickets').select('id, ticket_type, events!inner(price, owner_id)', { count: 'exact' });
+      let ticketsAggQuery = supabase.from('user_tickets')
+        .select('id, ticket_type, status, events!inner(price, ticket_types, owner_id), sale:transactions!user_tickets_transaction_id_fkey(amount_total, quantity, status)', { count: 'exact' })
+        .in('status', ['valid', 'used', 'pending_registration']);
       if (ownerId) ticketsAggQuery = ticketsAggQuery.eq('events.owner_id', ownerId);
 
       // user_tickets.user_id referencia auth.users, no profiles: no hay FK
       // directa para que PostgREST anide profiles(...) aqui (siempre fallaba
       // con 400 y "Sin ventas aun"). Se trae el nombre en una segunda consulta.
       let recentTicketsQuery = ownerId
-        ? supabase.from('user_tickets').select('id, user_id, ticket_type, created_at, events!inner(title, price, owner_id)').eq('events.owner_id', ownerId)
-        : supabase.from('user_tickets').select('id, user_id, ticket_type, created_at, events(title, price)');
+        ? supabase.from('user_tickets').select('id, user_id, ticket_type, status, created_at, events!inner(title, price, ticket_types, owner_id), sale:transactions!user_tickets_transaction_id_fkey(amount_total, quantity, status)').eq('events.owner_id', ownerId)
+        : supabase.from('user_tickets').select('id, user_id, ticket_type, status, created_at, events(title, price, ticket_types), sale:transactions!user_tickets_transaction_id_fkey(amount_total, quantity, status)');
+      recentTicketsQuery = recentTicketsQuery.in('status', ['valid', 'used', 'pending_registration']);
       recentTicketsQuery = recentTicketsQuery.order('created_at', { ascending: false }).limit(50);
 
       const [usersRes, eventsRes, ticketsRes, ticketsAggRes] = await Promise.all([
@@ -318,10 +322,9 @@ function DashboardSection({ ownerId }) {
         ticketsAggQuery,
       ]);
 
-      // Las cortesías no generan ingreso real (son regalos del organizador),
-      // así que no se suman al total aunque el evento tenga precio de lista.
-      const revenue = (ticketsAggRes.data || [])
-        .reduce((sum, t) => sum + (t.ticket_type === 'Cortesía' ? 0 : (t.events?.price || 0)), 0);
+      // Usa el importe histórico de la transacción por unidad. Para tickets
+      // antiguos sin transacción, toma el precio del tier que realmente se vendió.
+      const revenue = sumTicketRevenue(ticketsAggRes.data);
 
       const buyerIds = [...new Set((ticketsRes.data || []).map(t => t.user_id).filter(Boolean))];
       const { data: buyerProfiles } = buyerIds.length
@@ -381,12 +384,12 @@ function DashboardSection({ ownerId }) {
                 <div>
                   <p className="text-xs font-bold text-white">{t.events?.title || 'Evento'}</p>
                   <p className="text-[10px] text-white/35 mt-0.5">
-                    {t.buyerName || 'Usuario'}
+                    {t.buyerName || 'Usuario'} · {t.ticket_type || 'General'}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                    ${(t.ticket_type === 'Cortesía' ? 0 : (t.events?.price || 0)).toLocaleString('es-CO')}
+                    ${getTicketSaleAmount(t).toLocaleString('es-CO')}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">
                     {new Date(t.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
