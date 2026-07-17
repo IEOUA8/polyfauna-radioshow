@@ -213,7 +213,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack
               </span>
             </div>
 
-            <h1 className="pf-detail-title text-base md:text-xl leading-tight truncate">
+            <h1 className="pf-detail-title pf-radio-session-title" title={displayTitle}>
               {displayTitle}
             </h1>
             <p className="pf-author text-xs md:text-sm mt-0.5 truncate">

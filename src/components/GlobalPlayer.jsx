@@ -11,6 +11,7 @@ import { useActiveRadioSet } from '@/hooks/useActiveRadioSet';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getStreamReconnectDelay, isPlaybackPermissionError, STREAM_STALL_TIMEOUT_MS } from '@/lib/streamRecovery';
+import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import HoloSpectrum from '@/components/HoloSpectrum';
 
@@ -46,6 +47,7 @@ const QUALITY_STREAMS = {
   low:    LOW_STREAM,
 };
 const QUALITY_KEY = 'pf_stream_quality';
+const FLOATING_PLAY_BACKGROUND = `linear-gradient(135deg, #E4BD74, ${EDITORIAL_ACCENT})`;
 function getSelectedQuality() {
   return localStorage.getItem(QUALITY_KEY) || 'auto';
 }
@@ -604,7 +606,7 @@ export default function GlobalPlayer() {
             {isPlaying && (
               <motion.span
                 className="absolute rounded-full pointer-events-none"
-                style={{ inset: 6, border: '1.5px solid rgba(255,255,255,0.35)' }}
+                style={{ inset: 6, border: `1.5px solid ${editorialAccent(0.55)}` }}
                 animate={{ scale: [1, 1.28], opacity: [0.5, 0] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
               />
@@ -614,7 +616,7 @@ export default function GlobalPlayer() {
               onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
               aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir'}
               className="w-8 h-8 rounded-full flex items-center justify-center relative z-10"
-              style={{ background: 'rgba(255,255,255,0.92)' }}
+              style={{ background: FLOATING_PLAY_BACKGROUND }}
             >
               {isPlaying
                 ? <Pause className="w-3.5 h-3.5 fill-current" style={{ color: '#080B14' }} />
@@ -728,7 +730,7 @@ export default function GlobalPlayer() {
             {isPlaying && (
               <motion.span
                 className="absolute rounded-full pointer-events-none"
-                style={{ inset: -6, border: '1.5px solid rgba(255,255,255,0.18)' }}
+                style={{ inset: -6, border: `1.5px solid ${editorialAccent(0.38)}` }}
                 animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
               />
@@ -739,9 +741,9 @@ export default function GlobalPlayer() {
               aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir'}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
               style={{
-                background: '#ECECEC',
+                background: FLOATING_PLAY_BACKGROUND,
                 boxShadow: isPlaying
-                  ? '0 0 18px rgba(255,255,255,0.22), 0 4px 12px rgba(0,0,0,0.4)'
+                  ? `0 0 18px ${editorialAccent(0.30)}, 0 4px 12px rgba(0,0,0,0.4)`
                   : '0 4px 10px rgba(0,0,0,0.3)',
               }}
             >
@@ -807,7 +809,7 @@ export default function GlobalPlayer() {
               {isPlaying && (
                 <motion.span
                   className="absolute rounded-full pointer-events-none"
-                  style={{ inset: -6, border: '1.5px solid rgba(255,255,255,0.18)' }}
+                  style={{ inset: -6, border: `1.5px solid ${editorialAccent(0.38)}` }}
                   animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
                 />
@@ -818,9 +820,9 @@ export default function GlobalPlayer() {
                 aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir'}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
-                  background: '#ECECEC',
+                  background: FLOATING_PLAY_BACKGROUND,
                   boxShadow: isPlaying
-                    ? '0 0 18px rgba(255,255,255,0.22), 0 4px 12px rgba(0,0,0,0.4)'
+                    ? `0 0 18px ${editorialAccent(0.30)}, 0 4px 12px rgba(0,0,0,0.4)`
                     : '0 4px 10px rgba(0,0,0,0.3)',
                 }}
               >

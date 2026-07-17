@@ -50,3 +50,10 @@ test('el dorado editorial no sustituye el naranja semántico de Radio en vivo', 
   assert.match(radio, /#FF8A1F/);
   assert.match(radio, /Radio en vivo/);
 });
+
+test('el título de la sesión cabe en una línea y el play flotante usa el dorado editorial', () => {
+  assert.match(css, /\.pf-detail-title\.pf-radio-session-title\s*\{[\s\S]*font-size: clamp\(1\.05rem, 2\.2vw, 1\.5rem\);[\s\S]*white-space: nowrap;[\s\S]*text-overflow: ellipsis;/);
+  assert.match(radio, /className="pf-detail-title pf-radio-session-title" title=\{displayTitle\}/);
+  assert.match(player, /FLOATING_PLAY_BACKGROUND = `linear-gradient\(135deg, #E4BD74, \$\{EDITORIAL_ACCENT\}\)`/);
+  assert.match(player, /background: FLOATING_PLAY_BACKGROUND/);
+});

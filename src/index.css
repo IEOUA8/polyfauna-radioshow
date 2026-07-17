@@ -124,6 +124,14 @@
     letter-spacing: -0.025em;
     text-wrap: balance;
   }
+  .pf-detail-title.pf-radio-session-title {
+    font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+  }
   .pf-page-subtitle,
   .pf-supporting-text {
     color: var(--pf-text-secondary);
