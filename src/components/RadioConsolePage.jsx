@@ -16,8 +16,8 @@ import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 
 const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=200&auto=format&fit=crop';
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop';
-const PODCAST_IDENTITY_LABEL = 'Loquens · Podcast';
-const LIVE_RADIO_IDENTITY_LABEL = 'Transmittens · Radio en vivo';
+const PODCAST_IDENTITY_LABEL = 'Loquens';
+const LIVE_RADIO_IDENTITY_LABEL = 'Transmittens';
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack, setCurrentSection }) {
   const { toast } = useToast();
