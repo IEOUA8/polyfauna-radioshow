@@ -54,7 +54,7 @@ npm run audit:ci
 git diff --check
 ```
 
-Estado al 2026-07-17: lint, pruebas y build estan correctos, pero el presupuesto de JavaScript total excede el limite por 9.4 KiB. La validacion de release no esta completamente verde hasta corregir esa deuda; ver `docs/PERFORMANCE_BUDGET.md`.
+Estado al 2026-07-17: lint, pruebas y build estan correctos, pero el presupuesto de JavaScript total excede el limite por 9.8 KiB. La validacion de release no esta completamente verde hasta corregir esa deuda; ver `docs/PERFORMANCE_BUDGET.md`.
 
 Publicacion:
 

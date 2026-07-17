@@ -37,7 +37,8 @@ function NavCard({ item, locked, active, onPress, idx }) {
     <motion.button
       type="button"
       onClick={locked ? undefined : onPress}
-      onTouchStart={locked || item.href ? undefined : () => preloadSection(item.id)}
+      onFocus={locked || item.href ? undefined : () => preloadSection(item.id)}
+      onPointerDown={locked || item.href ? undefined : () => preloadSection(item.id)}
       disabled={locked}
       aria-current={active ? 'page' : undefined}
       aria-label={locked ? `${item.label}. Inicia sesión para acceder` : item.label}
@@ -102,7 +103,7 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
+            transition={{ duration: 0.14 }}
             className="fixed inset-0 z-[60] lg:hidden"
             style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
             onClick={onClose}
@@ -115,7 +116,7 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 340, damping: 38, mass: 0.9 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 46, mass: 0.75 }}
             className="fixed bottom-0 left-0 right-0 z-[70] lg:hidden flex flex-col"
             style={{
               background: '#0A0A0A',

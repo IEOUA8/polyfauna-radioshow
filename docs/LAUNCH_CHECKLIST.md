@@ -16,7 +16,7 @@ Fecha de revision documental: 2026-07-17. Los datos de eventos/organizadores de 
 - [x] Integración de Web Analytics y Speed Insights con rutas privadas excluidas.
 - [x] Ajustes de safe area, altura y capas modales para iOS.
 - [x] Presupuesto automatizado de performance para JS/CSS inicial y chunks lazy.
-- [ ] Volver a poner `npm run perf:budget` en verde: JS total actual 729.4 KiB / 720 KiB; ver `PERFORMANCE_BUDGET.md`.
+- [ ] Volver a poner `npm run perf:budget` en verde: JS total actual 729.8 KiB / 720 KiB; ver `PERFORMANCE_BUDGET.md`.
 - [x] Aviso PWA de nueva versión disponible sin actualización silenciosa forzada.
 - [x] Reproductor persistente con reconexion, health checks y cola AzuraCast cacheada server-side.
 - [x] URLs canonicas de podcasts y blog, prerender social, sitemap, `llms.txt` e IndexNow.

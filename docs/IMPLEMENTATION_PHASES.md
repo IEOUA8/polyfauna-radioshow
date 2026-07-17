@@ -1090,6 +1090,6 @@ Mejorar legibilidad movil y terminar el rollout de URLs publicas de podcast.
 ### Pendientes posteriores
 
 - Definir siguiente version/tag semantico: el producto acumulo features posteriores a `v1.1.0` sin un nuevo tag.
-- Reducir JS total gzip de 729.4 KiB a 720 KiB o menos; el resto del presupuesto cumple.
+- Reducir JS total gzip de 729.8 KiB a 720 KiB o menos; el resto del presupuesto cumple.
 - Ejecutar pruebas E2E reales de compra/QR, backup/restauracion y Lighthouse movil antes de ventas publicas.
 - Mantener `ARCHITECTURE_AND_MODULES.md` y `DEPLOYMENT_AND_MIGRATIONS.md` sincronizados con cada release funcional.

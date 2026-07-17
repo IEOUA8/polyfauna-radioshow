@@ -21,12 +21,22 @@ test('el sidebar de escritorio precarga el chunk al pasar el mouse, antes del cl
   assert.match(sidebar, /onMouseEnter=\{\(\) => preloadSection\(item\.id\)\}/);
 });
 
-test('bottom nav y menu móvil precargan al primer toque (no hay hover en touch)', () => {
-  assert.match(bottomNav, /onTouchStart=\{\(\) => !locked && preloadSection\(id\)\}/);
-  assert.match(mobileMenu, /onTouchStart=\{locked \|\| item\.href \? undefined : \(\) => preloadSection\(item\.id\)\}/);
+test('navegacion precarga con foco y pointerdown antes del click', () => {
+  assert.match(sidebar, /onFocus=\{\(\) => preloadSection\(item\.id\)\}/);
+  assert.match(sidebar, /onPointerDown=\{\(\) => preloadSection\(item\.id\)\}/);
+  assert.match(bottomNav, /onFocus=\{\(\) => !locked && preloadSection\(id\)\}/);
+  assert.match(bottomNav, /onPointerDown=\{\(\) => !locked && preloadSection\(id\)\}/);
+  assert.match(mobileMenu, /onPointerDown=\{locked \|\| item\.href \? undefined : \(\) => preloadSection\(item\.id\)\}/);
 });
 
 test('preloadSection no repite el import si la sección ya se precargó', () => {
   assert.match(sectionPreload, /const preloaded = new Set\(\);/);
   assert.match(sectionPreload, /if \(preloaded\.has\(sectionId\)\) return;/);
+});
+
+test('las secciones probables se precargan en idle sin ignorar ahorro de datos', () => {
+  assert.match(sectionPreload, /requestIdleCallback\(preload, \{ timeout: 1_500 \}\)/);
+  assert.match(sectionPreload, /connection\?\.saveData/);
+  assert.match(sectionPreload, /\['slow-2g', '2g'\]/);
+  assert.match(polyfaunaOS, /preloadLikelySections\(\{ authenticated: Boolean\(currentUser\) \}\)/);
 });

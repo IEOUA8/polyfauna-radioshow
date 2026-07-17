@@ -39,7 +39,8 @@ export default function BottomNav({ currentSection, setCurrentSection }) {
               type="button"
               whileTap={locked ? undefined : { scale: 0.94 }}
               onClick={() => !locked && setCurrentSection(id)}
-              onTouchStart={() => !locked && preloadSection(id)}
+              onFocus={() => !locked && preloadSection(id)}
+              onPointerDown={() => !locked && preloadSection(id)}
               disabled={locked}
               aria-current={isActive && !locked ? 'page' : undefined}
               aria-label={locked ? `${label}. Inicia sesión para acceder` : label}

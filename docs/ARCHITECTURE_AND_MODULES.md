@@ -112,6 +112,7 @@ Segun el rol se auto-provisionan fichas en `artists` y/o `organizers`. El fronte
 - `GlobalPlayer` conserva el audio al entrar a `/admin` y `/dashboard`.
 - En movil operativo puede reducirse a un disco flotante.
 - La radio usa reconexion con backoff, deteccion de stall y fallback de calidad en modo automatico.
+- El shell precarga chunks de navegacion durante tiempo ocioso y cambia de seccion con una transicion concurrente de 140 ms, sin blur ni scroll animado.
 - La identidad del reproductor muestra unicamente `Loquens` en modo podcast y `Transmittens` en radio en vivo, sin descriptores funcionales junto al concepto; la etiqueta generica `A demanda` se conserva para musica grabada.
 - Las pistas y podcasts on-demand mantienen cola, tiempo, seek, shuffle/repeat y Media Session.
 - `radio_sets` representa programacion editorial en vivo; `radio_set_likes` guarda corazones por usuario.

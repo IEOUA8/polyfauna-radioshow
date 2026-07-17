@@ -35,3 +35,11 @@ test('PolyfaunaOS le pasa setCurrentSection a RadioConsolePage', () => {
   assert.match(polyfaunaOS, /<RadioConsolePage[^>]*setCurrentSection=\{setCurrentSection\} \/>/);
   assert.match(polyfaunaOS, /<RadioConsolePage[^>]*currentTrack=\{currentTrack\}[^>]*setCurrentTrack=\{setCurrentTrack\}/);
 });
+
+test('las secciones entran sin espera serial, blur ni scroll animado', () => {
+  assert.doesNotMatch(polyfaunaOS, /<AnimatePresence mode="wait">/);
+  assert.match(polyfaunaOS, /<AnimatePresence initial=\{false\} mode="popLayout">/);
+  assert.doesNotMatch(polyfaunaOS, /filter: 'blur/);
+  assert.match(polyfaunaOS, /transition=\{\{ duration: 0\.14, ease: 'easeOut' \}\}/);
+  assert.match(polyfaunaOS, /scrollTo\(\{ top: 0, behavior: 'auto' \}\)/);
+});

@@ -20,8 +20,8 @@ Este plan define como mejorar la experiencia del usuario sin sobrecargar la plat
 - Conexiones observadas durante auditoria: 13.
 - Bundle validado por `npm run perf:budget`:
   - baseline historico: JS total 681.9 KiB / 720 KiB.
-  - medicion 2026-07-17: JS inicial 173.7 KiB / 190 KiB; CSS inicial 18.7 KiB / 30 KiB; chunk lazy mayor 124.7 KiB / 260 KiB; JS total 729.4 KiB / 720 KiB.
-  - deuda actual: reducir al menos 9.4 KiB gzip de JS total o aprobar un cambio de presupuesto con tradeoff explicito.
+  - medicion 2026-07-17: JS inicial 173.7 KiB / 190 KiB; CSS inicial 18.7 KiB / 30 KiB; chunk lazy mayor 124.7 KiB / 260 KiB; JS total 729.8 KiB / 720 KiB.
+  - deuda actual: reducir al menos 9.8 KiB gzip de JS total o aprobar un cambio de presupuesto con tradeoff explicito.
 - Advisors Supabase:
   - baseline inicial: 485 advertencias totales.
   - estado despues de fases tecnicas 7.2 a 7.5: 17 advertencias de seguridad, 0 advertencias de performance.

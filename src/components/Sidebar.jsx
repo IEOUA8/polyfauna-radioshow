@@ -83,6 +83,8 @@ function NavContent({ currentSection, setCurrentSection, profile, currentUser })
               type="button"
               onClick={() => navigate(item.id)}
               onMouseEnter={() => preloadSection(item.id)}
+              onFocus={() => preloadSection(item.id)}
+              onPointerDown={() => preloadSection(item.id)}
               title={locked ? 'Inicia sesión para acceder' : undefined}
               aria-label={locked ? `${item.label}. Inicia sesión para acceder` : item.label}
               className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${

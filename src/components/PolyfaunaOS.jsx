@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePlayback } from '@/contexts/PlaybackContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { lazyImport } from '@/lib/lazyImport';
+import { preloadLikelySections } from '@/lib/sectionPreload';
 
 const RightPanel            = lazy(lazyImport(() => import('@/components/RightPanel')));
 const OnboardingModal       = lazy(lazyImport(() => import('@/components/OnboardingModal')));
@@ -168,8 +169,10 @@ function PolyfaunaOS() {
     return () => registerSectionNavigator(null);
   }, [registerSectionNavigator]);
 
+  useEffect(() => preloadLikelySections({ authenticated: Boolean(currentUser) }), [currentUser]);
+
   useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    mainRef.current?.scrollTo({ top: 0, behavior: 'auto' });
     const url = new URL(window.location.href);
     const isPodcastDetailPath = /^\/podcasts\/[^/]+\/?$/.test(url.pathname);
     if (currentSection === 'podcasts' && isPodcastDetailPath) {
@@ -268,14 +271,14 @@ function PolyfaunaOS() {
             setMobileMenuOpen={setMobileMenuOpen}
           />
           <main ref={mainRef} className="flex-1 overflow-y-auto pb-48 lg:pb-32">
-            <AnimatePresence mode="wait">
+            <AnimatePresence initial={false} mode="popLayout">
               <motion.div
                 key={currentSection}
-                initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
-                transition={{ duration: 0.22, ease: 'easeOut' }}
-                style={{ willChange: 'opacity, transform, filter' }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.14, ease: 'easeOut' }}
+                style={{ willChange: 'opacity, transform' }}
               >
                 <Suspense fallback={<SectionLoader />}>
                   {renderSection()}

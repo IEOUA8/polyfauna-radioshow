@@ -74,7 +74,7 @@ Los playbooks operativos estan en `docs/OPERATIONS_PLAYBOOKS.md`. El panel admin
 
 El presupuesto de performance esta en `docs/PERFORMANCE_BUDGET.md` y corre dentro de `npm run verify`.
 
-Estado al 2026-07-17: lint de fuentes, pruebas y build pasan, pero JS total gzip supera el presupuesto por 9.4 KiB. Consulta `docs/PERFORMANCE_BUDGET.md`; no se debe considerar `verify` completamente en verde hasta resolverlo.
+Estado al 2026-07-17: lint de fuentes, pruebas y build pasan, pero JS total gzip supera el presupuesto por 9.8 KiB. Consulta `docs/PERFORMANCE_BUDGET.md`; no se debe considerar `verify` completamente en verde hasta resolverlo.
 
 El modelo de gobernanza, auditoria administrativa y soporte esta en `docs/GOVERNANCE_MODEL.md`. Cambios de rol, eliminacion de perfiles y gestion de soporte deben pasar por RPCs auditadas.
 

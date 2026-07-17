@@ -1,6 +1,6 @@
 # PolyFauna - Presupuesto de performance
 
-Ultima medicion: 2026-07-17 sobre el build del commit `b2ac2ec`.
+Ultima medicion: 2026-07-17 sobre el build local posterior a `caa3a21`.
 
 El presupuesto se ejecuta con:
 
@@ -37,10 +37,23 @@ Estos limites son un baseline de control, no una meta final. Si una funcionalida
 - JS inicial gzip: 173.7 KiB / 190 KiB — cumple.
 - CSS inicial gzip: 18.7 KiB / 30 KiB — cumple.
 - Chunk lazy mayor gzip: 124.7 KiB / 260 KiB — cumple (`vendor-pdf`).
-- JS total gzip: 729.4 KiB / 720 KiB — excede por 9.4 KiB.
+- JS total gzip: 729.8 KiB / 720 KiB — excede por 9.8 KiB.
 - Archivos JS generados: 112.
 
 Por tanto, `npm run perf:budget` y la etapa final de `npm run verify` quedan en rojo hasta reducir JS total o aprobar explicitamente un nuevo presupuesto con su tradeoff documentado. No se debe describir el estado actual como "verify completo en verde".
+
+## Auditoria de navegacion del 2026-07-17
+
+La prueba publica combino respuestas HTTP reales, recorrido visible del shell y revision de la ruta critica de cada cambio de seccion:
+
+- primera solicitud completa observada: 668 ms, incluyendo resolucion DNS y establecimiento TLS;
+- cuatro solicitudes posteriores: 265-293 ms totales;
+- JS y CSS iniciales no aumentaron con la optimizacion;
+- Radio, Podcasts, Event Terminal y Blog renderizaron correctamente en el recorrido local posterior al cambio, sin errores de consola.
+
+La transicion anterior usaba `AnimatePresence mode="wait"`: esperaba una salida de 220 ms antes de montar la entrada, tambien de 220 ms, y aplicaba blur. La transicion actual monta salida y entrada en paralelo con `popLayout`, dura 140 ms, no usa blur y restablece el scroll sin animacion. El tiempo visual programado baja de hasta 440 ms a 140 ms, una reduccion maxima de 300 ms.
+
+Los chunks de secciones probables se solicitan durante tiempo ocioso y tambien con hover, foco o `pointerdown`. La precarga automatica se omite con `Save-Data`, `slow-2g` o `2g` para no mejorar la velocidad aparente a costa del plan de datos del usuario.
 
 ## Cuidado con builds sin `.env`
 
