@@ -108,7 +108,9 @@ function App() {
                   <Route path="/profiles/:slug" element={<InternalRouteRedirect section="artists" param="artist" routeParam="slug" />} />
                   <Route path="/organizadores/:slug" element={<InternalRouteRedirect section="organizers" param="organizer" routeParam="slug" />} />
                   <Route path="/music/:album" element={<InternalRouteRedirect section="music" param="album" />} />
-                  <Route path="/podcasts/:podcast" element={<InternalRouteRedirect section="podcasts" param="podcast" />} />
+                  {/* Podcast conserva su URL canónica visible dentro del shell.
+                      Así Compartir, historial y metadatos describen el mismo recurso. */}
+                  <Route path="/podcasts/:podcast" element={<PolyfaunaOS />} />
                   <Route path="/events/:event" element={<InternalRouteRedirect section="events" param="event" />} />
                   <Route path="/entrevistas/:interview" element={<InternalRouteRedirect section="blog" param="interview" />} />
                   <Route path="/blog" element={<Navigate to="/?section=blog" replace />} />

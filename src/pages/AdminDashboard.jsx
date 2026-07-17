@@ -25,6 +25,7 @@ const InterviewManager = lazy(lazyImport(() => import('@/components/admin/Interv
 const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserManager')));
 const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
 const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
+const RadioManager     = lazy(lazyImport(() => import('@/components/admin/RadioManager')));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
 const NAV_GROUPS = [
@@ -34,6 +35,7 @@ const NAV_GROUPS = [
       { id: 'dashboard', label: 'Dashboard',   icon: BarChart2,   color: 'rgba(255,255,255,0.85)' },
       { id: 'analytics', label: 'Métricas',    icon: TrendingUp,  color: '#5DE0A3' },
       { id: 'operations', label: 'Operación',   icon: AlertTriangle, color: '#f59e0b' },
+      { id: 'radio',      label: 'Radio',        icon: Radio,         color: '#f87171' },
       { id: 'support',   label: 'Soporte',      icon: MessageCircle, color: '#93c5fd' },
       { id: 'events',    label: 'Eventos',      icon: CalendarDays,color: 'rgba(255,255,255,0.85)' },
       { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: 'rgba(255,255,255,0.85)' },
@@ -2553,6 +2555,7 @@ const AdminDashboard = () => {
         : <DashboardSection ownerId={isAdmin ? null : currentUser?.id} />;
       case 'analytics':   return isAdmin ? <UsageMetricsSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
+      case 'radio':       return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Radio</h2><p className="text-sm text-white/40 mt-0.5">Programación, corazones y preguntas de oyentes</p></div><RadioManager /></div> : <DashboardSection ownerId={currentUser?.id} />;
       case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'events':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos, artistas y tipos de entrada</p></div><EventManager ownerId={isAdmin ? null : currentUser?.id} isAdmin={isAdmin} /></div>;
       case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} onConfigureCourtesy={() => setActiveSection('events')} />;

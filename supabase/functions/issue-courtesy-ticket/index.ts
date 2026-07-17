@@ -133,6 +133,11 @@ Deno.serve(async (req) => {
           ? `Cortesía pendiente de activación · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`
           : `Cortesía confirmada · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`,
         html,
+        idempotencyKey: `courtesy-ticket/${ticket.ticket_id}`,
+        tags: [
+          { name: 'category', value: isPending ? 'courtesy_pending' : 'courtesy_confirmed' },
+          { name: 'entity_id', value: ticket.ticket_id },
+        ],
       });
       emailSent = true;
 

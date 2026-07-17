@@ -1,27 +1,30 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Bookmark, Calendar, ChevronLeft, ChevronRight, Loader2, MapPin, MessageCircle, Pause, Play, Share2, Tv2, User, Users } from 'lucide-react';
+import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Heart, Loader2, MapPin, MessageCircle, Pause, Play, Radio, Share2, User, Users } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useToast } from '@/components/ui/use-toast';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFavorites } from '@/hooks/useFavorites';
+import { useActiveRadioSet } from '@/hooks/useActiveRadioSet';
 import HoloSpectrum from '@/components/HoloSpectrum';
 import RadioQueueTimeline from '@/components/RadioQueueTimeline';
 import FormModal, { FField, FTextarea, FSubmit } from '@/components/ui/FormModal';
 import { openInSection } from '@/lib/openInSection';
+import { getEventImage } from '@/lib/eventImages';
+import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 
 const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=200&auto=format&fit=crop';
+const FALLBACK_COVER = 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop';
 
-export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSection }) {
+export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack, setCurrentSection }) {
   const { toast } = useToast();
   const { song, isOnline, listeners, isLive, streamerName, remainingSeconds } = useNowPlaying();
   const { currentUser } = useAuth();
-  const { isFav, toggle: toggleFav } = useFavorites();
+  const { radioSet, liked: isSetLiked, toggleLike: toggleSetLike } = useActiveRadioSet();
 
   const { data: upcomingEvents } = useSupabaseQuery(
-    () => supabase.from('events').select('id, title, date, venue, image_url')
+    () => supabase.from('events').select('id, title, date, venue, image_url, mobile_image_url, ticket_image_url')
       .gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(6),
     []
   );
@@ -30,14 +33,18 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
   const [hostQuestion, setHostQuestion] = useState('');
   const [sendingQuestion, setSendingQuestion] = useState(false);
   const [featuredEventIndex, setFeaturedEventIndex] = useState(0);
-
-  const sessionFavId = `live-${song?.title || 'polyfauna-radio'}-${new Date().toISOString().slice(0, 10)}`;
-  const isSessionSaved = Boolean(currentUser && isFav('session', sessionFavId));
+  const isOnDemand = Boolean(currentTrack);
+  const contentKind = currentTrack?.kind === 'podcast' ? 'Podcast' : 'Música';
+  const displayArt = isOnDemand ? (currentTrack?.art || FALLBACK_COVER) : (song?.art || FALLBACK_COVER);
+  const displayTitle = isOnDemand ? (currentTrack?.title || 'Contenido seleccionado') : (song?.title || 'PolyFauna Radio');
+  const displaySubtitle = isOnDemand
+    ? (currentTrack?.artist || currentTrack?.album || 'PolyFauna')
+    : (song?.artist || (isOnline ? 'Transmisión en vivo · 24/7' : 'Estación offline'));
 
   const handleShare = async () => {
     const shareData = {
-      title: song?.title || 'PolyFauna Radio',
-      text: `Escuchando ${song?.title || 'PolyFauna Radio'} en PolyFauna`,
+      title: displayTitle,
+      text: `Escuchando ${displayTitle} en PolyFauna`,
       url: window.location.href,
     };
     if (navigator.share) {
@@ -48,17 +55,26 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
     }
   };
 
-  const handleSaveSession = async () => {
+  const handleBackToRadio = () => {
+    setCurrentTrack?.(null);
+    setIsPlaying(true);
+  };
+
+  const handleOpenCurrentContent = () => {
+    setCurrentSection(currentTrack?.kind === 'podcast' ? 'podcasts' : 'music');
+  };
+
+  const handleSetLike = async () => {
     if (!currentUser) {
-      toast({ title: 'Inicia sesión', description: 'Necesitas una cuenta para guardar sesiones.' });
+      toast({ title: 'Inicia sesión', description: 'Necesitas una cuenta para dar corazón al programa.' });
       return;
     }
-    const wasSaved = isFav('session', sessionFavId);
-    await toggleFav('session', sessionFavId);
-    toast({
-      title: wasSaved ? 'Sesión retirada' : 'Sesión agregada al Organismo',
-      description: wasSaved ? '' : `"${song?.title || 'PolyFauna Radio'}" vive ahora en tu Organismo.`,
-    });
+    if (!radioSet) {
+      toast({ title: 'Sin set programado', description: 'El corazón se habilita cuando hay un programa radial activo.' });
+      return;
+    }
+    const { error } = await toggleSetLike();
+    if (error) toast({ title: 'No se pudo registrar', description: error.message, variant: 'destructive' });
   };
 
   const handleAskHost = () => {
@@ -76,7 +92,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
     const { error } = await supabase.from('show_questions').insert({
       user_id: currentUser.id,
       user_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Usuario',
-      show_name: song?.title || 'Live Session',
+      show_name: radioSet?.title || song?.title || 'Live Session',
       question: hostQuestion.trim(),
     });
     setSendingQuestion(false);
@@ -86,15 +102,6 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
       toast({ title: '¡Pregunta enviada!', description: 'El host podrá verla en su dashboard.' });
       setHostQuestion('');
       setShowAskHost(false);
-    }
-  };
-
-  const handleOpenRoom = () => {
-    const roomUrl = song?.room_url || null;
-    if (roomUrl) {
-      window.open(roomUrl, '_blank', 'noopener,noreferrer');
-    } else {
-      toast({ title: 'Sin sala activa', description: 'No hay sala en vivo disponible en este momento.' });
     }
   };
 
@@ -122,7 +129,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage: `url(${song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'})`,
+            backgroundImage: `url(${displayArt})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.06,
@@ -156,26 +163,28 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
           {/* Album art */}
           <div className="relative shrink-0">
             <motion.div
-              animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
-              transition={isPlaying ? { duration: 12, repeat: Infinity, ease: 'linear' } : { duration: 0.5 }}
-              className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden"
+              animate={!isOnDemand && isPlaying ? { rotate: 360 } : { rotate: 0 }}
+              transition={!isOnDemand && isPlaying ? { duration: 12, repeat: Infinity, ease: 'linear' } : { duration: 0.5 }}
+              className={`w-16 h-16 md:w-24 md:h-24 overflow-hidden ${isOnDemand ? 'rounded-xl' : 'rounded-full'}`}
               style={{
-                border: '2px solid rgba(32,199,232,0.22)',
+                border: `2px solid ${isOnDemand ? editorialAccent(0.36) : 'rgba(255,138,31,0.28)'}`,
                 boxShadow: isPlaying
-                  ? '0 0 24px rgba(255,255,255,0.14), 0 6px 24px rgba(0,0,0,0.5)'
+                  ? `0 0 24px ${isOnDemand ? editorialAccent(0.18) : 'rgba(255,138,31,0.15)'}, 0 6px 24px rgba(0,0,0,0.5)`
                   : '0 0 12px rgba(255,255,255,0.06), 0 6px 18px rgba(0,0,0,0.4)',
               }}
             >
               <img
-                src={song?.art || 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop'}
-                alt="Now playing"
+                src={displayArt}
+                alt={`Portada de ${displayTitle}`}
                 className="w-full h-full object-cover"
               />
             </motion.div>
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full z-10"
-              style={{ background: 'linear-gradient(135deg, #20C7E8, #7C5CFF)', boxShadow: '0 0 6px rgba(32,199,232,0.8)' }}
-            />
+            {!isOnDemand && (
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full z-10"
+                style={{ background: '#FF8A1F', boxShadow: '0 0 6px rgba(255,138,31,0.8)' }}
+              />
+            )}
           </div>
 
           {/* Info */}
@@ -184,12 +193,12 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
               <span
                 className="relative inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full overflow-hidden"
                 style={{
-                  background: isOnline ? 'rgba(255,112,67,0.12)' : 'rgba(255,255,255,0.07)',
-                  border: `1px solid ${isOnline ? 'rgba(255,112,67,0.40)' : 'rgba(255,255,255,0.1)'}`,
-                  color: isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.4)',
+                  background: isOnDemand ? editorialAccent(0.12) : isOnline ? 'rgba(255,112,67,0.12)' : 'rgba(255,255,255,0.07)',
+                  border: `1px solid ${isOnDemand ? editorialAccent(0.40) : isOnline ? 'rgba(255,112,67,0.40)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isOnDemand ? EDITORIAL_ACCENT : isOnline ? '#FF8A1F' : 'rgba(255,255,255,0.4)',
                 }}
               >
-                {isOnline && (
+                {!isOnDemand && isOnline && (
                   <span className="relative flex h-1.5 w-1.5 shrink-0">
                     <motion.span
                       className="absolute inline-flex h-full w-full rounded-full"
@@ -200,21 +209,21 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF8A1F' }} />
                   </span>
                 )}
-                {isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Live Channel' : 'Offline'}
+                {isOnDemand ? `A demanda · ${contentKind}` : isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Radio en vivo' : 'Offline'}
               </span>
             </div>
 
-            <h1 className="text-base md:text-xl font-black text-white leading-tight truncate">
-              {song?.title || 'PolyFauna Radio'}
+            <h1 className="pf-detail-title text-base md:text-xl leading-tight truncate">
+              {displayTitle}
             </h1>
-            <p className="text-white/50 text-xs md:text-sm mt-0.5 truncate">
-              {song?.artist || (isOnline ? 'Transmisión en vivo · 24/7' : 'Estación offline')}
+            <p className="pf-author text-xs md:text-sm mt-0.5 truncate">
+              {displaySubtitle}
             </p>
 
-            <div className="hidden md:flex items-center gap-1.5 text-white/35 text-xs mt-1.5">
+            {!isOnDemand && <div className="hidden md:flex items-center gap-1.5 text-white/35 text-xs mt-1.5">
               <Users className="w-3 h-3" />
               <span>{listeners > 0 ? `${listeners} oyente${listeners !== 1 ? 's' : ''}` : 'En vivo'}</span>
-            </div>
+            </div>}
 
             {/* Spectrum — desktop inline */}
             <div className="hidden md:block mt-4">
@@ -224,17 +233,17 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
 
           {/* Play button */}
           <div className="flex flex-col items-center gap-1 shrink-0">
-            <div className="flex items-center gap-1 text-white/35 text-[10px] md:hidden mb-1">
+            {!isOnDemand && <div className="flex items-center gap-1 text-white/35 text-[10px] md:hidden mb-1">
               <Users className="w-2.5 h-2.5" />
               <span>{listeners > 0 ? listeners : '—'}</span>
-            </div>
+            </div>}
 
             <div className="relative flex items-center justify-center">
               {isPlaying && (
                 <>
                   <motion.span
                     className="absolute rounded-full pointer-events-none"
-                    style={{ inset: -6, border: '1.5px solid rgba(32,199,232,0.30)' }}
+                    style={{ inset: -6, border: `1.5px solid ${isOnDemand ? editorialAccent(0.34) : 'rgba(255,138,31,0.34)'}` }}
                     animate={{ scale: [1, 1.4], opacity: [0.5, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
                   />
@@ -249,12 +258,12 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
               <button
                 type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
-                aria-label={isPlaying ? 'Pausar radio' : 'Reproducir radio'}
+                aria-label={isPlaying ? `Pausar ${isOnDemand ? displayTitle : 'radio'}` : `Reproducir ${isOnDemand ? displayTitle : 'radio'}`}
                 className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 relative z-10"
                 style={{
-                  background: 'linear-gradient(135deg, #20C7E8, #00AADD)',
+                  background: isOnDemand ? `linear-gradient(135deg, ${EDITORIAL_ACCENT}, #B97B2E)` : 'linear-gradient(135deg, #FF9B38, #FF8A1F)',
                   boxShadow: isPlaying
-                    ? '0 0 24px rgba(32,199,232,0.55), 0 4px 14px rgba(0,0,0,0.4)'
+                    ? `0 0 24px ${isOnDemand ? editorialAccent(0.48) : 'rgba(255,138,31,0.48)'}, 0 4px 14px rgba(0,0,0,0.4)`
                     : '0 0 16px rgba(255,255,255,0.16), 0 4px 10px rgba(0,0,0,0.3)',
                 }}
               >
@@ -273,52 +282,81 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
         </div>
 
         {/* Action buttons */}
-        <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 mt-4 md:mt-6 relative">
-          {[
-            { id: 'room',  label: 'Abrir sala en vivo', icon: Tv2,           accent: 'rgba(32,199,232,{a})',  glow: 'rgba(32,199,232,0.18)',  onClick: handleOpenRoom,    active: false },
-            { id: 'ask',   label: 'Preguntar al host',  icon: MessageCircle, accent: 'rgba(167,139,250,{a})', glow: 'rgba(167,139,250,0.18)', onClick: handleAskHost,     active: false },
-            { id: 'share', label: 'Compartir',          icon: Share2,        accent: 'rgba(52,211,153,{a})',  glow: 'rgba(52,211,153,0.18)',  onClick: handleShare,       active: false },
-            { id: 'save',  label: 'Guardar sesión',     icon: Bookmark,      accent: 'rgba(251,191,36,{a})',  glow: 'rgba(251,191,36,0.18)', onClick: handleSaveSession, active: isSessionSaved },
-          ].map(({ id, label, icon: Icon, accent, glow, onClick, active }) => (
-            <motion.button
-              key={id}
+        {isOnDemand ? (
+          <div className="mt-4 md:mt-6 relative space-y-2">
+            <button
               type="button"
-              onClick={onClick}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl"
-              style={{
-                background: active ? accent.replace('{a}', '0.15') : 'rgba(255,255,255,0.04)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: `1px solid ${active ? accent.replace('{a}', '0.40') : 'rgba(255,255,255,0.08)'}`,
-                color: active ? accent.replace('{a}', '1)') : 'rgba(255,255,255,0.45)',
-                boxShadow: active
-                  ? `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`
-                  : '0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset',
-              }}
-              whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
-              whileTap={{ y: 0, scale: 0.97, transition: { duration: 0.1 } }}
-              onMouseEnter={(e) => {
-                const c = e.currentTarget;
-                c.style.background = accent.replace('{a}', '0.10');
-                c.style.borderColor = accent.replace('{a}', '0.35');
-                c.style.color = accent.replace('{a}', '1)');
-                c.style.boxShadow = `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`;
-              }}
-              onMouseLeave={(e) => {
-                const c = e.currentTarget;
-                c.style.background = active ? accent.replace('{a}', '0.15') : 'rgba(255,255,255,0.04)';
-                c.style.borderColor = active ? accent.replace('{a}', '0.40') : 'rgba(255,255,255,0.08)';
-                c.style.color = active ? accent.replace('{a}', '1)') : 'rgba(255,255,255,0.45)';
-                c.style.boxShadow = active
-                  ? `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`
-                  : '0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset';
-              }}
+              onClick={handleOpenCurrentContent}
+              className="w-full md:w-auto flex items-center justify-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl transition-colors"
+              style={{ background: editorialAccent(0.12), border: `1px solid ${editorialAccent(0.36)}`, color: EDITORIAL_ACCENT }}
             >
-              <Icon className="w-3.5 h-3.5 shrink-0" style={active ? { fill: 'currentColor' } : {}} />
-              {id === 'save' && isSessionSaved ? 'Guardado ✓' : label}
-            </motion.button>
-          ))}
-        </div>
+              Abrir {contentKind.toLowerCase()}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleBackToRadio}
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-colors hover:bg-white/[0.06]"
+              style={{ background: 'rgba(255,138,31,0.055)', border: '1px solid rgba(255,138,31,0.20)' }}
+            >
+              <span className="relative w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(255,138,31,0.12)' }}>
+                <span className="absolute inset-0 rounded-full animate-ping opacity-20" style={{ background: '#FF8A1F' }} />
+                <Radio className="relative w-4 h-4" style={{ color: '#FF8A1F' }} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: '#FF8A1F' }}>En vivo ahora</span>
+                <span className="block text-xs font-bold text-white/80 truncate">{song?.title || 'PolyFauna Radio'}</span>
+              </span>
+              <span className="text-[10px] font-bold text-white/45 shrink-0">Volver a Radio</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 mt-4 md:mt-6 relative">
+            {[
+              { id: 'ask',   label: 'Preguntar al host',  icon: MessageCircle, accent: 'rgba(167,139,250,{a})', glow: 'rgba(167,139,250,0.18)', onClick: handleAskHost, active: false },
+              { id: 'share', label: 'Compartir', icon: Share2, accent: 'rgba(52,211,153,{a})', glow: 'rgba(52,211,153,0.18)', onClick: handleShare, active: false },
+              ...(radioSet ? [{ id: 'like', label: `${Number(radioSet.likes_count || 0)} corazones`, icon: Heart, accent: 'rgba(255,92,122,{a})', glow: 'rgba(255,92,122,0.18)', onClick: handleSetLike, active: isSetLiked }] : []),
+            ].map(({ id, label, icon: Icon, accent, glow, onClick, active }) => (
+              <motion.button
+                key={id}
+                type="button"
+                onClick={onClick}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl"
+                style={{
+                  background: active ? accent.replace('{a}', '0.15') : 'rgba(255,255,255,0.04)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: `1px solid ${active ? accent.replace('{a}', '0.40') : 'rgba(255,255,255,0.08)'}`,
+                  color: active ? accent.replace('{a}', '1)') : 'rgba(255,255,255,0.45)',
+                  boxShadow: active
+                    ? `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`
+                    : '0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset',
+                }}
+                whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
+                whileTap={{ y: 0, scale: 0.97, transition: { duration: 0.1 } }}
+                onMouseEnter={(e) => {
+                  const c = e.currentTarget;
+                  c.style.background = accent.replace('{a}', '0.10');
+                  c.style.borderColor = accent.replace('{a}', '0.35');
+                  c.style.color = accent.replace('{a}', '1)');
+                  c.style.boxShadow = `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`;
+                }}
+                onMouseLeave={(e) => {
+                  const c = e.currentTarget;
+                  c.style.background = active ? accent.replace('{a}', '0.15') : 'rgba(255,255,255,0.04)';
+                  c.style.borderColor = active ? accent.replace('{a}', '0.40') : 'rgba(255,255,255,0.08)';
+                  c.style.color = active ? accent.replace('{a}', '1)') : 'rgba(255,255,255,0.45)';
+                  c.style.boxShadow = active
+                    ? `0 8px 24px rgba(0,0,0,0.30), 0 0 16px ${glow}, 0 1px 0 rgba(255,255,255,0.06) inset`
+                    : '0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset';
+                }}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" style={active ? { fill: 'currentColor' } : {}} />
+                {label}
+              </motion.button>
+            ))}
+          </div>
+        )}
 
         {/* Banner para no logueados */}
         {!currentUser && (
@@ -356,7 +394,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
       >
-        <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Sigue en la transmisión</h2>
+        <h2 className="pf-section-label mb-3">{isOnDemand ? 'Próximo en Radio' : 'Sigue en la transmisión'}</h2>
         <RadioQueueTimeline isOnline={isOnline} remainingSeconds={remainingSeconds} />
       </motion.div>
 
@@ -375,7 +413,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.2, ease: 'easeOut' }}
           >
-            <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Próximos Eventos</h2>
+            <h2 className="pf-section-label mb-3">Próximos Eventos</h2>
             <div
               className="relative rounded-2xl overflow-hidden cursor-pointer group"
               style={{ minHeight: 168 }}
@@ -384,7 +422,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, setCurrentSe
               <AnimatePresence mode="wait">
                 <motion.img
                   key={ev.id}
-                  src={ev.image_url || FALLBACK_EVENT}
+                  src={getEventImage(ev) || FALLBACK_EVENT}
                   alt={ev.title}
                   initial={{ opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}

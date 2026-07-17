@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Disc3, Dna, Headphones, Heart, Loader2, Music2,
-  Pause, Play, Shuffle, Trash2,
+  Building2, CalendarDays, Disc3, Dna, Headphones, Heart, Loader2, Music2,
+  Pause, Play, Shuffle, Trash2, UserRound,
 } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +35,7 @@ function uniq(values) {
 function toPlayerTrack(item) {
   if (item.kind === 'podcast') {
     return {
+      kind: 'podcast',
       id: item.id,
       title: item.title,
       artist: item.artist || 'PolyFauna',
@@ -47,6 +48,7 @@ function toPlayerTrack(item) {
   }
 
   return {
+    kind: 'track',
     id: item.id,
     title: item.title,
     artist: item.artist || 'PolyFauna',
@@ -179,6 +181,8 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
   const { currentUser, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState([]);
+  const [discoveries, setDiscoveries] = useState({ events: [], people: [] });
+  const [activeTab, setActiveTab] = useState('music');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [removing, setRemoving] = useState(null);
@@ -197,44 +201,45 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
       setLoading(true);
       setError(null);
       try {
-        const [likesRes, favsRes] = await Promise.all([
-          supabase
-            .from('user_likes')
-            .select('id, podcast_id, created_at')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false }),
+        const [favsRes] = await Promise.all([
           supabase
             .from('user_favorites')
             .select('id, item_type, item_id, created_at')
             .eq('user_id', currentUser.id)
-            .in('item_type', ['podcast', 'track', 'album'])
             .order('created_at', { ascending: false }),
         ]);
 
-        if (likesRes.error) throw likesRes.error;
         if (favsRes.error) throw favsRes.error;
 
-        const likes = likesRes.data || [];
         const favs = favsRes.data || [];
-        const podcastIds = uniq([
-          ...likes.map(row => row.podcast_id),
-          ...favs.filter(row => row.item_type === 'podcast').map(row => row.item_id),
-        ]);
+        const podcastIds = uniq(favs.filter(row => row.item_type === 'podcast').map(row => row.item_id));
         const trackIds = uniq(favs.filter(row => row.item_type === 'track').map(row => row.item_id));
         const albumIds = uniq(favs.filter(row => row.item_type === 'album').map(row => row.item_id));
+        const eventIds = uniq(favs.filter(row => row.item_type === 'event').map(row => row.item_id));
+        const artistIds = uniq(favs.filter(row => row.item_type === 'artist').map(row => row.item_id));
+        const organizerIds = uniq(favs.filter(row => row.item_type === 'organizer').map(row => row.item_id));
 
-        const [podcastsRes, tracksRes, albumsRes, albumTracksRes] = await Promise.all([
+        const [podcastsRes, tracksRes, albumsRes, albumTracksRes, eventsRes, artistsRes, organizersRes] = await Promise.all([
           podcastIds.length
-            ? supabase.from('podcasts').select('id, title, cover_url, audio_url, duration, genre, artists(name)').in('id', podcastIds)
+            ? supabase.from('podcasts').select('id, title, cover_url, audio_url, duration, genre, artists:artists!podcasts_artist_id_fkey(name)').in('id', podcastIds)
             : Promise.resolve({ data: [], error: null }),
           trackIds.length
             ? supabase.from('tracks').select('id, title, audio_url, duration, genre, track_number, albums(title, cover_url), artists(name)').in('id', trackIds)
             : Promise.resolve({ data: [], error: null }),
           albumIds.length
-            ? supabase.from('albums').select('id, title, cover_url, genre, artists(name)').in('id', albumIds)
+            ? supabase.from('albums').select('id, title, cover_url, genre, artists:artists!albums_artist_id_fkey(name)').in('id', albumIds)
             : Promise.resolve({ data: [], error: null }),
           albumIds.length
             ? supabase.from('tracks').select('id, title, album_id, audio_url, duration, genre, track_number, albums(title, cover_url), artists(name)').in('album_id', albumIds).order('track_number', { ascending: true })
+            : Promise.resolve({ data: [], error: null }),
+          eventIds.length
+            ? supabase.from('events').select('id, title, date, venue, city, image_url, mobile_image_url').in('id', eventIds)
+            : Promise.resolve({ data: [], error: null }),
+          artistIds.length
+            ? supabase.from('artists_public').select('id, name, type, image_url, genres').in('id', artistIds)
+            : Promise.resolve({ data: [], error: null }),
+          organizerIds.length
+            ? supabase.from('organizers').select('id, name, type, image_url, city').in('id', organizerIds)
             : Promise.resolve({ data: [], error: null }),
         ]);
 
@@ -242,6 +247,9 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
         if (tracksRes.error) throw tracksRes.error;
         if (albumsRes.error) throw albumsRes.error;
         if (albumTracksRes.error) throw albumTracksRes.error;
+        if (eventsRes.error) throw eventsRes.error;
+        if (artistsRes.error) throw artistsRes.error;
+        if (organizersRes.error) throw organizersRes.error;
 
         const podcasts = new Map((podcastsRes.data || []).map(row => [row.id, row]));
         const tracks = new Map((tracksRes.data || []).map(row => [row.id, row]));
@@ -254,37 +262,7 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
 
         const byKey = new Map();
 
-        likes.forEach((like) => {
-          const pod = podcasts.get(like.podcast_id);
-          if (!pod) return;
-          byKey.set(`podcast-${pod.id}`, {
-            key: `podcast-${pod.id}`,
-            kind: 'podcast',
-            id: pod.id,
-            sourceId: like.id,
-            title: pod.title,
-            artist: pod.artists?.name || 'PolyFauna',
-            genre: pod.genre,
-            image: pod.cover_url || FALLBACK,
-            audio_url: pod.audio_url,
-            duration: pod.duration,
-            addedAt: like.created_at,
-            queue: pod.audio_url ? [toPlayerTrack({
-              kind: 'podcast',
-              id: pod.id,
-              title: pod.title,
-              artist: pod.artists?.name || 'PolyFauna',
-              genre: pod.genre,
-              image: pod.cover_url || FALLBACK,
-              audio_url: pod.audio_url,
-              duration: pod.duration,
-            })] : [],
-          });
-        });
-
         favs.forEach((fav) => {
-          if (fav.item_type === 'podcast' && byKey.has(`podcast-${fav.item_id}`)) return;
-
           if (fav.item_type === 'podcast') {
             const pod = podcasts.get(fav.item_id);
             if (!pod) return;
@@ -376,7 +354,16 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
         });
 
         const nextItems = [...byKey.values()].sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
-        if (active) setItems(nextItems);
+        if (active) {
+          setItems(nextItems);
+          setDiscoveries({
+            events: (eventsRes.data || []).map(event => ({ ...event, kind: 'event', image: event.mobile_image_url || event.image_url })),
+            people: [
+              ...(artistsRes.data || []).map(artist => ({ ...artist, kind: 'artist', title: artist.name, image: artist.image_url, meta: Array.isArray(artist.genres) ? artist.genres.join(' · ') : artist.type })),
+              ...(organizersRes.data || []).map(org => ({ ...org, kind: 'organizer', title: org.name, image: org.image_url, meta: org.city || org.type })),
+            ],
+          });
+        }
       } catch (err) {
         if (active) setError(err.message || 'No pudimos cargar tu Organismo.');
       } finally {
@@ -441,14 +428,7 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
   const removeItem = async (item) => {
     setRemoving(item.key);
     try {
-      if (item.kind === 'podcast') {
-        await Promise.all([
-          supabase.from('user_likes').delete().eq('user_id', currentUser.id).eq('podcast_id', item.id),
-          supabase.from('user_favorites').delete().eq('user_id', currentUser.id).eq('item_type', 'podcast').eq('item_id', item.id),
-        ]);
-      } else {
-        await supabase.from('user_favorites').delete().eq('user_id', currentUser.id).eq('id', item.sourceId);
-      }
+      await supabase.from('user_favorites').delete().eq('user_id', currentUser.id).eq('id', item.sourceId);
       toast({ title: 'Organismo actualizado', description: `"${item.title}" salió de tu organismo.` });
       setVersion(v => v + 1);
     } finally {
@@ -457,7 +437,7 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
   };
 
   return (
-    <div className="p-4 sm:p-5 space-y-5">
+    <div className="p-4 sm:p-5 pb-48 lg:pb-5 space-y-5">
       <section
         className="relative overflow-hidden rounded-2xl"
         style={{ background: 'rgba(7,12,11,0.92)', border: '1px solid rgba(255,255,255,0.07)' }}
@@ -516,9 +496,48 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
         </div>
       </section>
 
+      <nav
+        className="flex gap-1 p-1 rounded-xl overflow-x-auto"
+        aria-label="Secciones de Tu Organismo"
+        style={{
+          background: 'rgba(184,207,166,0.045)',
+          border: '1px solid rgba(184,207,166,0.13)',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {[
+          { id: 'music', label: 'Tu música', icon: Music2, count: items.length },
+          { id: 'events', label: 'Tu agenda', icon: CalendarDays, count: discoveries.events.length },
+          { id: 'people', label: 'Siguiendo', icon: UserRound, count: discoveries.people.length },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors shrink-0"
+            style={{
+              minWidth: 105,
+              background: activeTab === tab.id ? 'rgba(184,207,166,0.15)' : 'transparent',
+              color: activeTab === tab.id ? ACCENT : 'rgba(255,255,255,0.43)',
+              boxShadow: activeTab === tab.id ? 'inset 0 0 0 1px rgba(184,207,166,0.13)' : 'none',
+            }}
+          >
+            <tab.icon className="w-4 h-4" strokeWidth={1.75} />
+            <span>{tab.label}</span>
+            <span
+              className="min-w-4 h-4 px-1 rounded-full inline-flex items-center justify-center text-[9px] tabular-nums"
+              style={{ background: activeTab === tab.id ? 'rgba(184,207,166,0.12)' : 'rgba(255,255,255,0.05)' }}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </nav>
+
       {loading && <LoadingSkeleton rows={5} />}
       {!loading && error && <ErrorState message={error} onRetry={() => setVersion(v => v + 1)} />}
-      {!loading && !error && items.length === 0 && (
+      {!loading && !error && activeTab === 'music' && items.length === 0 && (
         <EmptyState
           icon={Heart}
           label="Tu Organismo todavía está vacío"
@@ -526,7 +545,7 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
         />
       )}
 
-      {!loading && !error && items.length > 0 && (
+      {!loading && !error && activeTab === 'music' && items.length > 0 && (
         <section className="space-y-2">
           {visibleItems.map((item, index) => (
             <OrganismRow
@@ -541,6 +560,28 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
             />
           ))}
         </section>
+      )}
+
+      {!loading && !error && activeTab === 'events' && (
+        discoveries.events.length ? <section className="grid sm:grid-cols-2 gap-3">
+          {discoveries.events.map(event => (
+            <div key={event.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <img src={event.image || FALLBACK} alt="" className="w-14 h-14 rounded-xl object-cover" />
+              <div className="min-w-0"><p className="text-sm font-bold text-white truncate">{event.title}</p><p className="text-xs text-white/40 mt-1">{event.date ? new Date(event.date).toLocaleDateString('es-CO') : 'Fecha por anunciar'}{event.city ? ` · ${event.city}` : ''}</p></div>
+            </div>
+          ))}
+        </section> : <EmptyState icon={CalendarDays} label="Tu agenda está vacía" subtitle="Los eventos que marques con corazón aparecerán aquí. Tus entradas viven únicamente en Ticket Vault." />
+      )}
+
+      {!loading && !error && activeTab === 'people' && (
+        discoveries.people.length ? <section className="grid sm:grid-cols-2 gap-3">
+          {discoveries.people.map(person => (
+            <div key={`${person.kind}-${person.id}`} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              {person.image ? <img src={person.image} alt="" className="w-12 h-12 rounded-full object-cover" /> : <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5">{person.kind === 'organizer' ? <Building2 className="w-5 h-5 text-white/35" /> : <UserRound className="w-5 h-5 text-white/35" />}</div>}
+              <div className="min-w-0"><p className="text-sm font-bold text-white truncate">{person.title}</p><p className="text-xs text-white/40 mt-1 capitalize">{person.meta || (person.kind === 'artist' ? 'Artista' : 'Organizador')}</p></div>
+            </div>
+          ))}
+        </section> : <EmptyState icon={UserRound} label="Aún no sigues perfiles" subtitle="Artistas, sellos, clubes y colectivos aparecerán aquí sin quitar protagonismo a tu música." />
       )}
     </div>
   );

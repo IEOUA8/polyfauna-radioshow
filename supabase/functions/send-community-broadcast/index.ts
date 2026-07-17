@@ -73,6 +73,9 @@ serve(async (req) => {
 
     const payload = await req.json();
     const { subject, title, body, ctaLabel, ctaUrl, templateType = 'generic', templateData = {} } = payload;
+    const broadcastId = typeof payload.broadcastId === 'string' && /^[0-9a-f-]{20,80}$/i.test(payload.broadcastId)
+      ? payload.broadcastId
+      : crypto.randomUUID();
     if (typeof subject !== 'string' || !subject.trim()) {
       return new Response(JSON.stringify({ error: 'El asunto es obligatorio' }), {
         status: 400,
@@ -94,7 +97,7 @@ serve(async (req) => {
     users?.forEach(u => { emailMap[u.id] = u.email || ''; });
 
     const recipients = (profilesData || [])
-      .map(p => ({ email: emailMap[p.id], name: p.display_name || 'Raver' }))
+      .map(p => ({ id: p.id, email: emailMap[p.id], name: p.display_name || 'Raver' }))
       .filter(r => !!r.email);
 
     let html: string;
@@ -146,7 +149,16 @@ serve(async (req) => {
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
       await Promise.allSettled(
-        batch.map(r => sendEmail({ to: r.email, subject: safeSubject, html }))
+        batch.map(r => sendEmail({
+          to: r.email,
+          subject: safeSubject,
+          html,
+          idempotencyKey: `community-broadcast/${broadcastId}/${r.id}`,
+          tags: [
+            { name: 'category', value: 'community_broadcast' },
+            { name: 'entity_id', value: broadcastId },
+          ],
+        }))
       );
       sent += batch.length;
       if (i + BATCH_SIZE < recipients.length) await sleep(BATCH_DELAY_MS);
@@ -161,7 +173,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, sent }), { headers: CORS_HEADERS });
+    return new Response(JSON.stringify({ ok: true, sent, broadcastId }), { headers: CORS_HEADERS });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error interno';
     return new Response(JSON.stringify({ error: message }), { status: 500, headers: CORS_HEADERS });

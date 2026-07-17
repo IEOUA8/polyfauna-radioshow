@@ -123,13 +123,12 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
             <div className="flex-1 min-w-0 flex flex-col items-start">
               {organizer.type && (
                 <span
-                  className="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  className="pf-chip mb-2"
                 >
                   {TYPE_LABEL[organizer.type] || organizer.type}
                 </span>
               )}
-              <h1 className="text-xl sm:text-3xl font-black text-white leading-tight">{organizer.name}</h1>
+              <h1 className="pf-detail-title">{organizer.name}</h1>
               {organizer.city && (
                 <span className="text-sm font-medium text-white/50 flex items-center gap-1.5 mt-2">
                   <MapPin className="w-3.5 h-3.5" /> {organizer.city}
@@ -182,7 +181,7 @@ function OrganizerDetail({ organizer, onBack, isFav, toggleFav, setCurrentSectio
       <div className="px-5 pt-5 pb-6 space-y-4">
         {organizer.bio && (
           <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Sobre {organizer.name}</h2>
+            <h2 className="pf-section-label mb-3">Sobre {organizer.name}</h2>
             <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{organizer.bio}</p>
           </div>
         )}
@@ -321,8 +320,8 @@ export default function OrganizersPage({ setCurrentSection }) {
         >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <h1 className="text-xl font-black text-white">Organizadores</h1>
-              <p className="text-sm text-white/40 mt-1">Clubes, promotores y colectivos detrás de los eventos.</p>
+              <h1 className="pf-page-title">Organizadores</h1>
+              <p className="pf-page-subtitle">Clubes, promotores y colectivos detrás de los eventos.</p>
             </div>
             <input
               type="text"

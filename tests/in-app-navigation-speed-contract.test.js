@@ -32,5 +32,6 @@ test('en su lugar usan openInSection (setCurrentSection + query param), sin sali
 });
 
 test('PolyfaunaOS le pasa setCurrentSection a RadioConsolePage', () => {
-  assert.match(polyfaunaOS, /<RadioConsolePage isPlaying=\{isPlaying\} setIsPlaying=\{setIsPlaying\} setCurrentSection=\{setCurrentSection\} \/>/);
+  assert.match(polyfaunaOS, /<RadioConsolePage[^>]*setCurrentSection=\{setCurrentSection\} \/>/);
+  assert.match(polyfaunaOS, /<RadioConsolePage[^>]*currentTrack=\{currentTrack\}[^>]*setCurrentTrack=\{setCurrentTrack\}/);
 });

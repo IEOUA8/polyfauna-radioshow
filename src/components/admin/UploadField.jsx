@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import supabase from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
-export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '', hint = '' }) {
+export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '', hint = '', previewAspect = '' }) {
   const { toast } = useToast();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -71,6 +71,14 @@ export function UploadField({ label, bucket, accept, value, onChange, required =
       </div>
       {fileName && !uploading && (
         <p className="text-[11px] text-muted-foreground mt-1 truncate">✓ {fileName}</p>
+      )}
+      {value && previewAspect && (
+        <div
+          className="mt-2 w-full overflow-hidden rounded-lg border border-border bg-black/20"
+          style={{ aspectRatio: previewAspect }}
+        >
+          <img src={value} alt={`Vista previa: ${label}`} className="w-full h-full object-cover" />
+        </div>
       )}
     </div>
   );

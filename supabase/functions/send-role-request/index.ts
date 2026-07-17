@@ -95,8 +95,26 @@ serve(async (req) => {
 
     try {
       await Promise.all([
-        sendEmail({ to: applicant.email, subject: 'Tu solicitud está en revisión', html: userHtml }),
-        sendEmail({ to: SUPPORT_EMAIL, subject: `Nueva solicitud: ${roleLabel}`, html: adminHtml }),
+        sendEmail({
+          to: applicant.email,
+          subject: 'Tu solicitud está en revisión',
+          html: userHtml,
+          idempotencyKey: `role-request/${roleRequest.id}/applicant`,
+          tags: [
+            { name: 'category', value: 'role_request' },
+            { name: 'entity_id', value: roleRequest.id },
+          ],
+        }),
+        sendEmail({
+          to: SUPPORT_EMAIL,
+          subject: `Nueva solicitud: ${roleLabel}`,
+          html: adminHtml,
+          idempotencyKey: `role-request/${roleRequest.id}/admin`,
+          tags: [
+            { name: 'category', value: 'role_request_admin' },
+            { name: 'entity_id', value: roleRequest.id },
+          ],
+        }),
       ]);
     } catch (emailError) {
       await admin

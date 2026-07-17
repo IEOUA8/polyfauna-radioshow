@@ -3,6 +3,7 @@ import { Calendar, Clock, Disc3, FileText, Headphones, Music, Radio, Search, X }
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import supabase from '@/lib/customSupabaseClient';
+import { getEventImage } from '@/lib/eventImages';
 
 const TYPE_META = {
   events:        { label: 'Evento',   icon: Calendar,   section: 'events',   imgKey: 'image_url',          nameKey: 'title' },
@@ -55,7 +56,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
     setFocusedIndex(-1);
     try {
       const [evRes, podRes, artRes, albRes, blogRes] = await Promise.all([
-        supabase.from('events').select('id, title, image_url').ilike('title', `%${q}%`).limit(3),
+        supabase.from('events').select('id, title, image_url, mobile_image_url, ticket_image_url').ilike('title', `%${q}%`).limit(3),
         supabase.from('podcasts').select('id, title, cover_url').ilike('title', `%${q}%`).limit(3),
         supabase.from('artists_public').select('id, name, image_url').ilike('name', `%${q}%`).limit(3),
         supabase.from('albums').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
@@ -270,7 +271,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
                       const meta = TYPE_META[item._type];
                       const Icon = meta.icon;
                       const name = item[meta.nameKey];
-                      const img  = item[meta.imgKey];
+                      const img  = item._type === 'events' ? getEventImage(item, 'compact') : item[meta.imgKey];
                       const isFocused = focusedIndex === idx;
                       return (
                         <button

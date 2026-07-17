@@ -10,8 +10,9 @@ import { Plus, Edit, Trash2, Loader2, ChevronRight, Music } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { R2UploadField } from './R2UploadField';
 import { useConfirmDialog } from './ConfirmDialog';
+import ArtistCreditSelector from './ArtistCreditSelector';
 
-const EMPTY_ALBUM = { title: '', artist_id: '', cover_url: '', release_year: '', genre: '', description: '' };
+const EMPTY_ALBUM = { title: '', artist_id: '', cover_url: '', release_year: '', genre: '', description: '', credited_artist_ids: [] };
 const EMPTY_TRACK = { title: '', artist_id: '', audio_url: '', duration: '', track_number: '', genre: '' };
 
 function secondsToMMSS(secs) {
@@ -44,22 +45,33 @@ const AlbumManager = ({ ownerId = null }) => {
   const [savingTrack, setSavingTrack] = useState(false);
 
   const myArtist = ownerId ? artists.find(a => a.user_id === ownerId) : null;
+  const canTagArtists = !ownerId
+    || (currentUser?.role === 'promoter' && currentUser?.organizer_type === 'collective');
 
   useEffect(() => { fetchData(); }, [ownerId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      let albumsQuery = supabase.from('albums').select('*, artists(name)').order('created_at', { ascending: false });
+      let albumsQuery = supabase.from('albums').select('*, artists:artists!albums_artist_id_fkey(name), album_artist_credits(artist_id)').order('created_at', { ascending: false });
       if (ownerId) albumsQuery = albumsQuery.eq('uploaded_by', ownerId);
-      const [albumsRes, artistsRes] = await Promise.all([
+      const [albumsRes, artistsRes, ownerArtistRes] = await Promise.all([
         albumsQuery,
-        supabase.from('artists').select('id, name, user_id').order('name'),
+        supabase.from('artists_public').select('id, name, user_id').order('name'),
+        ownerId
+          ? supabase.from('artists').select('id, name, user_id').eq('user_id', ownerId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
-      if (albumsRes.error) throw albumsRes.error;
       if (artistsRes.error) throw artistsRes.error;
+      if (ownerArtistRes.error) throw ownerArtistRes.error;
+
+      const availableArtists = ownerArtistRes.data
+        ? [ownerArtistRes.data, ...(artistsRes.data || []).filter((artist) => artist.id !== ownerArtistRes.data.id)]
+        : (artistsRes.data || []);
+      setArtists(availableArtists);
+
+      if (albumsRes.error) throw albumsRes.error;
       setAlbums(albumsRes.data || []);
-      setArtists(artistsRes.data || []);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
     } finally {
@@ -72,8 +84,9 @@ const AlbumManager = ({ ownerId = null }) => {
     setSaving(true);
     try {
       const albumArtistId = ownerId ? (myArtist?.id || null) : (form.artist_id || null);
+      const { credited_artist_ids: creditedArtistIds, ...albumFields } = form;
       const payload = {
-        ...form,
+        ...albumFields,
         release_year: form.release_year ? parseInt(form.release_year) : null,
         artist_id: albumArtistId,
       };
@@ -81,7 +94,6 @@ const AlbumManager = ({ ownerId = null }) => {
       if (editing) {
         const { error } = await supabase.from('albums').update(payload).eq('id', editing.id);
         if (error) throw error;
-        toast({ title: 'Álbum actualizado' });
       } else {
         const { data, error } = await supabase
           .from('albums')
@@ -90,8 +102,13 @@ const AlbumManager = ({ ownerId = null }) => {
           .single();
         if (error) throw error;
         albumId = data.id;
-        toast({ title: 'Álbum creado' });
       }
+
+      const { error: creditsError } = await supabase.rpc('set_album_artist_credits', {
+        p_album_id: albumId,
+        p_artist_ids: canTagArtists ? creditedArtistIds : [],
+      });
+      if (creditsError) throw creditsError;
 
       if (pendingTracks.length > 0) {
         const tracksPayload = pendingTracks.map((t, i) => ({
@@ -107,6 +124,8 @@ const AlbumManager = ({ ownerId = null }) => {
         if (tracksError) throw tracksError;
         setTracksByAlbum((prev) => ({ ...prev, [albumId]: undefined }));
       }
+
+      toast({ title: editing ? 'Álbum actualizado' : 'Álbum creado' });
 
       setIsDialogOpen(false);
       reset();
@@ -140,6 +159,9 @@ const AlbumManager = ({ ownerId = null }) => {
       release_year: album.release_year || '',
       genre: album.genre || '',
       description: album.description || '',
+      credited_artist_ids: (album.album_artist_credits || [])
+        .map((credit) => credit.artist_id)
+        .filter((artistId) => artistId !== album.artist_id),
     });
     setPendingTracks([]);
     setTrackDraft(EMPTY_TRACK);
@@ -309,6 +331,14 @@ const AlbumManager = ({ ownerId = null }) => {
                     ))}
                   </select>
                 </div>
+              )}
+              {canTagArtists && (
+                <ArtistCreditSelector
+                  artists={artists}
+                  selectedIds={form.credited_artist_ids}
+                  primaryArtistId={ownerId ? myArtist?.id : form.artist_id}
+                  onChange={(ids) => setForm({ ...form, credited_artist_ids: ids })}
+                />
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>

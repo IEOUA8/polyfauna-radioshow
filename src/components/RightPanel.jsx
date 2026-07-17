@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, CalendarDays, CheckCircle, ChevronRight, Clock, FileText, Headphones, MapPin, Music, Play, QrCode, Radio, User, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
+import { getEventImage } from '@/lib/eventImages';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -183,7 +184,7 @@ function TicketCard({ ticket }) {
     <div className="rounded-xl overflow-hidden"
       style={{ background: 'rgba(8,14,9,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="relative h-10 overflow-hidden">
-        <img src={event?.image_url || FALLBACK_EVENT} alt={event?.title} loading="lazy"
+        <img src={getEventImage(event, 'ticket') || FALLBACK_EVENT} alt={event?.title} loading="lazy"
           className="w-full h-full object-cover opacity-50" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-black/20" />
         <p className="absolute bottom-1.5 left-3 text-[10px] font-bold text-white truncate max-w-[65%]">
@@ -235,7 +236,7 @@ function EventRow({ event, index, setCurrentSection }) {
     >
       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
         style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-        <img src={event.image_url || FALLBACK_EVENT} alt={event.title} loading="lazy"
+        <img src={getEventImage(event, 'compact') || FALLBACK_EVENT} alt={event.title} loading="lazy"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
       </div>
       <div className="flex-1 min-w-0">
@@ -327,19 +328,19 @@ export default function RightPanel({ setCurrentSection }) {
 
   const { data: tickets } = useSupabaseQuery(
     () => currentUser
-      ? supabase.from('user_tickets').select('*, events(title, date, venue, image_url)').eq('user_id', currentUser.id).limit(2)
+      ? supabase.from('user_tickets').select('*, events(title, date, venue, image_url, mobile_image_url, ticket_image_url)').eq('user_id', currentUser.id).limit(2)
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );
 
   const { data: events } = useSupabaseQuery(
-    () => supabase.from('events').select('id, title, date, venue, image_url')
+    () => supabase.from('events').select('id, title, date, venue, image_url, mobile_image_url, ticket_image_url')
       .gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3),
     []
   );
 
   const { data: podcasts } = useSupabaseQuery(
-    () => supabase.from('podcasts').select('*, artists(name)').order('created_at', { ascending: false }).limit(3),
+    () => supabase.from('podcasts').select('*, artists:artists!podcasts_artist_id_fkey(name)').order('created_at', { ascending: false }).limit(3),
     []
   );
 

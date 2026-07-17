@@ -24,7 +24,16 @@ serve(async (req) => {
         </tr>
       </table>
     `);
-    await sendEmail({ to: user.email, subject: 'Bienvenido al bioma', html });
+    await sendEmail({
+      to: user.email,
+      subject: 'Bienvenido al bioma',
+      html,
+      idempotencyKey: `welcome/${user.id}`,
+      tags: [
+        { name: 'category', value: 'welcome' },
+        { name: 'entity_id', value: user.id },
+      ],
+    });
     return json({ ok: true });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : 'Error interno' }, 500);

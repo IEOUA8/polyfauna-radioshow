@@ -142,6 +142,11 @@ Deno.serve(async (req) => {
             to: user.email,
             subject: `Ticket confirmado · ${String(event.title).replace(/[\r\n]/g, ' ')}`,
             html,
+            idempotencyKey: `free-ticket/${ticket.id}`,
+            tags: [
+              { name: 'category', value: 'ticket_confirmed' },
+              { name: 'entity_id', value: ticket.id },
+            ],
           });
           emailSent = true;
         } catch (emailError) {

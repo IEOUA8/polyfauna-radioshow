@@ -42,6 +42,16 @@
     --destructive: 349 100% 67%;
     --destructive-foreground: 0 0% 98%;
     --radius: 0.75rem;
+
+    /* ── Jerarquía editorial transversal ── */
+    --pf-editorial-accent: #D6A456;
+    --pf-editorial-accent-soft: rgba(214, 164, 86, 0.12);
+    --pf-editorial-accent-border: rgba(214, 164, 86, 0.30);
+    --pf-text-primary: #F3F6F2;
+    --pf-text-secondary: rgba(226, 232, 227, 0.66);
+    --pf-text-meta: rgba(205, 214, 208, 0.40);
+    --pf-surface-subtle: rgba(255, 255, 255, 0.025);
+    --pf-border-subtle: rgba(255, 255, 255, 0.07);
   }
   .dark {
     --primary: 0 0% 95%;
@@ -95,6 +105,84 @@
     @apply backdrop-blur-2xl border shadow-2xl;
     background: rgba(11, 17, 16, 0.97);
     border-color: rgba(255,255,255,0.08);
+  }
+
+  /* Jerarquía común para todas las superficies editoriales públicas.
+     Live/error/success conservan sus colores semánticos propios. */
+  .pf-page-title {
+    color: var(--pf-text-primary);
+    font-size: 1.25rem;
+    line-height: 1.25;
+    font-weight: 900;
+    letter-spacing: -0.018em;
+  }
+  .pf-detail-title {
+    color: var(--pf-text-primary);
+    font-size: clamp(1.5rem, 3.2vw, 2rem);
+    line-height: 1.12;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+  .pf-page-subtitle,
+  .pf-supporting-text {
+    color: var(--pf-text-secondary);
+  }
+  .pf-page-subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .pf-eyebrow,
+  .pf-section-label {
+    color: var(--pf-editorial-accent);
+    font-size: 0.625rem;
+    line-height: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .pf-section-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .pf-meta {
+    color: var(--pf-text-meta);
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+  }
+  .pf-author {
+    color: var(--pf-editorial-accent);
+    font-weight: 750;
+  }
+  .pf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 9999px;
+    border: 1px solid var(--pf-editorial-accent-border);
+    background: var(--pf-editorial-accent-soft);
+    color: var(--pf-editorial-accent);
+    font-size: 0.625rem;
+    line-height: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .pf-editorial-card {
+    background: var(--pf-surface-subtle);
+    border: 1px solid var(--pf-border-subtle);
+  }
+  .pf-accent-link {
+    color: var(--pf-editorial-accent);
+    font-weight: 750;
+    text-decoration-color: rgba(214, 164, 86, 0.35);
+    text-underline-offset: 0.22em;
+  }
+  .pf-accent-link:hover {
+    color: #E8BD72;
   }
   /* ── Glassmorphism card ── */
   .glass-card {

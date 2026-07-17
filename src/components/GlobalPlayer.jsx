@@ -7,6 +7,7 @@ import { useNowPlaying } from '@/hooks/useNowPlaying';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlayback } from '@/contexts/PlaybackContext';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useActiveRadioSet } from '@/hooks/useActiveRadioSet';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { trackUsageEvent } from '@/lib/telemetry';
 import { getStreamReconnectDelay, isPlaybackPermissionError, STREAM_STALL_TIMEOUT_MS } from '@/lib/streamRecovery';
@@ -20,7 +21,7 @@ import HoloSpectrum from '@/components/HoloSpectrum';
 // al navegar entre esas tres.
 const PLAYER_HIDDEN_PREFIXES = [
   '/login', '/signup', '/validate', '/artist/', '/profiles/',
-  '/organizadores/', '/music/', '/podcasts/', '/events/', '/entrevistas/', '/e/',
+  '/organizadores/', '/music/', '/events/', '/entrevistas/', '/e/',
 ];
 function isPlayerHiddenRoute(pathname) {
   return PLAYER_HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
@@ -82,6 +83,7 @@ export default function GlobalPlayer() {
   const { currentUser } = useAuth();
   const { isPlaying, setIsPlaying, currentTrack, setCurrentTrack, goToSection } = usePlayback();
   const { isFav, toggle: toggleFav } = useFavorites();
+  const { radioSet, liked: isSetLiked, toggleLike: toggleSetLike } = useActiveRadioSet();
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 1023px)');
@@ -166,7 +168,12 @@ export default function GlobalPlayer() {
   }, [setCurrentTrack, setIsPlaying]);
 
   useEffect(() => {
-    if (!currentTrack || !playbackQueue) return;
+    if (!playbackQueue) return;
+    if (!currentTrack) {
+      setPlaybackQueue(null);
+      queueRef.current = null;
+      return;
+    }
     const expected = playbackQueue.items[playbackQueue.index];
     if (!expected || expected.id !== currentTrack.id || expected.audio_url !== currentTrack.audio_url) {
       setPlaybackQueue(null);
@@ -468,15 +475,24 @@ export default function GlobalPlayer() {
     backToRadio();
   };
 
-  const liveTrackKey = `live-${song?.title || 'stream'}`;
-  const isLiked = currentUser ? isFav('song', liveTrackKey) : false;
+  const favoriteType = currentTrack?.kind === 'podcast' ? 'podcast' : 'track';
+  const isLiked = currentUser && currentTrack ? isFav(favoriteType, currentTrack.id) : false;
 
   const handleLike = async () => {
     if (!currentUser) {
       toast({ title: 'Inicia sesión', description: 'Necesitas cuenta para alimentar tu Organismo.' });
       return;
     }
-    await toggleFav('song', liveTrackKey);
+    if (currentTrack) {
+      await toggleFav(favoriteType, currentTrack.id);
+      return;
+    }
+    if (!radioSet) {
+      toast({ title: 'Sin set programado', description: 'El corazón se habilita cuando hay un programa radial activo.' });
+      return;
+    }
+    const { error } = await toggleSetLike();
+    if (error) toast({ title: 'No se pudo registrar', description: error.message, variant: 'destructive' });
   };
 
   const isOnDemand   = Boolean(currentTrack);
@@ -675,26 +691,37 @@ export default function GlobalPlayer() {
 
           {/* Like / Radio — desktop only */}
           {isOnDemand ? (
-            <button
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleLike}
+                className="flex transition-colors p-1 shrink-0"
+                style={{ color: isLiked ? '#FF5C7A' : 'rgba(255,255,255,0.25)' }}
+                title={isLiked ? 'Quitar de Tu música' : 'Agregar a Tu música'}
+              >
+                <Heart className="w-4 h-4" style={isLiked ? { fill: '#FF5C7A' } : {}} />
+              </button>
+              <button
               type="button"
               onClick={backToRadio}
               title="Volver al radio stream"
-              className="hidden sm:flex items-center gap-1 text-white/25 hover:text-white/60 transition-colors p-1 text-[10px] font-bold uppercase tracking-wider shrink-0"
+              className="flex items-center gap-1 text-white/25 hover:text-white/60 transition-colors p-1 text-[10px] font-bold uppercase tracking-wider shrink-0"
             >
               <Radio className="w-3.5 h-3.5" />
               Radio
-            </button>
-          ) : (
+              </button>
+            </div>
+          ) : radioSet ? (
             <button
               type="button"
               onClick={handleLike}
               className="hidden sm:flex transition-colors p-1 shrink-0"
-              style={{ color: isLiked ? '#FF5C7A' : 'rgba(255,255,255,0.25)' }}
-              title={isLiked ? 'Quitar del Organismo' : 'Agregar al Organismo'}
+              style={{ color: isSetLiked ? '#FF5C7A' : 'rgba(255,255,255,0.25)' }}
+              title={`${radioSet.likes_count || 0} corazones en este set`}
             >
-              <Heart className="w-4 h-4" style={isLiked ? { fill: '#FF5C7A' } : {}} />
+              <Heart className="w-4 h-4" style={isSetLiked ? { fill: '#FF5C7A' } : {}} />
             </button>
-          )}
+          ) : null}
 
           {/* Play button — mobile only, inline with info */}
           <div className="sm:hidden relative flex items-center justify-center shrink-0 ml-1">

@@ -44,6 +44,8 @@ serve(async (req) => {
       to: userEmail,
       subject: `Ticket confirmado · ${eventTitle.replace(/[\r\n]/g, ' ')}`,
       html,
+      idempotencyKey: `ticket-confirmation/${ticketCode}`,
+      tags: [{ name: 'category', value: 'ticket_confirmed' }],
     });
 
     return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });

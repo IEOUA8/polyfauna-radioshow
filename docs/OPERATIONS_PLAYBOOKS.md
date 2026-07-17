@@ -235,6 +235,60 @@ Cierre:
 - Tickets usados/refund/cancelados reflejan el estado real.
 - Se documenta si hubo excepcion manual en puerta.
 
+## Activacion de trazabilidad de Resend
+
+Objetivo:
+
+- Evitar correos transaccionales duplicados durante reintentos.
+- Conocer si un correo fue enviado, entregado, retrasado, rebotado o marcado como spam.
+- Conservar solo metadata operativa; no se guardan destinatarios, asuntos ni cuerpos en las tablas de trazabilidad.
+
+Preparacion:
+
+1. Aplicar la migracion `20260715210000_resend_delivery_observability.sql`.
+2. Crear el webhook en Resend con este endpoint:
+
+   `https://<PROJECT_REF>.supabase.co/functions/v1/resend-webhook`
+
+3. Suscribir al menos estos eventos:
+
+   - `email.sent`
+   - `email.delivered`
+   - `email.delivery_delayed`
+   - `email.bounced`
+   - `email.failed`
+   - `email.complained`
+   - `email.suppressed`
+
+4. Copiar el signing secret del webhook y guardarlo en Supabase como `RESEND_WEBHOOK_SECRET`. Nunca usarlo en variables `VITE_*` ni comitearlo.
+5. Desplegar el receptor sin validacion JWT, porque la autenticidad se verifica con la firma Svix sobre el cuerpo crudo:
+
+   ```bash
+   supabase functions deploy resend-webhook --no-verify-jwt
+   ```
+
+6. Enviar un correo de prueba y confirmar la recepcion:
+
+   ```sql
+   SELECT event_type, category, entity_id, occurred_at
+   FROM public.email_delivery_events
+   ORDER BY occurred_at DESC
+   LIMIT 20;
+   ```
+
+Verificacion de seguridad:
+
+- Una solicitud sin `svix-id`, `svix-timestamp` y `svix-signature` debe responder `400`.
+- Reenviar el mismo evento desde Resend no debe crear una segunda fila: `svix_id` es la llave de deduplicacion.
+- `anon` y `authenticated` no deben poder consultar las tablas de entrega.
+- Rotar `RESEND_WEBHOOK_SECRET` si se expone y actualizar inmediatamente el secreto de la Edge Function.
+
+Mantenimiento:
+
+- Revisar rebotes y quejas antes de campañas comunitarias.
+- Definir una retencion operativa; como punto de partida, eliminar eventos detallados mayores a 180 dias y conservar solo los estados que sigan siendo necesarios.
+- La politica publica de privacidad debe revisarse con asesoria juridica antes del lanzamiento comercial.
+
 ## Backup y restauracion
 
 Frecuencia recomendada:

@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.polyfauna.com/</loc>
-    <lastmod>2026-07-14</lastmod>
+    <lastmod>2026-07-17</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -27,12 +27,6 @@
   <url>
     <loc>https://www.polyfauna.com/profiles/kevin-ruiz</loc>
     <lastmod>2026-07-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.polyfauna.com/profiles/concepto-fractal</loc>
-    <lastmod>2026-07-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -79,19 +73,25 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.polyfauna.com/profiles/concepto-fractal</loc>
+    <lastmod>2026-07-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.polyfauna.com/profiles/nous</loc>
     <lastmod>2026-07-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.polyfauna.com/organizadores/sara-victoria-silva-montoya</loc>
-    <lastmod>2026-07-08</lastmod>
+    <loc>https://www.polyfauna.com/profiles/johan-acosta</loc>
+    <lastmod>2026-07-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.polyfauna.com/organizadores/concepto-fractal</loc>
+    <loc>https://www.polyfauna.com/organizadores/sara-victoria-silva-montoya</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -106,6 +106,18 @@
     <loc>https://www.polyfauna.com/organizadores/mod3house</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.polyfauna.com/organizadores/concepto-fractal</loc>
+    <lastmod>2026-07-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.polyfauna.com/podcasts/7cb099e8-4cfb-4698-8e01-f03a731860bc</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>

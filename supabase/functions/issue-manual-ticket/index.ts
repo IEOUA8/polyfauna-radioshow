@@ -146,6 +146,11 @@ Deno.serve(async (req) => {
           ? `Activa tu ticket · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`
           : `Ticket confirmado · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`,
         html,
+        idempotencyKey: `manual-ticket/${ticket.ticket_id}`,
+        tags: [
+          { name: 'category', value: isPending ? 'ticket_pending' : 'ticket_confirmed' },
+          { name: 'entity_id', value: ticket.ticket_id },
+        ],
       });
       emailSent = true;
     } catch (emailError) {

@@ -16,6 +16,8 @@ import { claimFreeTicket } from '@/lib/freeTickets';
 import { buildWompiCheckoutUrl, isWompiCheckoutUrl } from '@/lib/wompiCheckout';
 import { loadTicketIdentity } from '@/lib/ticketIdentity';
 import { hasOpenTicketSales, isEventVisibleInTerminal, isTicketSaleOpen } from '@/lib/eventTicketRules';
+import { getEventImage, getEventMobileSource } from '@/lib/eventImages';
+import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -252,7 +254,7 @@ function BuyModal({ event, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="relative h-36 shrink-0 overflow-hidden">
-          <img src={event.image_url || FALLBACK_IMG} onError={useFallbackImage} alt={event.title} loading="lazy" className="w-full h-full object-cover" />
+          <img src={getEventImage(event, 'mobile') || FALLBACK_IMG} onError={useFallbackImage} alt={event.title} loading="lazy" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
           <button
             type="button" onClick={onClose}
@@ -567,7 +569,7 @@ const EventCard = React.memo(function EventCard({ event, index, isFavorite, onTo
     >
       <div className="relative aspect-video overflow-hidden">
         <img
-          src={event.image_url || FALLBACK_IMG}
+          src={getEventImage(event) || FALLBACK_IMG}
           onError={useFallbackImage}
           alt={event.title}
           loading="lazy"
@@ -670,12 +672,15 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
 
       {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 280 }}>
-        <img
-          src={event.image_url || FALLBACK_IMG}
-          onError={useFallbackImage}
-          alt={event.title}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <picture className="absolute inset-0 w-full h-full">
+          {getEventMobileSource(event) && <source media="(max-width: 639px)" srcSet={getEventMobileSource(event)} />}
+          <img
+            src={getEventImage(event) || FALLBACK_IMG}
+            onError={useFallbackImage}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+        </picture>
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
 
@@ -697,11 +702,11 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
 
         <div className="relative z-10 p-6 flex flex-col justify-end" style={{ minHeight: 280 }}>
           {event.category && (
-            <span className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            <span className="pf-eyebrow mb-2">
               {event.category}
             </span>
           )}
-          <h1 className="text-3xl font-black text-white leading-tight">{event.title}</h1>
+          <h1 className="pf-detail-title">{event.title}</h1>
         </div>
       </div>
 
@@ -709,8 +714,8 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {event.date && (
           <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <Calendar className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">Fecha</p>
+            <Calendar className="w-4 h-4 mx-auto mb-1.5" style={{ color: EDITORIAL_ACCENT }} />
+            <p className="pf-eyebrow">Fecha</p>
             <p className="text-xs font-bold text-white mt-0.5">
               {new Date(event.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
@@ -718,21 +723,21 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
         )}
         {event.venue && (
           <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <Building className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">Venue</p>
+            <Building className="w-4 h-4 mx-auto mb-1.5" style={{ color: EDITORIAL_ACCENT }} />
+            <p className="pf-eyebrow">Venue</p>
             <p className="text-xs font-bold text-white mt-0.5 truncate">{event.venue}</p>
           </div>
         )}
         {event.city && (
           <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <MapPin className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">Ciudad</p>
+            <MapPin className="w-4 h-4 mx-auto mb-1.5" style={{ color: EDITORIAL_ACCENT }} />
+            <p className="pf-eyebrow">Ciudad</p>
             <p className="text-xs font-bold text-white mt-0.5">{event.city}</p>
           </div>
         )}
         <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <Ticket className="w-4 h-4 mx-auto mb-1.5" style={{ color: 'rgba(255,255,255,0.85)' }} />
-          <p className="text-[10px] text-white/40 uppercase tracking-wider">Precio</p>
+          <Ticket className="w-4 h-4 mx-auto mb-1.5" style={{ color: EDITORIAL_ACCENT }} />
+          <p className="pf-eyebrow">Precio</p>
           <p className="text-sm font-black mt-0.5" style={{ color: 'rgba(255,255,255,0.85)' }}>{formatPrice(event.price)}</p>
         </div>
       </div>
@@ -740,7 +745,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
       {/* Description */}
       {event.description && (
         <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-3">Sobre el evento</h2>
+          <h2 className="pf-section-label mb-3">Sobre el evento</h2>
           <p className="text-sm text-white/70 leading-relaxed">{event.description}</p>
         </div>
       )}
@@ -748,7 +753,7 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
       {/* Lineup */}
       {lineup.length > 0 && (
         <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-3 flex items-center gap-2">
+          <h2 className="pf-section-label mb-3">
             <Users className="w-3.5 h-3.5" />
             Lineup
           </h2>
@@ -757,9 +762,9 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
               const label = artist?.name || name;
               const className = "text-xs font-bold px-3 py-1.5 rounded-lg transition-colors";
               const style = {
-                background: artist ? 'rgba(32,199,232,0.10)' : 'rgba(255,255,255,0.06)',
-                color: artist ? 'rgba(125,231,255,0.92)' : 'rgba(255,255,255,0.85)',
-                border: artist ? '1px solid rgba(32,199,232,0.22)' : '1px solid rgba(255,255,255,0.1)',
+                background: artist ? editorialAccent(0.10) : 'rgba(255,255,255,0.06)',
+                color: artist ? EDITORIAL_ACCENT : 'rgba(255,255,255,0.85)',
+                border: artist ? `1px solid ${editorialAccent(0.28)}` : '1px solid rgba(255,255,255,0.1)',
               };
 
               return artist ? (
@@ -998,17 +1003,22 @@ export default function EventTerminal({ setCurrentSection }) {
               onClick={() => setSelectedEvent(featured)}
             >
               <AnimatePresence mode="wait">
-                <motion.img
+                <motion.picture
                   key={featured.id}
-                  src={featured.image_url || FALLBACK_IMG}
-                  onError={useFallbackImage}
-                  alt={featured.title}
                   initial={{ opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+                  className="absolute inset-0 w-full h-full"
+                >
+                  {getEventMobileSource(featured) && <source media="(max-width: 639px)" srcSet={getEventMobileSource(featured)} />}
+                  <img
+                    src={getEventImage(featured) || FALLBACK_IMG}
+                    onError={useFallbackImage}
+                    alt={featured.title}
+                    className="w-full h-full object-cover"
+                  />
+                </motion.picture>
               </AnimatePresence>
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -1042,7 +1052,7 @@ export default function EventTerminal({ setCurrentSection }) {
 
               <div className="relative z-10 p-6 md:p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                  <span className="pf-eyebrow">
                     Evento Destacado
                   </span>
                   <AnimatePresence mode="wait">
@@ -1052,7 +1062,7 @@ export default function EventTerminal({ setCurrentSection }) {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.3, delay: 0.1 }}
-                      className="mt-2 text-3xl md:text-4xl font-black text-white leading-tight max-w-lg"
+                      className="pf-detail-title mt-2 max-w-lg"
                     >
                       {featured.title}
                     </motion.h1>
@@ -1132,7 +1142,7 @@ export default function EventTerminal({ setCurrentSection }) {
             {/* Upcoming Events Grid */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <h2 className="text-base font-bold text-white">
+                <h2 className="pf-page-title">
                   {(search.trim() || organizerTypeFilter) ? `${filteredEvents.length} resultado${filteredEvents.length !== 1 ? 's' : ''}` : 'Próximos Eventos'}
                 </h2>
                 <div className="relative">

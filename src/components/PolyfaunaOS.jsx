@@ -33,6 +33,12 @@ const ControlCenter         = lazy(lazyImport(() => import('@/components/Control
 const PUBLIC_SECTIONS  = ['radio-console', 'podcasts', 'events', 'artists', 'organizers', 'blog'];
 const VALID_SECTIONS   = new Set(['radio-console', 'podcasts', 'music', 'organism', 'events', 'artists', 'organizers', 'blog', 'inbox', 'tickets', 'settings']);
 
+function initialSectionFromLocation() {
+  if (/^\/podcasts\/[^/]+\/?$/.test(window.location.pathname)) return 'podcasts';
+  const requested = new URLSearchParams(window.location.search).get('section');
+  return VALID_SECTIONS.has(requested) ? requested : 'radio-console';
+}
+
 function SectionLoader() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-6">
@@ -146,10 +152,7 @@ function GuestGate({ section, onClose }) {
 function PolyfaunaOS() {
   const { currentUser } = useAuth();
   const { isPlaying, setIsPlaying, currentTrack, setCurrentTrack, registerSectionNavigator } = usePlayback();
-  const [currentSection, setCurrentSection] = useState(() => {
-    const requested = new URLSearchParams(window.location.search).get('section');
-    return VALID_SECTIONS.has(requested) ? requested : 'radio-console';
-  });
+  const [currentSection, setCurrentSection] = useState(initialSectionFromLocation);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const showRightPanel = useMediaQuery('(min-width: 1280px)');
   const mainRef      = useRef(null);
@@ -168,8 +171,15 @@ function PolyfaunaOS() {
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     const url = new URL(window.location.href);
-    if (currentSection === 'radio-console') url.searchParams.delete('section');
-    else url.searchParams.set('section', currentSection);
+    const isPodcastDetailPath = /^\/podcasts\/[^/]+\/?$/.test(url.pathname);
+    if (currentSection === 'podcasts' && isPodcastDetailPath) {
+      url.searchParams.delete('section');
+      url.searchParams.delete('podcast');
+    } else {
+      if (isPodcastDetailPath) url.pathname = '/';
+      if (currentSection === 'radio-console') url.searchParams.delete('section');
+      else url.searchParams.set('section', currentSection);
+    }
     if (currentSection !== 'artists') url.searchParams.delete('artist');
     if (currentSection !== 'organizers') url.searchParams.delete('organizer');
     if (currentSection !== 'music') url.searchParams.delete('album');
@@ -207,8 +217,8 @@ function PolyfaunaOS() {
     if (isGuestProtected) return <GuestGate section={currentSection} onClose={() => setCurrentSection('radio-console')} />;
 
     switch (currentSection) {
-      case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} setCurrentSection={setCurrentSection} />;
-      case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} />;
+      case 'radio-console': return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack} setCurrentSection={setCurrentSection} />;
+      case 'podcasts':      return <PodcastsPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} isPlaying={isPlaying} setCurrentSection={setCurrentSection} />;
       case 'music':         return <MusicPage setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} currentTrack={currentTrack} />;
       case 'organism':      return <Organism currentTrack={currentTrack} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />;
       case 'events':        return <EventTerminal setCurrentSection={setCurrentSection} />;
@@ -226,7 +236,7 @@ function PolyfaunaOS() {
       case 'inbox':         return <SignalInbox />;
       case 'tickets':       return <TicketVault />;
       case 'settings':      return <ControlCenter setCurrentSection={setCurrentSection} />;
-      default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} setCurrentSection={setCurrentSection} />;
+      default:              return <RadioConsolePage isPlaying={isPlaying} setIsPlaying={setIsPlaying} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack} setCurrentSection={setCurrentSection} />;
     }
   };
 

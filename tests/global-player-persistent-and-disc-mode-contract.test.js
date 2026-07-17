@@ -21,10 +21,13 @@ test('GlobalPlayer vive fuera de <Routes>, con su propio PlaybackProvider compar
 
 test('GlobalPlayer oculta su interfaz en rutas standalone sin desmontar el audio', () => {
   assert.match(globalPlayer, /PLAYER_HIDDEN_PREFIXES\s*=\s*\[/);
-  const hiddenPrefixes = ['/login', '/signup', '/validate', '/artist/', '/profiles/', '/organizadores/', '/music/', '/podcasts/', '/events/', '/entrevistas/', '/e/'];
+  const hiddenPrefixes = ['/login', '/signup', '/validate', '/artist/', '/profiles/', '/organizadores/', '/music/', '/events/', '/entrevistas/', '/e/'];
   for (const prefix of hiddenPrefixes) {
     assert.match(globalPlayer, new RegExp(`'${prefix.replace(/\//g, '\\/')}'`));
   }
+  // El detalle de podcast ahora vive dentro de PolyfaunaOS y debe conservar
+  // el reproductor global visible y sincronizado.
+  assert.doesNotMatch(globalPlayer, /'\/podcasts\/'/);
   assert.match(globalPlayer, /const playerHidden = isPlayerHiddenRoute\(location\.pathname\);/);
   assert.match(globalPlayer, /<audio ref=\{audioRef\} preload="none" \/>\s*\n\s*\{!playerHidden && <>/);
 });

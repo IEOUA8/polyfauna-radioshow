@@ -5,6 +5,8 @@ import { Calendar, Disc3, Headphones, Mic } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { lineupIncludesArtist } from '@/lib/artistIdentity';
 import { EmptyState, LoadingSkeleton } from '@/components/SectionStates';
+import { getEventImage } from '@/lib/eventImages';
+import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
 
@@ -28,7 +30,7 @@ const DEFAULT_ORGANIZER_CAPABILITIES = { events: true, music: false, podcast: tr
 const ORGANIZER_TAB_CAPABILITIES = {
   club:       { events: true, music: false, podcast: true,  interviews: true },
   promoter:   { events: true, music: false, podcast: false, interviews: true },
-  collective: { events: true, music: false, podcast: true,  interviews: true },
+  collective: { events: true, music: true,  podcast: true,  interviews: true },
   hybrid:     { events: true, music: false, podcast: true,  interviews: true },
 };
 
@@ -92,7 +94,7 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
         if (organizerId) {
           const { data } = await supabase
             .from('event_organizers')
-            .select('events(id, title, date, venue, city, image_url)')
+            .select('events(id, title, date, venue, city, image_url, mobile_image_url, ticket_image_url)')
             .eq('organizer_id', organizerId);
           const rows = (data || [])
             .map((row) => row.events)
@@ -104,7 +106,7 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
         if (artistId) {
           const { data } = await supabase
             .from('events')
-            .select('id, title, date, venue, city, image_url, lineup')
+            .select('id, title, date, venue, city, image_url, mobile_image_url, ticket_image_url, lineup')
             .order('date', { ascending: false })
             .limit(60);
           const rows = (data || []).filter((event) => lineupIncludesArtist(event.lineup, { id: artistId }));
@@ -116,22 +118,40 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
       }
 
       if (activeTab === 'music') {
-        const { data } = await supabase
-          .from('albums')
-          .select('id, title, cover_url, release_year')
-          .eq('artist_id', artistId)
-          .order('release_year', { ascending: false });
-        if (!cancelled) setCache((prev) => ({ ...prev, music: data || [] }));
+        const [primaryResult, creditsResult] = await Promise.all([
+          supabase
+            .from('albums')
+            .select('id, title, cover_url, release_year')
+            .eq('artist_id', artistId)
+            .order('release_year', { ascending: false }),
+          supabase
+            .from('album_artist_credits')
+            .select('albums(id, title, cover_url, release_year)')
+            .eq('artist_id', artistId),
+        ]);
+        const credited = (creditsResult.data || []).map((row) => row.albums).filter(Boolean);
+        const rows = [...new Map([...(primaryResult.data || []), ...credited].map((album) => [album.id, album])).values()]
+          .sort((a, b) => Number(b.release_year || 0) - Number(a.release_year || 0));
+        if (!cancelled) setCache((prev) => ({ ...prev, music: rows }));
         return;
       }
 
       if (activeTab === 'podcast') {
-        const { data } = await supabase
-          .from('podcasts')
-          .select('id, title, cover_url, duration')
-          .eq('artist_id', artistId)
-          .order('created_at', { ascending: false });
-        if (!cancelled) setCache((prev) => ({ ...prev, podcast: data || [] }));
+        const [primaryResult, creditsResult] = await Promise.all([
+          supabase
+            .from('podcasts')
+            .select('id, title, cover_url, duration, created_at')
+            .eq('artist_id', artistId)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('podcast_artist_credits')
+            .select('podcasts(id, title, cover_url, duration, created_at)')
+            .eq('artist_id', artistId),
+        ]);
+        const credited = (creditsResult.data || []).map((row) => row.podcasts).filter(Boolean);
+        const rows = [...new Map([...(primaryResult.data || []), ...credited].map((podcast) => [podcast.id, podcast])).values()]
+          .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        if (!cancelled) setCache((prev) => ({ ...prev, podcast: rows }));
         return;
       }
 
@@ -173,8 +193,9 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
               className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors shrink-0"
               style={{
                 minWidth: 92,
-                background: isActive ? 'rgba(255,255,255,0.10)' : 'transparent',
-                color: isActive ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)',
+                background: isActive ? editorialAccent(0.13) : 'transparent',
+                color: isActive ? EDITORIAL_ACCENT : 'rgba(255,255,255,0.45)',
+                boxShadow: isActive ? `inset 0 0 0 1px ${editorialAccent(0.20)}` : 'none',
               }}
             >
               <Icon className="w-4 h-4" strokeWidth={1.75} />
@@ -202,7 +223,7 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
                     <PreviewRow
                       key={event.id}
                       to={`/e/${event.id}`}
-                      image={event.image_url}
+                      image={getEventImage(event, 'compact')}
                       title={event.title}
                       subtitle={[event.venue || event.city, formatEventDate(event.date)].filter(Boolean).join(' · ')}
                     />

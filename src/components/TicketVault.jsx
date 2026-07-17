@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Calendar, CheckCircle, Clock, Download, MapPin, RefreshCw, Send, Ticket, X, XCircle } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle, Clock, Download, Loader2, MapPin, RefreshCw, Send, Ticket, Trash2, X, XCircle } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import supabase from '@/lib/customSupabaseClient';
 import { buildTicketQRPayload } from '@/lib/tickets';
@@ -9,6 +9,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { CardSkeleton, EmptyState, ErrorState, LoginRequired, PulseLoader } from '@/components/SectionStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { getEventImage } from '@/lib/eventImages';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=600&auto=format&fit=crop';
 
@@ -46,7 +47,7 @@ async function generateTicketPDF(ticket, qrCanvas) {
 
   // Header: event image
   try {
-    const imgRes = await fetch(event?.image_url || FALLBACK);
+    const imgRes = await fetch(getEventImage(event, 'ticket') || FALLBACK);
     const imgBlob = await imgRes.blob();
     const imgDataUrl = await new Promise((resolve) => {
       const reader = new FileReader();
@@ -190,7 +191,7 @@ function QRModal({ ticket, qrValue, onClose }) {
         >
           {/* Header image */}
           <div className="relative h-32 overflow-hidden shrink-0">
-            <img src={event?.image_url || FALLBACK} alt={event?.title} className="w-full h-full object-cover" />
+            <img src={getEventImage(event, 'ticket') || FALLBACK} alt={event?.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080E09] via-black/40 to-transparent" />
             <button
               type="button"
@@ -415,12 +416,17 @@ function RefundRequestModal({ ticket, onClose, onSubmitted }) {
 }
 
 /* ── Ticket Card ── */
-function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequestRefund }) {
+function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequestRefund, onDelete, deleting }) {
   const event  = ticket.events;
   const status = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.valid;
   const StatusIcon = status.Icon;
   const isUsed = ticket.status === 'used';
   const canRequestRefund = !refundRequest && !['used', 'cancelled', 'refunded'].includes(ticket.status);
+  const eventEnd = event?.ends_at || event?.date;
+  const canDelete = isUsed && eventEnd && new Date(eventEnd).getTime() < Date.now();
+  const deleteAvailableLabel = eventEnd && Number.isFinite(new Date(eventEnd).getTime())
+    ? new Date(eventEnd).toLocaleString('es-CO', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' })
+    : null;
 
   return (
     <motion.div
@@ -432,7 +438,7 @@ function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequest
     >
       {/* Event image header */}
       <div className="relative h-36 overflow-hidden">
-        <img src={event?.image_url || FALLBACK} alt={event?.title} className="w-full h-full object-cover" />
+        <img src={getEventImage(event, 'ticket') || FALLBACK} alt={event?.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
           <div className="min-w-0">
@@ -500,7 +506,21 @@ function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequest
         <span className="text-[10px] font-mono" style={{ color: status.color }}>{ticket.status?.toUpperCase()}</span>
       </div>
       <div className="px-4 pb-4">
-        {refundRequest ? (
+        {canDelete ? (
+          <button type="button" onClick={() => onDelete(ticket)} disabled={deleting}
+            className="w-full py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-2 disabled:opacity-45"
+            style={{ background: 'rgba(248,113,113,0.07)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.16)' }}>
+            {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            Eliminar de Ticket Vault
+          </button>
+        ) : isUsed ? (
+          <div className="px-3 py-2 rounded-xl text-[11px] leading-relaxed"
+            style={{ background: 'rgba(255,255,255,0.035)', color: 'rgba(255,255,255,0.42)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            {deleteAvailableLabel
+              ? `Ya fue usado. Podrás eliminarlo cuando finalice el evento: ${deleteAvailableLabel}.`
+              : 'Ya fue usado. Podrás eliminarlo cuando la fecha de finalización del evento haya vencido.'}
+          </div>
+        ) : refundRequest ? (
           <div className="px-3 py-2 rounded-xl text-[11px] font-bold"
             style={{ background: 'rgba(96,165,250,0.08)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.18)' }}>
             Devolución: {refundRequest.status}
@@ -524,14 +544,16 @@ function TicketCard({ ticket, qrValue, index, onShowQR, refundRequest, onRequest
 /* ── Main Component ── */
 export default function TicketVault() {
   const { currentUser, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [activeTicket, setActiveTicket] = useState(null);
   const [refundTicket, setRefundTicket] = useState(null);
   const [signedTokens, setSignedTokens] = useState({});
   const [refundRequests, setRefundRequests] = useState([]);
+  const [deletingTicketId, setDeletingTicketId] = useState(null);
 
   const { data: tickets, loading, error, refetch } = useSupabaseQuery(
     () => currentUser
-      ? supabase.from('user_tickets').select('*, events(title, date, venue, image_url)').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+      ? supabase.from('user_tickets').select('*, events(title, date, ends_at, venue, image_url, mobile_image_url, ticket_image_url)').eq('user_id', currentUser.id).is('hidden_from_vault_at', null).order('created_at', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     [currentUser?.id]
   );
@@ -571,6 +593,20 @@ export default function TicketVault() {
         if (!refundError) setRefundRequests(data || []);
       });
   }, [currentUser?.id]);
+
+  const deleteFromVault = async (ticket) => {
+    if (!window.confirm('¿Eliminar este ticket usado de Ticket Vault? Se conservará únicamente el registro interno de auditoría.')) return;
+    setDeletingTicketId(ticket.id);
+    const { error: hideError } = await supabase.rpc('hide_used_expired_ticket', { p_ticket_id: ticket.id });
+    setDeletingTicketId(null);
+    if (hideError) {
+      toast({ title: 'No se puede eliminar', description: hideError.message, variant: 'destructive' });
+      return;
+    }
+    if (activeTicket?.id === ticket.id) setActiveTicket(null);
+    toast({ title: 'Ticket retirado del historial visible' });
+    refetch();
+  };
 
   if (authLoading) return <div className="p-5"><PulseLoader label="Verificando sesión..." /></div>;
   if (!currentUser) return <div className="p-5"><LoginRequired message="Inicia sesión para ver tus entradas." /></div>;
@@ -619,6 +655,8 @@ export default function TicketVault() {
                 onShowQR={setActiveTicket}
                 refundRequest={refundRequests.find(req => req.ticket_id === ticket.id)}
                 onRequestRefund={setRefundTicket}
+                onDelete={deleteFromVault}
+                deleting={deletingTicketId === ticket.id}
               />
             ))}
           </div>

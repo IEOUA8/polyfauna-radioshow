@@ -7,9 +7,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Mail, Lock, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import supabase from '@/lib/customSupabaseClient';
+
+function getLoginErrorMessage(error) {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+
+  if (code === 'invalid_credentials' || message.includes('invalid login credentials')) {
+    return 'El correo o la contraseña no son correctos. Verifica los datos e intenta nuevamente.';
+  }
+  if (code === 'email_not_confirmed' || message.includes('email not confirmed')) {
+    return 'Debes confirmar tu correo antes de iniciar sesión. Revisa también la carpeta de spam.';
+  }
+  if (code.includes('rate') || code.includes('over_request') || message.includes('too many requests')) {
+    return 'Has realizado varios intentos. Espera unos minutos antes de volver a probar.';
+  }
+  if (message.includes('fetch') || message.includes('network') || message.includes('tardó demasiado')) {
+    return 'No pudimos conectar con PolyFauna. Revisa tu conexión e intenta nuevamente.';
+  }
+  return 'No pudimos iniciar sesión. Revisa tus datos e intenta nuevamente.';
+}
 
 // ── Reset Password view (PASSWORD_RECOVERY session) ──────────────────────────
 
@@ -269,7 +288,11 @@ const LoginPage = () => {
     setFormError('');
     if (!email || !password) { setFormError('Por favor completa todos los campos.'); return; }
     const { error } = await login(email, password);
-    if (!error) { navigate(nextPath); }
+    if (error) {
+      setFormError(getLoginErrorMessage(error));
+      return;
+    }
+    navigate(nextPath);
   };
 
   return (
@@ -326,8 +349,11 @@ const LoginPage = () => {
                         type="email"
                         placeholder="tu@correo.com"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-12 h-14 bg-[#121212] border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base"
+                        onChange={(e) => { setEmail(e.target.value); if (formError) setFormError(''); }}
+                        autoComplete="email"
+                        aria-invalid={Boolean(formError)}
+                        aria-describedby={formError ? 'login-error' : undefined}
+                        className={`pl-12 h-14 bg-[#121212] text-white rounded-xl placeholder:text-white/20 focus:ring-1 transition-all text-base ${formError ? 'border-red-400/70 focus:border-red-400 focus:ring-red-400/25' : 'border-white/10 focus:border-primary focus:ring-primary'}`}
                         disabled={isLoading}
                       />
                     </div>
@@ -353,15 +379,26 @@ const LoginPage = () => {
                         id="password"
                         placeholder="••••••••"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-12 h-14 bg-[#121212] border-white/10 text-white rounded-xl placeholder:text-white/20 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-base"
+                        onChange={(e) => { setPassword(e.target.value); if (formError) setFormError(''); }}
+                        autoComplete="current-password"
+                        aria-invalid={Boolean(formError)}
+                        aria-describedby={formError ? 'login-error' : undefined}
+                        className={`pl-12 h-14 bg-[#121212] text-white rounded-xl placeholder:text-white/20 focus:ring-1 transition-all text-base ${formError ? 'border-red-400/70 focus:border-red-400 focus:ring-red-400/25' : 'border-white/10 focus:border-primary focus:ring-primary'}`}
                         disabled={isLoading}
                       />
                     </div>
                   </div>
 
                   {formError && (
-                    <p className="text-destructive text-sm font-bold text-center bg-destructive/10 p-3 rounded-lg border border-destructive/20">{formError}</p>
+                    <div
+                      id="login-error"
+                      role="alert"
+                      aria-live="assertive"
+                      className="flex items-start gap-2.5 text-red-200 text-sm font-semibold bg-red-500/10 p-3 rounded-xl border border-red-400/25"
+                    >
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-300" />
+                      <p>{formError}</p>
+                    </div>
                   )}
 
                   <Button

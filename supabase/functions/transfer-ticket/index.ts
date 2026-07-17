@@ -75,6 +75,10 @@ Deno.serve(async (req) => {
           to: result.recipient_email,
           subject: `Tienes una entrada esperando · ${String(result.event_title).replace(/[\r\n]/g, ' ')}`,
           html,
+          tags: [
+            { name: 'category', value: 'ticket_transfer_pending' },
+            { name: 'entity_id', value: result.ticket_id },
+          ],
         });
         emailSent = true;
       } else {
@@ -98,6 +102,10 @@ Deno.serve(async (req) => {
           to: result.recipient_email,
           subject: `Te transfirieron una entrada · ${String(result.event_title).replace(/[\r\n]/g, ' ')}`,
           html,
+          tags: [
+            { name: 'category', value: 'ticket_transfer' },
+            { name: 'entity_id', value: result.ticket_id },
+          ],
         });
         emailSent = true;
 

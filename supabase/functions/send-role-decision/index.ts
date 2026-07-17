@@ -43,7 +43,16 @@ serve(async (req) => {
       <p style="margin:0 0 20px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;color:#9A9A9A !important;">Hola ${userName}, tu solicitud para el rol de <strong style="color:#ECECEC !important;">${roleLabel}</strong> no fue aprobada.</p>
       ${reason ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#141414" class="email-panel" style="width:100%;background:#141414 !important;background-color:#141414 !important;background-image:linear-gradient(#141414,#141414) !important;border:1px solid #262626;border-radius:12px;"><tr><td style="padding:16px 18px;"><p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;color:#9A9A9A !important;">Motivo: ${reason}</p></td></tr></table>` : ''}
     `);
-    await sendEmail({ to: target.email, subject: approved ? `¡Eres ${roleLabel} en POLYFAUNA!` : `Solicitud de ${roleLabel} — POLYFAUNA`, html });
+    await sendEmail({
+      to: target.email,
+      subject: approved ? `¡Eres ${roleLabel} en POLYFAUNA!` : `Solicitud de ${roleLabel} — POLYFAUNA`,
+      html,
+      idempotencyKey: `role-decision/${roleRequest.id}/${roleRequest.status}`,
+      tags: [
+        { name: 'category', value: approved ? 'role_approved' : 'role_rejected' },
+        { name: 'entity_id', value: roleRequest.id },
+      ],
+    });
     return json({ ok: true });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : 'Error interno' }, 500);

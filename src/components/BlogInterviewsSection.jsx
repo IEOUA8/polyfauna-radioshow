@@ -88,11 +88,7 @@ function ArticleActions({ article }) {
 const BLOG_FALLBACK  = 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=600&auto=format&fit=crop';
 const IVTW_FALLBACK  = 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=600&auto=format&fit=crop';
 
-const CATEGORY_COLORS = {
-  'Crónica':    '#B8CFA6', 'Entrevista': '#D946EF', 'Reseña':    '#7C5CFF',
-  'Noticias':   'rgba(255,255,255,0.9)',              'Opinión':   '#FF8A1F',
-  'Tutorial':   '#5DE0A3',
-};
+const CATEGORY_ACCENT = '#D6A456';
 
 const FORMAT_ICONS = { video: Video, audio: Mic, text: Mic };
 
@@ -365,11 +361,11 @@ function ArticleDetail({ article, onBack }) {
           <div className="absolute bottom-0 left-0 right-0 p-5">
             {article.category && (
               <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded mb-2"
-                style={{ background: 'rgba(0,0,0,0.55)', color: CATEGORY_COLORS[article.category] || 'white' }}>
+                style={{ background: 'rgba(0,0,0,0.55)', color: CATEGORY_ACCENT }}>
                 {article.category}
               </span>
             )}
-            <h1 className="text-xl font-black text-white leading-tight">{article.title}</h1>
+            <h1 className="pf-detail-title">{article.title}</h1>
             <p className="text-xs text-white/50 mt-1.5">{formatDate(article.published_at || article.created_at)}{article.author ? ` · ${article.author}` : ''}</p>
           </div>
         </div>
@@ -426,12 +422,12 @@ function InterviewDetail({ interview, onBack }) {
         )}
         {!isVideo && (
           <div className="absolute bottom-0 left-0 right-0 p-5">
-            <h1 className="text-xl font-black text-white leading-tight">{interview.title}</h1>
-            {interview.guest_name && <p className="text-sm text-white/60 mt-1">{interview.guest_name}</p>}
+            <h1 className="pf-detail-title">{interview.title}</h1>
+            {interview.guest_name && <p className="pf-author text-sm mt-1">{interview.guest_name}</p>}
           </div>
         )}
       </div>
-      {isVideo && <h1 className="text-xl font-black text-white">{interview.title}</h1>}
+      {isVideo && <h1 className="pf-detail-title">{interview.title}</h1>}
       {interview.description && (
         <p className="text-sm text-white/55 leading-relaxed whitespace-pre-wrap">{interview.description}</p>
       )}
@@ -455,7 +451,7 @@ function InterviewDetail({ interview, onBack }) {
 function ContentCard({ item, onClick, idx }) {
   const isInterview = item._type === 'interview';
   const FormatIcon  = FORMAT_ICONS[item.format?.toLowerCase()] || (isInterview ? Mic : FileText);
-  const tagColor    = isInterview ? '#D946EF' : (CATEGORY_COLORS[item.category] || 'rgba(255,255,255,0.9)');
+  const tagColor    = CATEGORY_ACCENT;
   const tag         = isInterview ? (item.format || 'Entrevista') : item.category;
   const cover       = item.cover_url || item.featured_image_url || item.image_url || (isInterview ? IVTW_FALLBACK : BLOG_FALLBACK);
 
@@ -474,8 +470,7 @@ function ContentCard({ item, onClick, idx }) {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute top-2 left-2 flex items-center gap-1.5">
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-            style={{ background: 'rgba(0,0,0,0.60)', color: tagColor }}>
+          <span className="pf-chip" style={{ background: 'rgba(7,10,9,0.76)', color: tagColor }}>
             {tag}
           </span>
           {isInterview && <FormatIcon className="w-3 h-3 text-white/60" />}
@@ -492,7 +487,7 @@ function ContentCard({ item, onClick, idx }) {
       <div className="p-3">
         <p className="text-sm font-bold text-white leading-snug line-clamp-2">{item.title}</p>
         <div className="flex items-center justify-between mt-1.5">
-          <p className="text-[11px] text-white/35 truncate">
+          <p className="pf-author text-[11px] truncate">
             {isInterview ? (item.guest_name || 'POLYFAUNA') : (item.author || 'Redacción')}
           </p>
           <p className="text-[11px] text-white/25 shrink-0 ml-2">{formatDate(item.published_at || item.created_at)}</p>
@@ -585,8 +580,8 @@ export default function BlogInterviewsSection() {
       {!selected && (
         <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-5 space-y-5">
           <div>
-            <h1 className="text-xl font-black text-white">Blog & Entrevistas</h1>
-            <p className="text-sm text-white/40 mt-1">Historias, crónicas y conversaciones de la escena.</p>
+            <h1 className="pf-page-title">Blog & Entrevistas</h1>
+            <p className="pf-page-subtitle">Historias, crónicas y conversaciones de la escena.</p>
           </div>
 
           {/* Tabs */}
@@ -595,9 +590,9 @@ export default function BlogInterviewsSection() {
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                 className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
                 style={{
-                  background: activeTab === tab.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
-                  color: activeTab === tab.id ? 'white' : 'rgba(255,255,255,0.35)',
-                  border: `1px solid ${activeTab === tab.id ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)'}`,
+                  background: activeTab === tab.id ? 'rgba(214,164,86,0.14)' : 'rgba(255,255,255,0.04)',
+                  color: activeTab === tab.id ? '#D6A456' : 'rgba(255,255,255,0.35)',
+                  border: `1px solid ${activeTab === tab.id ? 'rgba(214,164,86,0.32)' : 'rgba(255,255,255,0.07)'}`,
                 }}>
                 {tab.label}
               </button>

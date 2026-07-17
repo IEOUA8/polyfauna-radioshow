@@ -56,7 +56,16 @@ serve(async (req) => {
         </tr>
       </table>
     `);
-    await sendEmail({ to: recipient.email, subject: `Nuevo mensaje de ${String(message.from_name || 'Usuario').replace(/[\r\n]/g, ' ')} — POLYFAUNA`, html });
+    await sendEmail({
+      to: recipient.email,
+      subject: `Nuevo mensaje de ${String(message.from_name || 'Usuario').replace(/[\r\n]/g, ' ')} — POLYFAUNA`,
+      html,
+      idempotencyKey: `message/${message.id}`,
+      tags: [
+        { name: 'category', value: 'direct_message' },
+        { name: 'entity_id', value: message.id },
+      ],
+    });
     await sendPush({
       userId: message.to_user_id,
       title: 'Nuevo mensaje directo',

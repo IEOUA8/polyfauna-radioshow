@@ -73,6 +73,7 @@ async function main() {
   let events = [];
   let artists = [];
   let organizers = [];
+  let podcasts = [];
   let articles = [];
   let remoteError = null;
   try {
@@ -84,6 +85,15 @@ async function main() {
   } catch (error) {
     remoteError = error;
     console.warn(`SEO sitemap: no se pudo consultar Supabase (${error.message})`);
+  }
+  try {
+    podcasts = await fetchRows('podcasts', 'id,slug,created_at');
+  } catch (error) {
+    try {
+      podcasts = await fetchRows('podcasts', 'id,created_at');
+    } catch (fallbackError) {
+      console.warn(`SEO sitemap: podcasts omitidos (${fallbackError.message})`);
+    }
   }
   // Artículos aparte: si la columna slug aún no existe, no debe tumbar todo.
   try {
@@ -116,6 +126,10 @@ async function main() {
   }
   for (const organizer of organizers) {
     if (organizer.slug) entries.push(urlEntry(`${SITE_URL}/organizadores/${organizer.slug}`, organizer.created_at, 'weekly', '0.7'));
+  }
+  for (const podcast of podcasts) {
+    const identifier = podcast.slug || podcast.id;
+    if (identifier) entries.push(urlEntry(`${SITE_URL}/podcasts/${identifier}`, podcast.created_at, 'monthly', '0.7'));
   }
   for (const article of articles) {
     if (article.slug) entries.push(urlEntry(`${SITE_URL}/blog/${article.slug}`, article.published_at || article.created_at, 'monthly', '0.6'));

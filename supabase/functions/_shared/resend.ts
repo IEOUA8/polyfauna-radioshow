@@ -2,28 +2,76 @@ const RESEND_API = 'https://api.resend.com/emails';
 const FROM = 'POLYFAUNA <noreply@polyfauna.com>';
 export const SUPPORT_EMAIL = Deno.env.get('SUPPORT_EMAIL') || 'info@polyfauna.com';
 
+export interface EmailTag {
+  name: string;
+  value: string;
+}
+
 export interface EmailPayload {
   to: string | string[];
   subject: string;
   html: string;
   replyTo?: string;
+  /** Stable for one logical email. Resend deduplicates matching requests for 24 hours. */
+  idempotencyKey?: string;
+  /** Non-PII correlation metadata returned in Resend webhook events. */
+  tags?: EmailTag[];
 }
 
-export async function sendEmail(payload: EmailPayload): Promise<void> {
+export interface SendEmailResult {
+  id: string;
+}
+
+function validateTags(tags: EmailTag[] = []): EmailTag[] {
+  return tags.map(({ name, value }) => {
+    const safeName = String(name).trim();
+    const safeValue = String(value).trim();
+    if (!/^[A-Za-z0-9_-]{1,50}$/.test(safeName)) {
+      throw new Error(`Invalid Resend tag name: ${safeName}`);
+    }
+    if (!/^[A-Za-z0-9_-]{1,256}$/.test(safeValue)) {
+      throw new Error(`Invalid Resend tag value for ${safeName}`);
+    }
+    return { name: safeName, value: safeValue };
+  });
+}
+
+export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult> {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) throw new Error('RESEND_API_KEY not set');
-  const { replyTo, ...email } = payload;
+  const { replyTo, idempotencyKey, tags, ...email } = payload;
+  const requestHeaders: Record<string, string> = {
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  };
+  if (idempotencyKey) {
+    if (idempotencyKey.length > 256 || /[\r\n]/.test(idempotencyKey)) {
+      throw new Error('Invalid Resend idempotency key');
+    }
+    requestHeaders['Idempotency-Key'] = idempotencyKey;
+  }
 
   const res = await fetch(RESEND_API, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM, reply_to: replyTo || SUPPORT_EMAIL, ...email }),
+    headers: requestHeaders,
+    body: JSON.stringify({
+      from: FROM,
+      reply_to: replyTo || SUPPORT_EMAIL,
+      ...email,
+      ...(tags?.length ? { tags: validateTags(tags) } : {}),
+    }),
   });
 
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Resend error ${res.status}: ${body}`);
   }
+
+  const data = await res.json() as { id?: unknown };
+  if (typeof data.id !== 'string' || !data.id) {
+    throw new Error('Resend response did not include an email id');
+  }
+  return { id: data.id };
 }
 
 // ── Shared HTML wrapper ───────────────────────────────────────────────────────

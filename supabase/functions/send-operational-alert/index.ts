@@ -58,10 +58,22 @@ Deno.serve(async (req) => {
       </table>
     `);
 
+    const alertFingerprint = alerts
+      .map((alert) => `${alert.code}:${alert.latest_at || ''}`)
+      .sort()
+      .join('|');
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(alertFingerprint));
+    const batchId = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+
     await sendEmail({
       to: SUPPORT_EMAIL,
       subject: `[POLYFAUNA] ${alerts.length} alerta(s) critica(s) requieren atencion`,
       html,
+      idempotencyKey: `operational-alert/${batchId}`,
+      tags: [
+        { name: 'category', value: 'operational_alert' },
+        { name: 'entity_id', value: batchId },
+      ],
     });
 
     return json({ ok: true, sent: alerts.length });

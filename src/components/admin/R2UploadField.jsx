@@ -6,7 +6,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToR2 } from '@/lib/r2Upload';
 
-export function R2UploadField({ label, folder, accept, value, onChange, required = false }) {
+export function R2UploadField({
+  label,
+  folder,
+  accept,
+  value,
+  onChange,
+  required = false,
+  extractMetadata = null,
+}) {
   const { toast } = useToast();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -18,8 +26,9 @@ export function R2UploadField({ label, folder, accept, value, onChange, required
     setUploading(true);
     setFileName(file.name);
     try {
+      const metadata = extractMetadata ? await extractMetadata(file) : null;
       const publicUrl = await uploadToR2(file, folder);
-      onChange(publicUrl);
+      onChange(publicUrl, metadata);
       toast({ title: 'Archivo subido', description: file.name });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error al subir archivo', description: err.message });

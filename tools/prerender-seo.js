@@ -96,6 +96,27 @@ function countWords(text) {
   return text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
 }
 
+function compactDescription(value, fallback, limit = 200) {
+  const text = String(value || fallback || '').replace(/\s+/g, ' ').trim();
+  return text.slice(0, limit);
+}
+
+function durationToIso(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  if (!total) return undefined;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  return `PT${hours ? `${hours}H` : ''}${minutes ? `${minutes}M` : ''}${secs || (!hours && !minutes) ? `${secs}S` : ''}`;
+}
+
+function imageMimeType(url) {
+  if (/\.png(?:\?|$)/i.test(url)) return 'image/png';
+  if (/\.webp(?:\?|$)/i.test(url)) return 'image/webp';
+  if (/\.avif(?:\?|$)/i.test(url)) return 'image/avif';
+  return 'image/jpeg';
+}
+
 async function fetchRows(table, select) {
   const baseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -121,6 +142,7 @@ function pageHtml(template, opts) {
   const {
     title, description, canonical, image, type, schema,
     keywords, extraSchemas = [], noscriptBody, articleMeta,
+    imageWidth = 1200, imageHeight = 630,
   } = opts;
 
   let html = template.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
@@ -132,12 +154,12 @@ function pageHtml(template, opts) {
   html = replaceMeta(html, 'property', 'og:description', description);
   html = replaceMeta(html, 'property', 'og:url', canonical);
   html = replaceMeta(html, 'property', 'og:type', type);
-  html = replaceMeta(html, 'property', 'og:image:width', '1200');
-  html = replaceMeta(html, 'property', 'og:image:height', '630');
+  html = replaceMeta(html, 'property', 'og:image:width', String(imageWidth));
+  html = replaceMeta(html, 'property', 'og:image:height', String(imageHeight));
   html = replaceMeta(html, 'name', 'twitter:card', 'summary_large_image');
   html = replaceMeta(html, 'property', 'og:image', image);
   html = replaceMeta(html, 'property', 'og:image:secure_url', image);
-  html = replaceMeta(html, 'property', 'og:image:type', /\.png(\?|$)/i.test(image) ? 'image/png' : 'image/jpeg');
+  html = replaceMeta(html, 'property', 'og:image:type', imageMimeType(image));
   html = replaceMeta(html, 'property', 'og:image:alt', title);
   html = replaceMeta(html, 'name', 'twitter:title', title);
   html = replaceMeta(html, 'name', 'twitter:description', description);
@@ -181,6 +203,18 @@ async function main() {
   const events = await fetchRows('events', 'id,title,description,date,venue,city,image_url,price,lineup,status,tickets_total,tickets_sold');
   const artists = await fetchRows('artists', 'name,slug,type,bio,genres,image_url,social_links');
   const organizers = await fetchRows('organizers', 'name,slug,type,bio,city,image_url,social_links');
+  let podcasts = [];
+  try {
+    podcasts = await fetchRows('podcasts', 'id,slug,title,description,cover_url,audio_url,duration,genre,created_at,artists:artists!podcasts_artist_id_fkey(name,slug)');
+  } catch (error) {
+    // El primer deploy puede correr antes de que la migración de slug haya
+    // terminado; el UUID sigue siendo una URL pública válida en ese caso.
+    try {
+      podcasts = await fetchRows('podcasts', 'id,title,description,cover_url,audio_url,duration,genre,created_at,artists:artists!podcasts_artist_id_fkey(name,slug)');
+    } catch (fallbackError) {
+      console.warn(`SEO prerender: podcasts omitidos (${fallbackError.message})`);
+    }
+  }
   // Los artículos pueden no tener aún la columna slug si esta migración no
   // corrió; se aísla para no tumbar el resto del prerender.
   let articles = [];
@@ -190,7 +224,7 @@ async function main() {
     console.warn(`SEO prerender: artículos omitidos (${error.message})`);
   }
 
-  if (events.length === 0 && artists.length === 0 && organizers.length === 0 && articles.length === 0) {
+  if (events.length === 0 && artists.length === 0 && organizers.length === 0 && podcasts.length === 0 && articles.length === 0) {
     console.log('SEO prerender: sin datos remotos, se conserva dist/index.html');
     return;
   }
@@ -255,6 +289,54 @@ async function main() {
       ...(sameAs.length > 0 ? { sameAs } : {}),
     };
     writePage(`organizadores/${organizer.slug}`, pageHtml(template, { title: `${organizer.name} — POLYFAUNA`, description, canonical, image, type: 'profile', schema }));
+  }
+
+  for (const podcast of podcasts) {
+    if (!podcast.id) continue;
+    const identifier = podcast.slug || podcast.id;
+    const canonical = `${SITE_URL}/podcasts/${identifier}`;
+    const image = podcast.cover_url || DEFAULT_COVER;
+    const artistName = podcast.artists?.name || 'POLYFAUNA';
+    const description = compactDescription(
+      podcast.description,
+      `Escucha ${podcast.title} de ${artistName} en POLYFAUNA, archivo sonoro de música electrónica independiente.`
+    );
+    const duration = durationToIso(podcast.duration);
+    const schema = {
+      '@context': 'https://schema.org', '@type': 'PodcastEpisode',
+      name: podcast.title, description, image, url: canonical, inLanguage: 'es-CO',
+      ...(podcast.created_at ? { datePublished: podcast.created_at } : {}),
+      ...(duration ? { duration } : {}),
+      associatedMedia: {
+        '@type': 'AudioObject', name: podcast.title,
+        ...(podcast.audio_url ? { contentUrl: podcast.audio_url } : {}),
+        ...(duration ? { duration } : {}),
+      },
+      partOfSeries: { '@type': 'PodcastSeries', name: 'Podcasts POLYFAUNA', url: `${SITE_URL}/?section=podcasts` },
+      publisher: { '@type': 'Organization', name: 'POLYFAUNA', url: SITE_URL },
+      ...(podcast.artists?.name ? { actor: { '@type': 'Person', name: podcast.artists.name } } : {}),
+    };
+    const breadcrumb = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Podcasts', item: `${SITE_URL}/?section=podcasts` },
+        { '@type': 'ListItem', position: 3, name: podcast.title, item: canonical },
+      ],
+    };
+    const noscriptBody = `      <main><article><img src="${escapeHtml(image)}" alt="Portada de ${escapeHtml(podcast.title)}" /><h1>${escapeHtml(podcast.title)}</h1><p>Publicado por ${escapeHtml(artistName)}</p><p>${escapeHtml(description)}</p><p><a href="${escapeHtml(canonical)}">Escuchar en POLYFAUNA</a></p></article></main>`;
+    const renderedPodcastPage = pageHtml(template, {
+      title: `${podcast.title} — ${artistName} | POLYFAUNA`,
+      description, canonical, image, type: 'music.song', schema,
+      extraSchemas: [breadcrumb], noscriptBody, imageWidth: 1200, imageHeight: 1200,
+      keywords: [...new Set([podcast.genre, 'podcast música electrónica', artistName, ...BASE_KEYWORDS].filter(Boolean))].join(', '),
+    });
+    writePage(`podcasts/${identifier}`, renderedPodcastPage);
+    if (podcast.slug && podcast.slug !== podcast.id) {
+      // Mantiene compatibles enlaces antiguos basados en UUID; ambos declaran
+      // la URL amigable como canonical para evitar contenido duplicado.
+      writePage(`podcasts/${podcast.id}`, renderedPodcastPage);
+    }
   }
 
   // ── Índice del Blog (/blog) ────────────────────────────────────────────────
@@ -353,7 +435,7 @@ async function main() {
     }));
   }
 
-  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores · ${publishedArticles.length} artículos${publishedArticles.length ? ' + índice /blog' : ''}`);
+  console.log(`SEO prerender: ${events.length} eventos · ${artists.filter(a => a.slug).length} artistas · ${organizers.filter(o => o.slug).length} organizadores · ${podcasts.length} podcasts · ${publishedArticles.length} artículos${publishedArticles.length ? ' + índice /blog' : ''}`);
 }
 
 main().catch(error => {

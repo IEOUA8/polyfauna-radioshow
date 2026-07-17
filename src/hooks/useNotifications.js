@@ -27,7 +27,7 @@ export function useNotifications() {
       const [podRes, eventRes, blogRes, albumRes, dbRes] = await Promise.all([
         supabase
           .from('podcasts')
-          .select('id, title, cover_url, created_at, artists(name)')
+          .select('id, title, cover_url, created_at, artists:artists!podcasts_artist_id_fkey(name)')
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false })
           .limit(4),
@@ -46,7 +46,7 @@ export function useNotifications() {
           .limit(2),
         supabase
           .from('albums')
-          .select('id, title, cover_url, created_at, artists(name)')
+          .select('id, title, cover_url, created_at, artists:artists!albums_artist_id_fkey(name)')
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false })
           .limit(3),

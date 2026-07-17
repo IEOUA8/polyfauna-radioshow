@@ -7,17 +7,16 @@ const loginPage = readFileSync('src/pages/LoginPage.jsx', 'utf8');
 const signupPage = readFileSync('src/pages/SignupPage.jsx', 'utf8');
 
 test('el handler de onAuthStateChange nunca deja isLoading atascado en true', () => {
-  // Bug: sin try/catch/finally, un error sin capturar en cualquier llamada
-  // (consumePendingOAuthRole, notifyPendingRoleRequest, fetchUserProfile)
-  // detenia la ejecucion antes de llegar a setIsLoading(false) — el boton
-  // de login quedaba en "Ingresando..." para siempre.
+  // Las consultas deben ejecutarse fuera del callback para no bloquear el
+  // lock interno de Supabase, y sus errores deben quedar capturados.
   const handlerBody = authContext.slice(
-    authContext.indexOf('supabase.auth.onAuthStateChange(async (event, session) => {'),
-    authContext.indexOf("return () => subscription.unsubscribe();")
+    authContext.indexOf('supabase.auth.onAuthStateChange((event, session) => {'),
+    authContext.indexOf('let reconciling = false;')
   );
-  assert.match(handlerBody, /try \{/);
-  assert.match(handlerBody, /\} catch \(err\) \{/);
-  assert.match(handlerBody, /\} finally \{\s*setIsLoading\(false\);\s*\}/);
+  assert.doesNotMatch(handlerBody, /onAuthStateChange\(async/);
+  assert.match(handlerBody, /setIsLoading\(false\)/);
+  assert.match(handlerBody, /window\.setTimeout\(\(\) => \{/);
+  assert.match(handlerBody, /hydrateAuthenticatedUser\(session\.user\)\.catch/);
 });
 
 test('un evento posterior a PASSWORD_RECOVERY no apaga recoveryMode mientras sigue activo', () => {
@@ -26,7 +25,17 @@ test('un evento posterior a PASSWORD_RECOVERY no apaga recoveryMode mientras sig
   // segundo evento reseteaba recoveryMode y el usuario volvia al login
   // normal en vez de ver el formulario de nueva contraseña.
   assert.match(authContext, /const recoveryModeRef = useRef\(isRecoveryUrl\(\)\)/);
-  assert.match(authContext, /if \(recoveryModeRef\.current && event !== 'SIGNED_OUT'\) \{\s*return;\s*\}/);
+  assert.match(authContext, /if \(recoveryModeRef\.current && event !== 'SIGNED_OUT'\) \{\s*setIsLoading\(false\);\s*return;\s*\}/);
+});
+
+test('la PWA persiste y reconcilia la sesión al regresar del background', () => {
+  const client = readFileSync('src/lib/customSupabaseClient.js', 'utf8');
+  assert.match(client, /persistSession: true/);
+  assert.match(client, /autoRefreshToken: true/);
+  assert.match(client, /storage: window\.localStorage/);
+  assert.match(authContext, /window\.addEventListener\('pageshow', reconcileSession\)/);
+  assert.match(authContext, /document\.addEventListener\('visibilitychange', handleVisibility\)/);
+  assert.match(authContext, /window\.addEventListener\('online', reconcileSession\)/);
 });
 
 test('recoveryMode se detecta leyendo la URL en el primer render, no solo esperando el evento PASSWORD_RECOVERY', () => {
@@ -76,6 +85,20 @@ test('el formulario de registro muestra de forma persistente el error devuelto',
 test('el formulario nunca muestra respuestas vacias de Supabase como {}', () => {
   assert.match(signupPage, /message === '\{\}'/);
   assert.match(signupPage, /problema temporal/);
+});
+
+test('login muestra credenciales incorrectas dentro del formulario y de forma accesible', () => {
+  const loginSubmit = loginPage.slice(
+    loginPage.indexOf('const handleSubmit = async', loginPage.indexOf('const LoginPage')),
+    loginPage.indexOf('return (', loginPage.indexOf('const handleSubmit = async', loginPage.indexOf('const LoginPage')))
+  );
+  assert.match(loginPage, /function getLoginErrorMessage\(error\)/);
+  assert.match(loginPage, /invalid_credentials/);
+  assert.match(loginPage, /El correo o la contraseña no son correctos/);
+  assert.match(loginSubmit, /if \(error\) \{\s*setFormError\(getLoginErrorMessage\(error\)\);\s*return;/);
+  assert.match(loginPage, /id="login-error"/);
+  assert.match(loginPage, /role="alert"/);
+  assert.match(loginPage, /aria-invalid=\{Boolean\(formError\)\}/);
 });
 
 test('SIGNED_IN con ?verified=1 en la URL activa justVerified y limpia el parametro', () => {

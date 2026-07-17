@@ -54,7 +54,15 @@ Deno.serve(async (req) => {
       </table>
     `);
 
-    await sendEmail({ to: target.email, subject: `Te vincularon a "${event.title}" — POLYFAUNA`, html });
+    await sendEmail({ to: target.email,
+      subject: `Te vincularon a "${event.title}" — POLYFAUNA`,
+      html,
+      idempotencyKey: `co-promoter/${eventId}/${promoterId}`,
+      tags: [
+        { name: 'category', value: 'co_promoter' },
+        { name: 'entity_id', value: eventId },
+      ],
+    });
     return json({ ok: true });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : 'Error interno' }, 500);

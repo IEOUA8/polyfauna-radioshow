@@ -6,11 +6,22 @@ import { Trash2, Loader2, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirmDialog } from './ConfirmDialog';
 
-const ROLES = ['citizen', 'artist', 'promoter', 'club', 'sello', 'admin'];
+const ROLES = ['citizen', 'artist', 'promoter', 'collective', 'club', 'sello', 'admin'];
 const ROLE_COLOR = {
   citizen: '#20C7E8', artist: '#A78BFA', promoter: '#F59E0B',
-  club: '#34D399', sello: '#10B981', admin: '#F87171',
+  collective: '#C084FC', club: '#34D399', sello: '#10B981', admin: '#F87171',
 };
+
+const ROLE_LABEL = {
+  citizen: 'Ciudadano', artist: 'Artista', promoter: 'Promotor', collective: 'Colectivo',
+  club: 'Club', sello: 'Sello', admin: 'Admin',
+};
+
+const getAdminRole = (user) => (
+  user.role === 'promoter' && user.organizer_type === 'collective'
+    ? 'collective'
+    : (user.role || 'citizen')
+);
 
 const UserManager = () => {
   const { toast } = useToast();
@@ -43,8 +54,21 @@ const UserManager = () => {
         p_reason: 'Cambio manual desde panel admin',
       });
       if (error) throw error;
-      toast({ title: 'Rol actualizado' });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      const storedRole = newRole === 'collective' ? 'promoter' : newRole;
+      const organizerType = newRole === 'collective'
+        ? 'collective'
+        : newRole === 'promoter'
+          ? 'promoter'
+          : newRole === 'club' ? 'club' : null;
+      toast({
+        title: 'Rol actualizado',
+        description: newRole === 'collective'
+          ? 'El usuario ya puede publicar álbumes y podcasts como colectivo.'
+          : undefined,
+      });
+      setUsers(prev => prev.map(u => u.id === userId
+        ? { ...u, role: storedRole, organizer_type: organizerType }
+        : u));
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -119,19 +143,20 @@ const UserManager = () => {
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
                     style={{
-                      background: `${ROLE_COLOR[user.role] || '#20C7E8'}18`,
-                      color: ROLE_COLOR[user.role] || '#20C7E8',
-                      border: `1px solid ${ROLE_COLOR[user.role] || '#20C7E8'}30`,
+                      background: `${ROLE_COLOR[getAdminRole(user)] || '#20C7E8'}18`,
+                      color: ROLE_COLOR[getAdminRole(user)] || '#20C7E8',
+                      border: `1px solid ${ROLE_COLOR[getAdminRole(user)] || '#20C7E8'}30`,
                     }}
                   >
-                    {user.role || 'citizen'}
+                    {ROLE_LABEL[getAdminRole(user)]}
                   </span>
                   <select
-                    value={user.role || 'citizen'}
+                    value={getAdminRole(user)}
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                     className="bg-background border border-border text-foreground rounded-md px-2 py-1 text-xs shrink-0"
+                    aria-label={`Cambiar rol de ${user.display_name || user.username || 'usuario'}`}
                   >
-                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                   </select>
                   <Button
                     variant="ghost"

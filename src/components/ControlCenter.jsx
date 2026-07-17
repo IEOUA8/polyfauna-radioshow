@@ -436,7 +436,7 @@ export default function ControlCenter({ setCurrentSection }) {
         )}
         {privacyOpen && (
           <TextModal title="Política de Privacidad" onClose={() => setPrivacyOpen(false)}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Última actualización: Junio 2026</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Última actualización: Julio 2026</p>
             <p className="text-sm text-white/60 leading-relaxed">
               En POLYFAUNA nos tomamos en serio la privacidad de nuestros usuarios. Esta política describe qué datos recopilamos y cómo los usamos.
             </p>
@@ -444,6 +444,7 @@ export default function ControlCenter({ setCurrentSection }) {
               {[
                 { h: 'Datos que recopilamos', b: 'Recopilamos tu dirección de correo electrónico para autenticación, nombre o alias de usuario, foto de perfil (opcional), y datos de actividad en la plataforma como likes, Organismo, tickets y preferencias.' },
                 { h: 'Uso de los datos', b: 'Usamos tus datos para operar la plataforma, personalizar tu experiencia, enviarte notificaciones que hayas autorizado y gestionar tu cuenta. No vendemos ni compartimos información personal con terceros con fines comerciales.' },
+                { h: 'Proveedores y transmisión de datos', b: 'Podemos transmitir los datos estrictamente necesarios a proveedores tecnológicos que prestan servicios de autenticación, almacenamiento, pagos, infraestructura y entrega de correo electrónico, dentro o fuera de Colombia. Estos proveedores actúan por cuenta de POLYFAUNA y deben tratar la información únicamente para prestar sus servicios, bajo obligaciones de seguridad y confidencialidad.' },
                 { h: 'Cookies', b: 'Usamos cookies de sesión necesarias para el funcionamiento de la plataforma. Puedes desactivar las cookies opcionales desde la configuración de tu navegador, aunque esto puede afectar algunas funcionalidades.' },
                 { h: 'Tus derechos', b: 'Puedes solicitar acceso, corrección o eliminación de tus datos en cualquier momento escribiendo a info@polyfauna.com. Responderemos en un plazo máximo de 30 días.' },
                 { h: 'Retención de datos', b: 'Conservamos tus datos mientras tu cuenta esté activa. Al desactivar tu cuenta, tus datos se eliminan de los servidores en un plazo de 90 días.' },

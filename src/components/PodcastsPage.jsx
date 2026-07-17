@@ -1,15 +1,45 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CalendarDays, Clock, Headphones, Heart, LayoutGrid, LayoutList, Link, Link2, Lock, MessageCircle, Pause, Play, Send } from 'lucide-react';
+import { Helmet } from 'react-helmet';
+import { ArrowLeft, CalendarDays, ChevronDown, Clock, Headphones, Heart, LayoutGrid, LayoutList, Link, Link2, Lock, MessageCircle, Pause, Play, Send, UserRound, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { useLikes } from '@/hooks/useLikes';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/contexts/AuthContext';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
 import { useToast } from '@/components/ui/use-toast';
+import { openInSection } from '@/lib/openInSection';
+import { EDITORIAL_ACCENT } from '@/lib/editorialTheme';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=400&auto=format&fit=crop';
+const SITE_URL = 'https://www.polyfauna.com';
+
+function podcastPublicUrl(podcast) {
+  const identifier = podcast?.slug || podcast?.id;
+  return identifier ? `${SITE_URL}/podcasts/${encodeURIComponent(identifier)}` : `${SITE_URL}/?section=podcasts`;
+}
+
+function podcastIdentifierFromLocation() {
+  const pathMatch = window.location.pathname.match(/^\/podcasts\/([^/]+)\/?$/);
+  if (pathMatch?.[1]) return decodeURIComponent(pathMatch[1]);
+  return new URLSearchParams(window.location.search).get('podcast');
+}
+
+function podcastMetaDescription(podcast) {
+  const raw = String(podcast?.description || '').replace(/\s+/g, ' ').trim();
+  return (raw || `Escucha ${podcast?.title || 'este podcast'} en POLYFAUNA, archivo sonoro de música electrónica independiente.`).slice(0, 200);
+}
+
+function schemaDuration(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  if (!total) return undefined;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  return `PT${hours ? `${hours}H` : ''}${minutes ? `${minutes}M` : ''}${secs || (!hours && !minutes) ? `${secs}S` : ''}`;
+}
 
 const GENRE_COLORS = {
   'house': 'rgba(255,255,255,0.9)', 'tech house': 'rgba(255,255,255,0.9)', 'deep house': '#00B4DD',
@@ -45,8 +75,11 @@ const GENRE_COLORS = {
 };
 
 function getGenreColor(genre) {
-  if (!genre) return 'rgba(255,255,255,0.9)';
-  return GENRE_COLORS[genre.toLowerCase()] || 'rgba(255,255,255,0.9)';
+  if (!genre) return '#E8EEE9';
+  const normalized = genre.toLowerCase().trim();
+  if (GENRE_COLORS[normalized]) return GENRE_COLORS[normalized];
+  const matchingGenre = normalized.split(/[,/|]/).map((item) => item.trim()).find((item) => GENRE_COLORS[item]);
+  return matchingGenre ? GENRE_COLORS[matchingGenre] : '#E8EEE9';
 }
 
 function fmtDuration(secs) {
@@ -259,9 +292,10 @@ const PodcastGridCard = React.memo(function PodcastGridCard({ pod, index, isActi
 /* ─────────────────────────────────────────
    Podcast detail view
 ───────────────────────────────────────── */
-function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLiked, onLike, currentUser }) {
+function PodcastDetail({ pod, onBack, onPlay, onArtistClick, isActive, isCurrentlyPlaying, isLiked, onLike, currentUser }) {
   const { toast } = useToast();
-  const gColor = getGenreColor(pod.genre);
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const gColor = EDITORIAL_ACCENT;
   const dateStr = new Date(pod.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const [likesCount, setLikesCount]       = useState(0);
@@ -269,7 +303,32 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentText, setCommentText]     = useState('');
   const [submitting, setSubmitting]       = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
   const inputRef = useRef(null);
+
+  const taggedArtists = useMemo(() => {
+    const credits = (pod.podcast_artist_credits || [])
+      .map((credit) => credit.artists)
+      .filter(Boolean)
+      .filter((artist) => artist.id !== pod.artist_id);
+    const source = credits.length > 0 ? credits : (pod.artists ? [pod.artists] : []);
+    const seen = new Set();
+    return source.filter((artist) => {
+      const key = artist.id || artist.slug || artist.name;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [pod.artist_id, pod.artists, pod.podcast_artist_credits]);
+
+  const descriptionIsLong = (pod.description?.length || 0) > 260;
+  const descriptionCollapsed = descriptionIsLong && (isMobile || !descriptionExpanded);
+
+  useEffect(() => {
+    setDescriptionExpanded(false);
+    setDescriptionModalOpen(false);
+  }, [pod.id]);
 
   // Fetch likes count + comments
   useEffect(() => {
@@ -298,6 +357,35 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
     setLikesCount(prev => isLiked ? Math.max(0, prev - 1) : prev + 1);
   };
 
+  const canonicalUrl = podcastPublicUrl(pod);
+  const metaDescription = podcastMetaDescription(pod);
+  const socialImage = pod.cover_url || `${SITE_URL}/icons/og-cover.png`;
+  const seoTitle = `${pod.title} — ${pod.artists?.name || 'POLYFAUNA'}`;
+  const podcastSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'PodcastEpisode',
+    name: pod.title,
+    description: metaDescription,
+    url: canonicalUrl,
+    image: socialImage,
+    inLanguage: 'es-CO',
+    ...(pod.created_at ? { datePublished: pod.created_at } : {}),
+    ...(schemaDuration(pod.duration) ? { duration: schemaDuration(pod.duration) } : {}),
+    associatedMedia: {
+      '@type': 'AudioObject',
+      name: pod.title,
+      ...(pod.audio_url ? { contentUrl: pod.audio_url } : {}),
+      ...(schemaDuration(pod.duration) ? { duration: schemaDuration(pod.duration) } : {}),
+    },
+    partOfSeries: {
+      '@type': 'PodcastSeries',
+      name: 'Podcasts POLYFAUNA',
+      url: `${SITE_URL}/?section=podcasts`,
+    },
+    publisher: { '@type': 'Organization', name: 'POLYFAUNA', url: SITE_URL },
+    ...(pod.artists?.name ? { actor: { '@type': 'Person', name: pod.artists.name } } : {}),
+  };
+
   const handleComment = async (e) => {
     e.preventDefault();
     const text = commentText.trim();
@@ -321,6 +409,28 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
   };
 
   return (
+    <>
+    <Helmet>
+      <title>{seoTitle}</title>
+      <meta name="description" content={metaDescription} />
+      <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+      <link rel="canonical" href={canonicalUrl} />
+      <meta property="og:site_name" content="POLYFAUNA" />
+      <meta property="og:type" content="music.song" />
+      <meta property="og:title" content={seoTitle} />
+      <meta property="og:description" content={metaDescription} />
+      <meta property="og:url" content={canonicalUrl} />
+      <meta property="og:image" content={socialImage} />
+      <meta property="og:image:secure_url" content={socialImage} />
+      <meta property="og:image:alt" content={`Portada de ${pod.title}`} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="1200" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={seoTitle} />
+      <meta name="twitter:description" content={metaDescription} />
+      <meta name="twitter:image" content={socialImage} />
+      <script type="application/ld+json">{JSON.stringify(podcastSchema)}</script>
+    </Helmet>
     <motion.div
       key="detail"
       initial={{ opacity: 0, x: 32 }}
@@ -344,8 +454,8 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* ── Cover ── */}
-        <div className="shrink-0">
-          <div className="relative w-full lg:w-72 xl:w-80 aspect-square rounded-2xl overflow-hidden"
+        <div className="shrink-0 w-full lg:w-auto">
+          <div className="relative w-full max-w-[320px] sm:max-w-sm mx-auto lg:mx-0 lg:w-72 xl:w-80 aspect-square rounded-2xl overflow-hidden"
             style={{ boxShadow: `0 24px 64px ${gColor}30, 0 8px 32px rgba(0,0,0,0.6)` }}>
             <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -358,6 +468,23 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
                 ))}
               </div>
             )}
+            <motion.button
+              type="button"
+              onClick={onPlay}
+              aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
+              whileTap={{ scale: 0.92 }}
+              className="md:hidden absolute bottom-4 right-4 w-14 h-14 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #F7FAF8 0%, #C8D1CC 100%)',
+                color: '#07100C',
+                border: '1px solid rgba(255,255,255,0.78)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.55)',
+              }}
+            >
+              {isCurrentlyPlaying
+                ? <Pause className="w-6 h-6 fill-current" />
+                : <Play className="w-6 h-6 fill-current ml-0.5" />}
+            </motion.button>
           </div>
         </div>
 
@@ -372,11 +499,32 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
           )}
 
           <div>
-            <h1 className="text-3xl font-black text-white leading-tight">{pod.title}</h1>
-            <p className="text-lg mt-1.5 font-medium" style={{ color: gColor }}>
-              {pod.artists?.name || 'PolyFauna'}
+            <h1 className="pf-detail-title">{pod.title}</h1>
+            <p className="text-sm mt-2 font-medium" style={{ color: 'rgba(255,255,255,0.48)' }}>
+              Publicado por <span className="font-bold" style={{ color: gColor }}>{pod.artists?.name || 'PolyFauna'}</span>
             </p>
           </div>
+
+          {taggedArtists.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="pf-section-label">
+                {taggedArtists.length === 1 ? 'Artista' : 'Artistas'}
+              </span>
+              {taggedArtists.map((artist) => (
+                <button
+                  key={artist.id || artist.slug || artist.name}
+                  type="button"
+                  onClick={() => onArtistClick?.(artist)}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all hover:-translate-y-0.5"
+                  style={{ background: `${gColor}16`, border: `1px solid ${gColor}35`, color: gColor }}
+                  title={`Abrir perfil de ${artist.name}`}
+                >
+                  <UserRound className="w-3.5 h-3.5" />
+                  {artist.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Meta: fecha · duración · plays */}
           <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -399,17 +547,19 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
           </div>
 
           {/* CTA row */}
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <motion.button
               type="button"
               onClick={onPlay}
+              aria-label={isCurrentlyPlaying ? `Pausar ${pod.title}` : `Reproducir ${pod.title}`}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl text-sm font-black"
+              className="hidden md:flex min-w-[150px] items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl text-sm font-black"
               style={{
-                background: `linear-gradient(135deg, ${gColor}, ${gColor}BB)`,
-                color: '#080B14',
-                boxShadow: `0 0 28px ${gColor}45, 0 4px 16px rgba(0,0,0,0.4)`,
+                background: 'linear-gradient(135deg, #F7FAF8 0%, #C8D1CC 100%)',
+                color: '#07100C',
+                border: '1px solid rgba(255,255,255,0.72)',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.42), 0 0 0 1px rgba(255,255,255,0.08)',
               }}
             >
               {isCurrentlyPlaying
@@ -447,10 +597,10 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
               style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
               title="Compartir podcast"
               onClick={async () => {
-                const url = window.location.href;
+                const url = canonicalUrl;
                 const shareText = `${pod.title} — ${pod.artists?.name || 'PolyFauna'} | PolyFauna Radio`;
                 if (navigator.share) {
-                  await navigator.share({ title: shareText, url });
+                  await navigator.share({ title: shareText, text: metaDescription, url });
                 } else {
                   await navigator.clipboard.writeText(url);
                   toast({ title: 'Enlace copiado', description: shareText });
@@ -463,19 +613,52 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
             </motion.button>
           </div>
 
-          {/* Description */}
-          {pod.description && (
-            <div className="mt-2 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Descripción
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                {pod.description}
-              </p>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* La descripción comienza debajo de la portada y ocupa el ancho útil. */}
+      {pod.description && (
+        <motion.section
+          layout
+          className="rounded-2xl px-5 py-5 sm:px-6 sm:py-6"
+          style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          <p className="pf-section-label mb-3">
+            Descripción
+          </p>
+          <motion.div
+            id="podcast-description-content"
+            initial={false}
+            animate={{ height: descriptionCollapsed ? '7.35rem' : 'auto' }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="relative overflow-hidden"
+          >
+            <p className="whitespace-pre-wrap text-sm sm:text-[15px] leading-7" style={{ color: 'rgba(255,255,255,0.60)' }}>
+              {pod.description}
+            </p>
+            {descriptionCollapsed && (
+              <div
+                className="absolute inset-x-0 bottom-0 h-12 pointer-events-none"
+                style={{ background: 'linear-gradient(to bottom, transparent, #090E0C)' }}
+                aria-hidden
+              />
+            )}
+          </motion.div>
+          {descriptionIsLong && (
+            <button
+              type="button"
+              onClick={() => isMobile ? setDescriptionModalOpen(true) : setDescriptionExpanded((value) => !value)}
+              aria-expanded={isMobile ? descriptionModalOpen : descriptionExpanded}
+              aria-controls="podcast-description-content"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-black transition-colors hover:text-white"
+              style={{ color: gColor }}
+            >
+              {isMobile ? 'Leer más…' : (descriptionExpanded ? 'Leer menos' : 'Leer más…')}
+              <ChevronDown className={`w-4 h-4 transition-transform ${!isMobile && descriptionExpanded ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+        </motion.section>
+      )}
 
       {/* ── Comentarios ─────────────────────────────── */}
       <div className="pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
@@ -576,26 +759,117 @@ function PodcastDetail({ pod, onBack, onPlay, isActive, isCurrentlyPlaying, isLi
         )}
       </div>
 
+      {pod.footer_description && (
+        <footer
+          className="rounded-2xl px-5 py-6 sm:px-7"
+          style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <p
+            className="pf-section-label mb-3"
+          >
+            Notas del episodio
+          </p>
+          <p
+            className="whitespace-pre-wrap text-sm leading-relaxed"
+            style={{ color: 'rgba(255,255,255,0.55)' }}
+          >
+            {pod.footer_description}
+          </p>
+        </footer>
+      )}
+
       {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none -z-10"
         style={{ background: `radial-gradient(ellipse at 30% 20%, ${gColor}08 0%, transparent 55%)` }} />
     </motion.div>
+
+    {createPortal(
+      <AnimatePresence>
+        {descriptionModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[220] flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(0,0,0,0.78)',
+              backdropFilter: 'blur(10px)',
+              paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+            }}
+            onClick={() => setDescriptionModalOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 32, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 24, opacity: 0, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="podcast-description-title"
+              className="w-full max-w-lg max-h-[80dvh] overflow-y-auto rounded-2xl p-5 sm:p-6"
+              style={{ background: '#0A100E', border: '1px solid rgba(255,255,255,0.11)', boxShadow: '0 24px 80px rgba(0,0,0,0.65)' }}
+            >
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: gColor }}>Descripción</p>
+                  <h2 id="podcast-description-title" className="text-lg font-black text-white leading-tight">{pod.title}</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDescriptionModalOpen(false)}
+                  className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  aria-label="Cerrar descripción"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="whitespace-pre-wrap text-[15px] leading-7" style={{ color: 'rgba(255,255,255,0.66)' }}>
+                {pod.description}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body
+    )}
+    </>
   );
 }
 
 /* ─────────────────────────────────────────
    Main page
 ───────────────────────────────────────── */
-export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying }) {
+export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying, setCurrentSection }) {
   const { toast } = useToast();
   const { currentUser } = useAuth();
   const [activeGenre, setActiveGenre] = useState('All');
   const [selectedPod, setSelectedPod] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
-  const { isLiked, toggle: toggleLike } = useLikes();
+  const { isFav, toggle: toggleFavorite } = useFavorites();
+  const isLiked = useCallback((id) => isFav('podcast', id), [isFav]);
+  const toggleLike = useCallback((id) => toggleFavorite('podcast', id), [toggleFavorite]);
+  const openPodcastDetail = useCallback((podcast, { replace = false } = {}) => {
+    if (!podcast) return;
+    setSelectedPod(podcast);
+    const path = `/podcasts/${encodeURIComponent(podcast.slug || podcast.id)}`;
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', path);
+  }, []);
+  const closePodcastDetail = useCallback(() => {
+    setSelectedPod(null);
+    window.history.pushState({}, '', '/?section=podcasts');
+  }, []);
 
   const { data: podcasts, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('podcasts').select('*, artists(name)').order('created_at', { ascending: false }),
+    () => supabase
+      .from('podcasts')
+      .select('*, artists:artists!podcasts_artist_id_fkey(id, name, slug), podcast_artist_credits(artists(id, name, slug))')
+      .order('created_at', { ascending: false }),
     []
   );
 
@@ -616,19 +890,37 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
       const { type, id } = e.detail || {};
       if (type !== 'podcasts') return;
       const inList = (podcasts || []).find(p => p.id === id);
-      if (inList) { setSelectedPod(inList); return; }
-      const { data } = await supabase.from('podcasts').select('*, artists(name)').eq('id', id).single();
-      if (data) setSelectedPod(data);
+      if (inList) { openPodcastDetail(inList); return; }
+      const { data } = await supabase
+        .from('podcasts')
+        .select('*, artists:artists!podcasts_artist_id_fkey(id, name, slug), podcast_artist_credits(artists(id, name, slug))')
+        .eq('id', id)
+        .single();
+      if (data) openPodcastDetail(data);
     };
     window.addEventListener('pf:open-item', handler);
     return () => window.removeEventListener('pf:open-item', handler);
-  }, [podcasts]);
+  }, [podcasts, openPodcastDetail]);
 
   useEffect(() => {
-    const podcastParam = new URLSearchParams(window.location.search).get('podcast');
+    const podcastParam = podcastIdentifierFromLocation();
     if (!podcastParam || !podcasts?.length) return;
     const inList = podcasts.find(pod => pod.id === podcastParam || pod.slug === podcastParam);
-    if (inList) setSelectedPod(inList);
+    if (inList) openPodcastDetail(inList, { replace: true });
+  }, [podcasts, openPodcastDetail]);
+
+  useEffect(() => {
+    const handleHistoryNavigation = () => {
+      const podcastParam = podcastIdentifierFromLocation();
+      if (!podcastParam) {
+        setSelectedPod(null);
+        return;
+      }
+      const inList = (podcasts || []).find((pod) => pod.id === podcastParam || pod.slug === podcastParam);
+      if (inList) setSelectedPod(inList);
+    };
+    window.addEventListener('popstate', handleHistoryNavigation);
+    return () => window.removeEventListener('popstate', handleHistoryNavigation);
   }, [podcasts]);
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -649,6 +941,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
       // Incrementar contador de reproducciones al iniciar (no al reanudar)
       supabase.rpc('increment_podcast_plays', { p_podcast_id: pod.id }).then(() => {});
       setCurrentTrack({
+        kind: 'podcast',
         id: pod.id,
         title: pod.title,
         artist: pod.artists?.name || 'PolyFauna',
@@ -686,8 +979,9 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
           <PodcastDetail
             key="detail"
             pod={selectedPod}
-            onBack={() => setSelectedPod(null)}
+            onBack={closePodcastDetail}
             onPlay={() => handlePlay(selectedPod)}
+            onArtistClick={(artist) => openInSection(setCurrentSection, 'artists', 'artist', artist.slug || artist.id)}
             isActive={currentTrack?.id === selectedPod.id}
             isCurrentlyPlaying={currentTrack?.id === selectedPod.id && isPlaying}
             isLiked={isLiked(selectedPod.id)}
@@ -717,8 +1011,8 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-xl font-black text-white">Podcasts</h1>
-                <p className="text-sm text-white/40 mt-1">Sesiones y mixes curados de la comunidad.</p>
+                <h1 className="pf-page-title">Podcasts</h1>
+                <p className="pf-page-subtitle">Sesiones y mixes curados de la comunidad.</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {/* View toggle */}
@@ -803,7 +1097,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                     isActive={currentTrack?.id === pod.id}
                     isCurrentlyPlaying={currentTrack?.id === pod.id && isPlaying}
                     isLiked={isLiked(pod.id)}
-                    onSelect={setSelectedPod}
+                    onSelect={openPodcastDetail}
                     onPlay={handlePlay}
                     onToggleLike={toggleLike}
                   />
@@ -820,7 +1114,7 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
                     isActive={currentTrack?.id === pod.id}
                     isCurrentlyPlaying={currentTrack?.id === pod.id && isPlaying}
                     isLiked={isLiked(pod.id)}
-                    onSelect={setSelectedPod}
+                    onSelect={openPodcastDetail}
                     onPlay={handlePlay}
                     onToggleLike={toggleLike}
                   />

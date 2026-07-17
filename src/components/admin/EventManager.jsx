@@ -16,7 +16,7 @@ import { useConfirmDialog } from './ConfirmDialog';
 
 const EMPTY = {
   title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
-  image_url: '', description: '', courtesy_limit: '0',
+  image_url: '', mobile_image_url: '', ticket_image_url: '', description: '', courtesy_limit: '0',
   featured: false, featured_order: '',
 };
 
@@ -763,6 +763,8 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
       city:           event.city || '',
       lineup:         event.lineup || [],
       image_url:      event.image_url || '',
+      mobile_image_url: event.mobile_image_url || '',
+      ticket_image_url: event.ticket_image_url || '',
       description:    event.description || '',
       courtesy_limit: String(event.courtesy_limit || 0),
       featured:       event.featured || false,
@@ -928,16 +930,47 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Portada */}
-                <UploadField
-                  label="Imagen del evento"
-                  bucket="album-covers"
-                  accept="image/jpeg,image/png,image/webp"
-                  value={formData.image_url}
-                  onChange={(url) => set('image_url', url)}
-                  pathPrefix={`events/${currentUser.id}/`}
-                  hint="Recomendado 1600×900px (16:9), mínimo. Se recorta centrado en distintos banners de la plataforma — evita textos o logos cerca de los bordes."
-                />
+                {/* Arte responsivo: una portada obligatoria de facto y dos overrides opcionales. */}
+                <div className="space-y-4 rounded-2xl p-4 border border-border bg-background/35">
+                  <div>
+                    <Label>Imágenes del evento</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Sube una portada principal. Las versiones móvil y ticket son opcionales; si las dejas vacías, usaremos automáticamente la principal.
+                    </p>
+                  </div>
+                  <UploadField
+                    label="Banner principal"
+                    bucket="album-covers"
+                    accept="image/jpeg,image/png,image/webp"
+                    value={formData.image_url}
+                    onChange={(url) => set('image_url', url)}
+                    pathPrefix={`events/${currentUser.id}/`}
+                    hint="Recomendado 1600×900px (16:9). Para portada, grilla, radio y banners horizontales. Mantén rostros y logos dentro del 70% central."
+                    previewAspect="16 / 9"
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <UploadField
+                      label="Imagen para móvil (opcional)"
+                      bucket="album-covers"
+                      accept="image/jpeg,image/png,image/webp"
+                      value={formData.mobile_image_url}
+                      onChange={(url) => set('mobile_image_url', url)}
+                      pathPrefix={`events/${currentUser.id}/mobile/`}
+                      hint="1200×1500px (4:5). Para héroes móviles, accesos compactos y tarjetas estrechas."
+                      previewAspect="4 / 5"
+                    />
+                    <UploadField
+                      label="Imagen para ticket y QR (opcional)"
+                      bucket="album-covers"
+                      accept="image/jpeg,image/png,image/webp"
+                      value={formData.ticket_image_url}
+                      onChange={(url) => set('ticket_image_url', url)}
+                      pathPrefix={`events/${currentUser.id}/ticket/`}
+                      hint="1600×800px (2:1). Aparece sobre el QR, en Ticket Vault y en el PDF descargable."
+                      previewAspect="2 / 1"
+                    />
+                  </div>
+                </div>
 
                 {/* Título */}
                 <div>

@@ -169,14 +169,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const hydrateAuthenticatedUser = useCallback(async (authUser) => {
+    if (!authUser?.id) return;
+    await consumePendingOAuthRole(authUser);
+    await notifyPendingRoleRequest(authUser);
+    await fetchUserProfile(authUser);
+  }, [consumePendingOAuthRole, fetchUserProfile, notifyPendingRoleRequest]);
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          await consumePendingOAuthRole(session.user);
-          await notifyPendingRoleRequest(session.user);
-          await fetchUserProfile(session.user);
+          await hydrateAuthenticatedUser(session.user);
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
@@ -188,58 +193,92 @@ export const AuthProvider = ({ children }) => {
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        if (event === 'PASSWORD_RECOVERY') {
-          setRecoveryMode(true);
-          return;
-        }
+    // El callback debe permanecer sincrónico: ejecutar consultas de Supabase
+    // dentro de onAuthStateChange puede bloquear internamente el cliente. La
+    // hidratación se difiere al siguiente ciclo del event loop.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+        setIsLoading(false);
+        return;
+      }
         // Supabase puede emitir SIGNED_IN o TOKEN_REFRESHED justo después de
         // PASSWORD_RECOVERY al procesar el mismo enlace de recuperación —
         // sin este guard, ese segundo evento apagaba recoveryMode y el
         // usuario volvía a ver el login normal en vez del formulario de
         // nueva contraseña (quedándose en "Ingresando…" si además fallaba
         // alguna llamada de las de abajo, ver catch/finally).
-        if (recoveryModeRef.current && event !== 'SIGNED_OUT') {
-          return;
-        }
-        setRecoveryMode(false);
-        if (session?.user) {
+      if (recoveryModeRef.current && event !== 'SIGNED_OUT') {
+        setIsLoading(false);
+        return;
+      }
+      setRecoveryMode(false);
+      if (session?.user) {
           // El enlace de confirmación de correo redirige a
           // `${origin}/?verified=1` (ver signup()); si ese parámetro sigue
           // en la URL cuando la sesión recién se establece, es que el
           // usuario acaba de verificar su cuenta — se lo mostramos con un
           // modal en vez de dejarlo aterrizar en la plataforma sin ninguna
           // confirmación visible, y limpiamos la URL para no repetirlo.
-          if (event === 'SIGNED_IN' && typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('verified') === '1') {
-              setJustVerified(true);
-              params.delete('verified');
-              const newSearch = params.toString();
-              window.history.replaceState(null, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
-            }
+        if (event === 'SIGNED_IN' && typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          if (params.get('verified') === '1') {
+            setJustVerified(true);
+            params.delete('verified');
+            const newSearch = params.toString();
+            window.history.replaceState(null, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
           }
-          await consumePendingOAuthRole(session.user);
-          await notifyPendingRoleRequest(session.user);
-          await fetchUserProfile(session.user);
-        } else {
-          setCurrentUser(null);
-          setUserRole(null);
         }
-      } catch (err) {
-        // Antes, un error sin capturar en cualquiera de las llamadas de
-        // arriba (ej. consumePendingOAuthRole) detenía la ejecución sin
-        // llegar nunca a setIsLoading(false) — el botón de login quedaba
-        // en "Ingresando…" para siempre.
-        console.error('Error handling auth state change:', err);
-      } finally {
+        setCurrentUser(prev => prev?.id === session.user.id
+          ? prev
+          : { id: session.user.id, email: session.user.email });
+        setIsLoading(false);
+        window.setTimeout(() => {
+          hydrateAuthenticatedUser(session.user).catch(err => {
+            console.error('Error hydrating authenticated user:', err);
+          });
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setUserRole(null);
         setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [consumePendingOAuthRole, fetchUserProfile, notifyPendingRoleRequest]);
+    // iOS/Android pueden congelar JavaScript durante minutos. Al regresar,
+    // reconciliamos el token y el perfil sin expulsar al usuario si la red
+    // todavía no volvió.
+    let reconciling = false;
+    const reconcileSession = async () => {
+      if (reconciling || document.visibilityState === 'hidden') return;
+      reconciling = true;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (session?.user) await hydrateAuthenticatedUser(session.user);
+      } catch (err) {
+        console.warn('Session resume deferred until connectivity returns:', err);
+      } finally {
+        reconciling = false;
+        setIsLoading(false);
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') reconcileSession();
+    };
+    window.addEventListener('pageshow', reconcileSession);
+    window.addEventListener('focus', reconcileSession);
+    window.addEventListener('online', reconcileSession);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('pageshow', reconcileSession);
+      window.removeEventListener('focus', reconcileSession);
+      window.removeEventListener('online', reconcileSession);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [hydrateAuthenticatedUser, setRecoveryMode]);
 
   const signup = useCallback(async (email, password, name, role = 'citizen') => {
     setError(null);

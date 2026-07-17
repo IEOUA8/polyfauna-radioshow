@@ -5,6 +5,7 @@ import supabase from '@/lib/customSupabaseClient';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { useFavorites } from '@/hooks/useFavorites';
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/SectionStates';
+import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop';
 
@@ -23,7 +24,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
   const { data: albums, loading, error, refetch } = useSupabaseQuery(
     () => supabase
       .from('albums')
-      .select('*, artists(name, image_url)')
+      .select('*, artists:artists!albums_artist_id_fkey(name, image_url)')
       .order('created_at', { ascending: false }),
     []
   );
@@ -58,7 +59,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
       const inList = (albums || []).find(a => a.id === id);
       if (inList) { setSelectedAlbum(inList); return; }
       const { data } = await supabase
-        .from('albums').select('*, artists(name, image_url)').eq('id', id).single();
+        .from('albums').select('*, artists:artists!albums_artist_id_fkey(name, image_url)').eq('id', id).single();
       if (data) setSelectedAlbum(data);
     };
     window.addEventListener('pf:open-item', handler);
@@ -75,6 +76,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
   const handlePlayTrack = (track, album) => {
     if (!track.audio_url) return;
     setCurrentTrack({
+      kind: 'track',
       id: track.id,
       title: track.title,
       artist: track.artists?.name || album?.artists?.name || '',
@@ -122,10 +124,10 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
             style={{ border: '1px solid rgba(255,255,255,0.1)' }}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Álbum</p>
-            <h1 className="text-xl font-black text-white leading-tight">{selectedAlbum.title}</h1>
+            <p className="pf-eyebrow mb-1">Álbum</p>
+            <h1 className="pf-detail-title">{selectedAlbum.title}</h1>
             <p className="text-sm text-white/50 mt-0.5">
-              {selectedAlbum.artists?.name || 'PolyFauna'}
+              <span className="pf-author">{selectedAlbum.artists?.name || 'PolyFauna'}</span>
               {selectedAlbum.release_year && (
                 <span className="text-white/30"> · {selectedAlbum.release_year}</span>
               )}
@@ -133,8 +135,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {selectedAlbum.genre && (
                 <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)' }}
+                  className="pf-chip"
                 >
                   {selectedAlbum.genre}
                 </span>
@@ -163,7 +164,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
         </div>
 
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3">Tracks</h2>
+          <h2 className="pf-section-label mb-3">Tracks</h2>
 
           {tracksLoading && (
             <div className="space-y-2">
@@ -189,8 +190,8 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                     transition={{ delay: i * 0.04 }}
                     className={`group flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${track.audio_url ? 'cursor-pointer hover:bg-white/5' : 'opacity-50'}`}
                     style={{
-                      background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                      border: `1px solid ${isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`,
+                      background: isActive ? editorialAccent(0.08) : 'transparent',
+                      border: `1px solid ${isActive ? editorialAccent(0.25) : 'rgba(255,255,255,0.04)'}`,
                     }}
                     onClick={() => handlePlayTrack(track, selectedAlbum)}
                   >
@@ -201,7 +202,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
                             <motion.div
                               key={j}
                               className="w-0.5 rounded-t-sm"
-                              style={{ background: 'rgba(255,255,255,0.9)' }}
+                              style={{ background: EDITORIAL_ACCENT }}
                               animate={{ height: [`${h * 2}px`, `${h * 3.5}px`] }}
                               transition={{ duration: 0.4 + j * 0.1, repeat: Infinity, repeatType: 'reverse' }}
                             />
@@ -263,8 +264,8 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
   return (
     <div className="p-5 space-y-5">
       <div>
-        <h1 className="text-xl font-black text-white">Música</h1>
-        <p className="text-sm text-white/40 mt-1">Álbumes y tracks de la comunidad PolyFauna.</p>
+        <h1 className="pf-page-title">Música</h1>
+        <p className="pf-page-subtitle">Álbumes y tracks de la comunidad PolyFauna.</p>
       </div>
 
       {genres.length > 1 && (
@@ -279,9 +280,9 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               className="text-xs font-semibold px-3 py-1.5 rounded-full"
               style={{
-                background: activeGenre === g ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
-                color: activeGenre === g ? '#080B14' : 'rgba(255,255,255,0.5)',
-                border: activeGenre === g ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                background: activeGenre === g ? editorialAccent(0.16) : 'rgba(255,255,255,0.05)',
+                color: activeGenre === g ? EDITORIAL_ACCENT : 'rgba(255,255,255,0.5)',
+                border: `1px solid ${activeGenre === g ? editorialAccent(0.36) : 'rgba(255,255,255,0.08)'}`,
               }}
               onMouseEnter={activeGenre !== g ? (e) => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.08)';

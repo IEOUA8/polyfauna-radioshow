@@ -119,13 +119,12 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
             <div className="flex-1 min-w-0 flex flex-col items-start">
               {artist.type && (
                 <span
-                  className="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  className="pf-chip mb-2"
                 >
                   {artist.type}
                 </span>
               )}
-              <h1 className="text-xl sm:text-3xl font-black text-white leading-tight">{artist.name}</h1>
+              <h1 className="pf-detail-title">{artist.name}</h1>
               {artist.city && (
                 <span className="text-sm font-medium text-white/50 flex items-center gap-1.5 mt-2">
                   <MapPin className="w-3.5 h-3.5" /> {artist.city}
@@ -136,8 +135,7 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
                   {genres.map((g) => (
                     <span
                       key={g}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.10)' }}
+                      className="pf-chip"
                     >
                       {g.trim()}
                     </span>
@@ -195,14 +193,13 @@ function ArtistDetail({ artist, onBack, isFav, toggleFav, setCurrentSection }) {
       <div className="px-5 pt-5 pb-6 space-y-4">
         {artist.bio && (
           <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-3">Biografía</h2>
+            <h2 className="pf-section-label mb-3">Biografía</h2>
             <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{bioExcerpt}</p>
             {bioIsLong && (
               <button
                 type="button"
                 onClick={() => setBioModalOpen(true)}
-                className="text-xs font-bold mt-2.5 hover:underline"
-                style={{ color: 'rgba(255,255,255,0.85)' }}
+                className="pf-accent-link text-xs mt-2.5 hover:underline"
               >
                 Leer más...
               </button>
@@ -362,9 +359,9 @@ export default function ArtistsPage({ setCurrentSection }) {
   }, [artists]);
 
   useEffect(() => {
-    const slug = new URLSearchParams(window.location.search).get('artist');
-    if (!slug || !artists?.length) return;
-    const inList = artists.find(a => a.slug === slug);
+    const artistParam = new URLSearchParams(window.location.search).get('artist');
+    if (!artistParam || !artists?.length) return;
+    const inList = artists.find(a => a.slug === artistParam || a.id === artistParam);
     if (inList) setSelectedArtist(inList);
   }, [artists]);
 
@@ -395,8 +392,8 @@ export default function ArtistsPage({ setCurrentSection }) {
         >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <h1 className="text-xl font-black text-white">Artists & Labels</h1>
-              <p className="text-sm text-white/40 mt-1">Los artistas y sellos que dan vida a PolyFauna.</p>
+              <h1 className="pf-page-title">Artists & Labels</h1>
+              <p className="pf-page-subtitle">Los artistas y sellos que dan vida a PolyFauna.</p>
             </div>
             <input
               type="text"

@@ -6,10 +6,53 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { R2UploadField } from './R2UploadField';
 import { useConfirmDialog } from './ConfirmDialog';
+import ArtistCreditSelector from './ArtistCreditSelector';
+
+function formatDuration(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const secs = Math.floor(value % 60);
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    : `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+function extractAudioMetadata(file) {
+  return new Promise((resolve, reject) => {
+    const audio = document.createElement('audio');
+    const objectUrl = URL.createObjectURL(file);
+    const cleanup = () => {
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+      audio.removeAttribute('src');
+      audio.load();
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      const duration = Math.round(audio.duration);
+      cleanup();
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error('No fue posible detectar la duración del archivo de audio.'));
+        return;
+      }
+      resolve({ duration });
+    };
+    audio.onerror = () => {
+      cleanup();
+      reject(new Error('No fue posible leer los metadatos del archivo de audio.'));
+    };
+    audio.src = objectUrl;
+  });
+}
 
 const PodcastManager = ({ ownerId = null }) => {
   const { currentUser } = useAuth();
@@ -23,14 +66,18 @@ const PodcastManager = ({ ownerId = null }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    footer_description: '',
     duration: '',
     cover_url: '',
     audio_url: '',
     genre: '',
     artist_id: '',
+    credited_artist_ids: [],
   });
 
   const myArtist = ownerId ? artists.find(a => a.user_id === ownerId) : null;
+  const canTagArtists = !ownerId
+    || (currentUser?.role === 'promoter' && currentUser?.organizer_type === 'collective');
 
   useEffect(() => {
     fetchData();
@@ -38,19 +85,27 @@ const PodcastManager = ({ ownerId = null }) => {
 
   const fetchData = async () => {
     try {
-      let podcastsQuery = supabase.from('podcasts').select('*, artists(name)').order('created_at', { ascending: false });
+      let podcastsQuery = supabase.from('podcasts').select('*, artists:artists!podcasts_artist_id_fkey(name), podcast_artist_credits(artist_id)').order('created_at', { ascending: false });
       if (ownerId) podcastsQuery = podcastsQuery.eq('uploaded_by', ownerId);
 
-      const [podcastsRes, artistsRes] = await Promise.all([
+      const [podcastsRes, artistsRes, ownerArtistRes] = await Promise.all([
         podcastsQuery,
-        supabase.from('artists').select('id, name, user_id').order('name'),
+        supabase.from('artists_public').select('id, name, user_id').order('name'),
+        ownerId
+          ? supabase.from('artists').select('id, name, user_id').eq('user_id', ownerId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
 
-      if (podcastsRes.error) throw podcastsRes.error;
       if (artistsRes.error) throw artistsRes.error;
+      if (ownerArtistRes.error) throw ownerArtistRes.error;
 
+      const availableArtists = ownerArtistRes.data
+        ? [ownerArtistRes.data, ...(artistsRes.data || []).filter((artist) => artist.id !== ownerArtistRes.data.id)]
+        : (artistsRes.data || []);
+      setArtists(availableArtists);
+
+      if (podcastsRes.error) throw podcastsRes.error;
       setPodcasts(podcastsRes.data || []);
-      setArtists(artistsRes.data || []);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -66,11 +121,16 @@ const PodcastManager = ({ ownerId = null }) => {
     e.preventDefault();
 
     try {
+      const { credited_artist_ids: creditedArtistIds, ...podcastFields } = formData;
       const podcastData = {
-        ...formData,
-        duration: parseInt(formData.duration),
+        ...podcastFields,
+        duration: Number.isFinite(Number(formData.duration)) && Number(formData.duration) > 0
+          ? Math.round(Number(formData.duration))
+          : null,
         artist_id: ownerId ? (myArtist?.id || null) : (formData.artist_id || null),
       };
+
+      let podcastId = editingPodcast?.id;
 
       if (editingPodcast) {
         const { error } = await supabase
@@ -79,15 +139,24 @@ const PodcastManager = ({ ownerId = null }) => {
           .eq('id', editingPodcast.id);
 
         if (error) throw error;
-        toast({ title: "Podcast updated successfully" });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('podcasts')
-          .insert([{ ...podcastData, uploaded_by: currentUser.id }]);
+          .insert([{ ...podcastData, uploaded_by: currentUser.id }])
+          .select('id')
+          .single();
 
         if (error)throw error;
-        toast({ title: "Podcast created successfully" });
+        podcastId = data.id;
       }
+
+      const { error: creditsError } = await supabase.rpc('set_podcast_artist_credits', {
+        p_podcast_id: podcastId,
+        p_artist_ids: canTagArtists ? creditedArtistIds : [],
+      });
+      if (creditsError) throw creditsError;
+
+      toast({ title: editingPodcast ? 'Podcast actualizado' : 'Podcast creado' });
 
       setIsDialogOpen(false);
       resetForm();
@@ -106,11 +175,15 @@ const PodcastManager = ({ ownerId = null }) => {
     setFormData({
       title: podcast.title,
       description: podcast.description || '',
-      duration: podcast.duration,
+      footer_description: podcast.footer_description || '',
+      duration: podcast.duration || '',
       cover_url: podcast.cover_url || '',
       audio_url: podcast.audio_url || '',
       genre: podcast.genre || '',
       artist_id: podcast.artist_id || '',
+      credited_artist_ids: (podcast.podcast_artist_credits || [])
+        .map((credit) => credit.artist_id)
+        .filter((artistId) => artistId !== podcast.artist_id),
     });
     setIsDialogOpen(true);
   };
@@ -142,11 +215,13 @@ const PodcastManager = ({ ownerId = null }) => {
     setFormData({
       title: '',
       description: '',
+      footer_description: '',
       duration: '',
       cover_url: '',
       audio_url: '',
       genre: '',
       artist_id: '',
+      credited_artist_ids: [],
     });
   };
 
@@ -182,35 +257,28 @@ const PodcastManager = ({ ownerId = null }) => {
                 />
               </div>
               <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
+                <Label htmlFor="description">Descripción principal</Label>
+                <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Presenta el episodio, sus invitados y el contenido que encontrará el oyente…"
+                  rows={6}
+                  maxLength={5000}
+                  className="min-h-36 resize-y bg-background border-border text-foreground"
+                />
+                <p className="mt-1 text-right text-[11px] text-muted-foreground">
+                  {formData.description.length}/5000
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="genre">Género</Label>
+                <Input
+                  id="genre"
+                  value={formData.genre}
+                  onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
                   className="bg-background border-border text-foreground"
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="duration">Duración (segundos)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    className="bg-background border-border text-foreground"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="genre">Genre</Label>
-                  <Input
-                    id="genre"
-                    value={formData.genre}
-                    onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                    className="bg-background border-border text-foreground"
-                  />
-                </div>
               </div>
               {ownerId ? (
                 <div>
@@ -235,6 +303,14 @@ const PodcastManager = ({ ownerId = null }) => {
                   </select>
                 </div>
               )}
+              {canTagArtists && (
+                <ArtistCreditSelector
+                  artists={artists}
+                  selectedIds={formData.credited_artist_ids}
+                  primaryArtistId={ownerId ? myArtist?.id : formData.artist_id}
+                  onChange={(ids) => setFormData({ ...formData, credited_artist_ids: ids })}
+                />
+              )}
               <R2UploadField
                 label="Portada"
                 folder="podcasts/covers"
@@ -247,8 +323,36 @@ const PodcastManager = ({ ownerId = null }) => {
                 folder="podcasts/audio"
                 accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav"
                 value={formData.audio_url}
-                onChange={(url) => setFormData({ ...formData, audio_url: url })}
+                extractMetadata={extractAudioMetadata}
+                onChange={(url, metadata) => setFormData((current) => ({
+                  ...current,
+                  audio_url: url,
+                  duration: url ? (metadata?.duration || current.duration) : '',
+                }))}
               />
+              {formData.duration && (
+                <p className="-mt-2 text-xs text-muted-foreground">
+                  Duración detectada automáticamente: {formatDuration(formData.duration)}
+                </p>
+              )}
+              <div>
+                <Label htmlFor="footer_description">Descripción al pie</Label>
+                <p className="mb-1 text-[11px] text-muted-foreground">
+                  Se mostrará al final de la página de detalle del podcast.
+                </p>
+                <Textarea
+                  id="footer_description"
+                  value={formData.footer_description}
+                  onChange={(e) => setFormData({ ...formData, footer_description: e.target.value })}
+                  placeholder="Añade créditos, enlaces, agradecimientos, referencias o información complementaria…"
+                  rows={6}
+                  maxLength={5000}
+                  className="min-h-36 resize-y bg-background border-border text-foreground"
+                />
+                <p className="mt-1 text-right text-[11px] text-muted-foreground">
+                  {formData.footer_description.length}/5000
+                </p>
+              </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-0">
                 {editingPodcast ? 'Update Podcast' : 'Create Podcast'}
               </Button>
@@ -273,7 +377,7 @@ const PodcastManager = ({ ownerId = null }) => {
                 <div className="flex-1">
                   <h3 className="text-foreground font-semibold">{podcast.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {podcast.duration} min • {podcast.artists?.name || 'No artist'}
+                    {formatDuration(podcast.duration) || 'Duración no disponible'} • {podcast.artists?.name || 'No artist'}
                   </p>
                 </div>
                 <div className="flex gap-2">
