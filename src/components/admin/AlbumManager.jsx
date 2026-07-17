@@ -367,6 +367,7 @@ const AlbumManager = ({ ownerId = null }) => {
                 label="Portada"
                 folder="albums"
                 accept="image/jpeg,image/png,image/webp"
+                imagePreset="square"
                 value={form.cover_url}
                 onChange={(url) => setForm({ ...form, cover_url: url })}
               />

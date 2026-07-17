@@ -2,6 +2,8 @@ import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const disabledPdfRenderer = path.resolve(__dirname, './src/lib/disabledPdfOptionalRenderer.js');
+
 export default defineConfig({
 	plugins: [
 		react(),
@@ -14,9 +16,12 @@ export default defineConfig({
 	},
 	resolve: {
 		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json'],
-		alias: {
-			'@': path.resolve(__dirname, './src'),
-		},
+		alias: [
+			{ find: '@', replacement: path.resolve(__dirname, './src') },
+			{ find: /^html2canvas$/, replacement: disabledPdfRenderer },
+			{ find: /^dompurify$/, replacement: disabledPdfRenderer },
+			{ find: /^canvg$/, replacement: disabledPdfRenderer },
+		],
 	},
 	build: {
 		rollupOptions: {

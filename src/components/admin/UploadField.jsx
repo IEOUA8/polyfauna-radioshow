@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import supabase from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
+import { formatUploadSize, optimizeImageForUpload } from '@/lib/imageOptimization';
 
-export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '', hint = '', previewAspect = '' }) {
+export function UploadField({ label, bucket, accept, value, onChange, required = false, pathPrefix = '', hint = '', previewAspect = '', imagePreset = 'default' }) {
   const { toast } = useToast();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -18,13 +19,20 @@ export function UploadField({ label, bucket, accept, value, onChange, required =
     setUploading(true);
     setFileName(file.name);
     try {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const path = `${pathPrefix}${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
+      const optimizedFile = await optimizeImageForUpload(file, imagePreset);
+      const path = `${pathPrefix}${crypto.randomUUID()}.webp`;
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(path, optimizedFile, {
+        upsert: false,
+        cacheControl: '31536000',
+        contentType: 'image/webp',
+      });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       onChange(data.publicUrl);
-      toast({ title: 'Archivo subido', description: file.name });
+      toast({
+        title: 'Imagen optimizada y subida',
+        description: `${file.name} · ${formatUploadSize(file.size)} → ${formatUploadSize(optimizedFile.size)} WebP`,
+      });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error al subir archivo', description: err.message });
       setFileName('');

@@ -201,6 +201,7 @@ Despues de desplegar:
 | `20260716223000_collective_admin_role_and_content_credits.sql` | alias colectivo y creditos multiples |
 | `20260716234500_podcast_footer_description.sql` | notas editoriales al pie del podcast |
 | `20260717003000_podcast_public_slugs.sql` | slugs unicos y URLs canonicas de podcast |
+| `20260717022000_optimize_published_podcast_cover.sql` | backfill de portada WebP liviana para el podcast publicado |
 
 ## Checklist de cierre de release
 

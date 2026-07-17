@@ -4,6 +4,7 @@ import { Camera, IdCard, Loader2, Save, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { optimizeImageForUpload } from '@/lib/imageOptimization';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=200&auto=format&fit=crop';
 
@@ -75,28 +76,34 @@ export default function EditProfile({ profile, onSave, onClose }) {
   const handleAvatar = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'Imagen muy grande', description: 'Máximo 2MB.', variant: 'destructive' });
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'Imagen muy grande', description: 'Máximo 10MB antes de optimizar.', variant: 'destructive' });
       return;
     }
     setUploading(true);
-    const ext = file.name.split('.').pop();
-    const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
-    // upsert:true dispara un rechazo RLS falso en el storage-api de Supabase
-    // para esta politica (probado: el mismo insert sin upsert funciona). Se
-    // usa un nombre unico por subida y se borra el archivo anterior aparte.
-    const { error } = await supabase.storage.from('avatars').upload(path, file);
-    if (error) {
-      toast({ title: 'Error al subir imagen', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const optimizedFile = await optimizeImageForUpload(file, 'avatar');
+      const path = `${currentUser.id}/${crypto.randomUUID()}.webp`;
+      // upsert:true dispara un rechazo RLS falso en el storage-api de Supabase
+      // para esta politica (probado: el mismo insert sin upsert funciona). Se
+      // usa un nombre unico por subida y se borra el archivo anterior aparte.
+      const { error } = await supabase.storage.from('avatars').upload(path, optimizedFile, {
+        cacheControl: '31536000',
+        contentType: 'image/webp',
+      });
+      if (error) throw error;
       const prevMarker = '/object/public/avatars/';
       const previousPath = avatarPreview?.includes(prevMarker) ? avatarPreview.split(prevMarker)[1] : null;
       if (previousPath) supabase.storage.from('avatars').remove([previousPath]);
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       setAvatarPreview(publicUrl);
       set('avatar_url', publicUrl);
+    } catch (error) {
+      toast({ title: 'Error al subir imagen', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
-    setUploading(false);
   };
 
   const handleSave = async () => {
@@ -229,8 +236,8 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 <Camera className="w-3.5 h-3.5" />
                 {uploading ? 'Subiendo…' : 'Cambiar foto'}
               </button>
-              <p className="text-[10px] text-white/30 mt-1.5">JPG, PNG o WebP · Máx 2MB</p>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
+              <p className="text-[10px] text-white/30 mt-1.5">JPG, PNG o WebP · se optimiza automáticamente</p>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} />
             </div>
           </div>
 

@@ -942,6 +942,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                     label="Banner principal"
                     bucket="album-covers"
                     accept="image/jpeg,image/png,image/webp"
+                    imagePreset="eventBanner"
                     value={formData.image_url}
                     onChange={(url) => set('image_url', url)}
                     pathPrefix={`events/${currentUser.id}/`}
@@ -953,6 +954,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                       label="Imagen para móvil (opcional)"
                       bucket="album-covers"
                       accept="image/jpeg,image/png,image/webp"
+                      imagePreset="eventMobile"
                       value={formData.mobile_image_url}
                       onChange={(url) => set('mobile_image_url', url)}
                       pathPrefix={`events/${currentUser.id}/mobile/`}
@@ -963,6 +965,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                       label="Imagen para ticket y QR (opcional)"
                       bucket="album-covers"
                       accept="image/jpeg,image/png,image/webp"
+                      imagePreset="eventTicket"
                       value={formData.ticket_image_url}
                       onChange={(url) => set('ticket_image_url', url)}
                       pathPrefix={`events/${currentUser.id}/ticket/`}

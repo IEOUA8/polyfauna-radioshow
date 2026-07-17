@@ -210,6 +210,7 @@ const ArtistManager = () => {
                 label="Foto / Avatar"
                 bucket="avatars"
                 accept="image/jpeg,image/png,image/webp"
+                imagePreset="avatar"
                 value={formData.image_url}
                 onChange={(url) => setFormData({ ...formData, image_url: url })}
               />

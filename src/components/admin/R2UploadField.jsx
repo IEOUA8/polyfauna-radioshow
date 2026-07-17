@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToR2 } from '@/lib/r2Upload';
+import { formatUploadSize, optimizeImageForUpload } from '@/lib/imageOptimization';
 
 export function R2UploadField({
   label,
@@ -14,6 +15,7 @@ export function R2UploadField({
   onChange,
   required = false,
   extractMetadata = null,
+  imagePreset = 'default',
 }) {
   const { toast } = useToast();
   const inputRef = useRef(null);
@@ -27,9 +29,17 @@ export function R2UploadField({
     setFileName(file.name);
     try {
       const metadata = extractMetadata ? await extractMetadata(file) : null;
-      const publicUrl = await uploadToR2(file, folder);
+      const uploadFile = file.type.startsWith('image/')
+        ? await optimizeImageForUpload(file, imagePreset)
+        : file;
+      const publicUrl = await uploadToR2(uploadFile, folder);
       onChange(publicUrl, metadata);
-      toast({ title: 'Archivo subido', description: file.name });
+      toast({
+        title: uploadFile === file ? 'Archivo subido' : 'Imagen optimizada y subida',
+        description: uploadFile === file
+          ? file.name
+          : `${file.name} · ${formatUploadSize(file.size)} → ${formatUploadSize(uploadFile.size)} WebP`,
+      });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error al subir archivo', description: err.message });
       setFileName('');

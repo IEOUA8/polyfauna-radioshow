@@ -457,7 +457,13 @@ function PodcastDetail({ pod, onBack, onPlay, onArtistClick, isActive, isCurrent
         <div className="shrink-0 w-full lg:w-auto">
           <div className="relative w-full max-w-[320px] sm:max-w-sm mx-auto lg:mx-0 lg:w-72 xl:w-80 aspect-square rounded-2xl overflow-hidden"
             style={{ boxShadow: `0 24px 64px ${gColor}30, 0 8px 32px rgba(0,0,0,0.6)` }}>
-            <img src={pod.cover_url || FALLBACK_IMG} alt={pod.title} className="w-full h-full object-cover" />
+            <img
+              src={pod.cover_url || FALLBACK_IMG}
+              alt={pod.title}
+              decoding="async"
+              fetchPriority="high"
+              className="w-full h-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             {isCurrentlyPlaying && (
               <div className="absolute bottom-4 left-4 flex items-end gap-1 h-6">

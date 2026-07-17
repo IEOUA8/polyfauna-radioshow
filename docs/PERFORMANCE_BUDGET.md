@@ -1,6 +1,6 @@
 # PolyFauna - Presupuesto de performance
 
-Ultima medicion: 2026-07-17 sobre el build local posterior a `caa3a21`.
+Ultima medicion: 2026-07-17 sobre el build local posterior a `d54fcfa` y la poda de renderizadores PDF opcionales.
 
 El presupuesto se ejecuta con:
 
@@ -36,11 +36,13 @@ Estos limites son un baseline de control, no una meta final. Si una funcionalida
 
 - JS inicial gzip: 173.7 KiB / 190 KiB — cumple.
 - CSS inicial gzip: 18.7 KiB / 30 KiB — cumple.
-- Chunk lazy mayor gzip: 124.7 KiB / 260 KiB — cumple (`vendor-pdf`).
-- JS total gzip: 729.8 KiB / 720 KiB — excede por 9.8 KiB.
+- Chunk lazy mayor gzip: 124.5 KiB / 260 KiB — cumple (`vendor-pdf`).
+- JS total gzip: 629.5 KiB / 720 KiB — cumple con 90.5 KiB de margen.
 - Archivos JS generados: 112.
 
-Por tanto, `npm run perf:budget` y la etapa final de `npm run verify` quedan en rojo hasta reducir JS total o aprobar explicitamente un nuevo presupuesto con su tradeoff documentado. No se debe describir el estado actual como "verify completo en verde".
+La reduccion proviene de reemplazar `html2canvas`, `DOMPurify` y `canvg` por un modulo vacio exclusivamente dentro del build. Ticket Vault no invoca `doc.html()` ni `addSvgAsImage()`: conserva texto, formas, QR e imagenes PNG/JPEG. Si se incorpora HTML o SVG en PDFs, deben retirarse los aliases y presupuestar nuevamente esos renderizadores.
+
+El presupuesto vuelve a estar en verde sin aumentar ningun limite.
 
 ## Auditoria de navegacion del 2026-07-17
 
@@ -64,5 +66,6 @@ Si `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` no estan definidas al correr `np
 - PDF, scanner QR, admin y dashboards pesados deben permanecer lazy.
 - No importar `html5-qrcode` en el top-level de paginas si solo se usa al montar el lector.
 - No agrupar todas las dependencias PDF en un unico chunk gigante.
+- No usar `doc.html()` ni `addSvgAsImage()` sin retirar primero los aliases documentados en `vite.config.js` y medir el costo.
 - Si aparece un chunk lazy sobre 260 KiB gzip, revisar si puede separarse por paquete o por flujo.
 - Antes de ventas publicas, ejecutar Lighthouse/Web Vitals en movil real o throttling equivalente.

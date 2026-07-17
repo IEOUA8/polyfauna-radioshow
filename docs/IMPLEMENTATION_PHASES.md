@@ -1090,6 +1090,27 @@ Mejorar legibilidad movil y terminar el rollout de URLs publicas de podcast.
 ### Pendientes posteriores
 
 - Definir siguiente version/tag semantico: el producto acumulo features posteriores a `v1.1.0` sin un nuevo tag.
-- Reducir JS total gzip de 729.8 KiB a 720 KiB o menos; el resto del presupuesto cumple.
 - Ejecutar pruebas E2E reales de compra/QR, backup/restauracion y Lighthouse movil antes de ventas publicas.
 - Mantener `ARCHITECTURE_AND_MODULES.md` y `DEPLOYMENT_AND_MIGRATIONS.md` sincronizados con cada release funcional.
+
+## Fase 7.19 - Deuda de build e imagenes WebP automaticas
+
+Fecha: 2026-07-17
+
+### Objetivo
+
+Recuperar margen en el presupuesto JavaScript y reducir el tiempo de aparicion de portadas cargadas por usuarios.
+
+### Implementacion
+
+- `vite.config.js` reemplaza los renderizadores opcionales `html2canvas`, `DOMPurify` y `canvg` de jsPDF; Ticket Vault no usa las APIs HTML/SVG asociadas.
+- JS total gzip baja de 729.8 KiB a 629.5 KiB sin modificar los limites del presupuesto.
+- `imageOptimization.js` convierte JPG/PNG/WebP a WebP antes de subir, conserva proporcion, evita ampliacion y aplica dimensiones por superficie.
+- `UploadField`, `R2UploadField` y `EditProfile` cubren eventos, artistas, avatares, podcasts y albumes; el audio permanece sin transformacion.
+- La portada publicada de `Plano de Fase - Serie 001 | Nous` pasa de 2.210.848 bytes PNG a 99.972 bytes WebP mediante `20260717022000_optimize_published_podcast_cover.sql`.
+- El detalle de podcast prioriza la descarga de su portada y los assets versionados de `/media/` reciben cache inmutable anual.
+- ESLint excluye `.vercel/output`, que contiene artefactos compilados y no codigo fuente.
+
+### Verificacion
+
+- `image-upload-optimization.test.js`, `pdf-build-debt-contract.test.js`, lint, build productivo y `perf:budget`.

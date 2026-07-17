@@ -1,6 +1,6 @@
 # PolyFauna - Arquitectura y catalogo de modulos
 
-Estado de referencia: 2026-07-17, commit base `b2ac2ec`.
+Estado de referencia: 2026-07-17, commit base `d54fcfa`.
 
 Este documento describe el comportamiento vigente. Para detalles historicos consulta `IMPLEMENTATION_PHASES.md`; para despliegues, migraciones, variables e inventario de Edge Functions consulta `DEPLOYMENT_AND_MIGRATIONS.md`.
 
@@ -82,7 +82,7 @@ Managers especializados:
 - `BlogManager` e `InterviewManager`: contenido editorial y relaciones con artistas.
 - `ArtistManager` y `UserManager`: perfiles, roles, aprobaciones y datos publicos.
 - `TicketActionModals`: anulacion y transferencia controlada de tickets manuales/cortesia.
-- `UploadField`, `R2UploadField` y `ArtistCreditSelector`: utilidades compartidas de contenido.
+- `UploadField`, `R2UploadField`, `imageOptimization.js` y `ArtistCreditSelector`: utilidades compartidas de contenido; toda imagen cargada desde los gestores se normaliza a WebP antes de viajar al almacenamiento.
 
 Las confirmaciones sensibles usan modales propios montados con portal; no se usan `window.confirm`, `window.prompt` ni `window.alert`.
 
@@ -155,6 +155,10 @@ Reglas principales:
 
 - Eventos admiten `image_url` principal, `mobile_image_url` y `ticket_image_url`, con fallback a la principal.
 - R2 se usa mediante URLs prefirmadas generadas por `get-upload-url`; las credenciales nunca llegan al cliente.
+- Portadas de podcast/album se limitan a 1200x1200, avatares a 640x640 y variantes de evento a dimensiones acordes con banner, movil o ticket. Nunca se amplian imagenes pequeñas.
+- `imageOptimization.js` decodifica la imagen localmente, conserva su proporcion, elimina metadata y genera WebP con calidad 80-82 antes de subir. Audio y otros archivos no pasan por esta transformacion.
+- `UploadField`, `R2UploadField` y `EditProfile` aplican el mismo contrato; los objetos de Supabase usan nombres unicos y cache anual inmutable.
+- La portada historica de `Plano de Fase - Serie 001 | Nous` tiene un backfill WebP de 99.972 bytes frente al PNG original de 2.210.848 bytes.
 - Las portadas de blog usan relacion de aspecto estable, lazy loading y formatos WebP cuando corresponde.
 - Iconos, manifest, service worker y fallback offline viven en `public/`.
 
@@ -174,7 +178,7 @@ Reglas principales:
 - RLS usa roles explicitos, initplans y politicas consolidadas.
 - Helpers internos `SECURITY DEFINER` no se exponen como RPC cliente.
 - `npm run verify` ejecuta lint, tests, seguridad, build y presupuesto de performance.
-- PDF, QR scanner, admin, graficas y secciones pesadas permanecen lazy.
+- PDF, QR scanner, admin, graficas y secciones pesadas permanecen lazy. Las dependencias opcionales HTML/SVG de jsPDF estan deshabilitadas porque Ticket Vault solo usa texto, formas e imagenes raster.
 - `sectionPreload.js` adelanta chunks al hover o primer toque sin repetir imports.
 
 ## Pruebas como contrato

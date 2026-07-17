@@ -315,6 +315,7 @@ const PodcastManager = ({ ownerId = null }) => {
                 label="Portada"
                 folder="podcasts/covers"
                 accept="image/jpeg,image/png,image/webp"
+                imagePreset="square"
                 value={formData.cover_url}
                 onChange={(url) => setFormData({ ...formData, cover_url: url })}
               />
