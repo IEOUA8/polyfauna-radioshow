@@ -112,6 +112,7 @@ Segun el rol se auto-provisionan fichas en `artists` y/o `organizers`. El fronte
 - `GlobalPlayer` conserva el audio al entrar a `/admin` y `/dashboard`.
 - En movil operativo puede reducirse a un disco flotante.
 - La radio usa reconexion con backoff, deteccion de stall y fallback de calidad en modo automatico.
+- La identidad del reproductor denomina `Loquens` al modo podcast y `Transmittens` a la radio en vivo; la etiqueta generica `A demanda` se conserva para musica grabada.
 - Las pistas y podcasts on-demand mantienen cola, tiempo, seek, shuffle/repeat y Media Session.
 - `radio_sets` representa programacion editorial en vivo; `radio_set_likes` guarda corazones por usuario.
 - `radio_queue_cache` se sincroniza server-side porque la API de cola de AzuraCast requiere secreto.

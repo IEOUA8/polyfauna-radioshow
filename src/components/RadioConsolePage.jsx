@@ -16,10 +16,12 @@ import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 
 const FALLBACK_EVENT = 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=200&auto=format&fit=crop';
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop';
+const PODCAST_IDENTITY_LABEL = 'Loquens · Podcast';
+const LIVE_RADIO_IDENTITY_LABEL = 'Transmittens · Radio en vivo';
 
 export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack, setCurrentTrack, setCurrentSection }) {
   const { toast } = useToast();
-  const { song, isOnline, listeners, isLive, streamerName, remainingSeconds } = useNowPlaying();
+  const { song, isOnline, listeners, remainingSeconds } = useNowPlaying();
   const { currentUser } = useAuth();
   const { radioSet, liked: isSetLiked, toggleLike: toggleSetLike } = useActiveRadioSet();
 
@@ -35,6 +37,13 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack
   const [featuredEventIndex, setFeaturedEventIndex] = useState(0);
   const isOnDemand = Boolean(currentTrack);
   const contentKind = currentTrack?.kind === 'podcast' ? 'Podcast' : 'Música';
+  const identityLabel = currentTrack?.kind === 'podcast'
+    ? PODCAST_IDENTITY_LABEL
+    : isOnDemand
+      ? `A demanda · ${contentKind}`
+      : isOnline
+        ? LIVE_RADIO_IDENTITY_LABEL
+        : 'Offline';
   const displayArt = isOnDemand ? (currentTrack?.art || FALLBACK_COVER) : (song?.art || FALLBACK_COVER);
   const displayTitle = isOnDemand ? (currentTrack?.title || 'Contenido seleccionado') : (song?.title || 'PolyFauna Radio');
   const displaySubtitle = isOnDemand
@@ -191,7 +200,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               <span
-                className="relative inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full overflow-hidden"
+                className="relative inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider whitespace-nowrap px-2 py-0.5 rounded-full overflow-hidden"
                 style={{
                   background: isOnDemand ? editorialAccent(0.12) : isOnline ? 'rgba(255,112,67,0.12)' : 'rgba(255,255,255,0.07)',
                   border: `1px solid ${isOnDemand ? editorialAccent(0.40) : isOnline ? 'rgba(255,112,67,0.40)' : 'rgba(255,255,255,0.1)'}`,
@@ -209,7 +218,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#FF8A1F' }} />
                   </span>
                 )}
-                {isOnDemand ? `A demanda · ${contentKind}` : isLive ? `🎙 ${streamerName || 'En vivo'}` : isOnline ? 'Radio en vivo' : 'Offline'}
+                {identityLabel}
               </span>
             </div>
 
@@ -304,7 +313,9 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack
                 <Radio className="relative w-4 h-4" style={{ color: '#FF8A1F' }} />
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: '#FF8A1F' }}>En vivo ahora</span>
+                <span className="block text-[9px] font-black uppercase tracking-[0.16em] truncate" style={{ color: '#FF8A1F' }}>
+                  {isOnline ? LIVE_RADIO_IDENTITY_LABEL : 'Radio offline'}
+                </span>
                 <span className="block text-xs font-bold text-white/80 truncate">{song?.title || 'PolyFauna Radio'}</span>
               </span>
               <span className="text-[10px] font-bold text-white/45 shrink-0">Volver a Radio</span>

@@ -48,6 +48,8 @@ const QUALITY_STREAMS = {
 };
 const QUALITY_KEY = 'pf_stream_quality';
 const FLOATING_PLAY_BACKGROUND = `linear-gradient(135deg, #E4BD74, ${EDITORIAL_ACCENT})`;
+const PODCAST_IDENTITY_LABEL = 'LOQUENS';
+const LIVE_RADIO_IDENTITY_LABEL = 'TRANSMITTENS';
 function getSelectedQuality() {
   return localStorage.getItem(QUALITY_KEY) || 'auto';
 }
@@ -678,7 +680,11 @@ export default function GlobalPlayer() {
                 fontFamily: "'IBM Plex Mono', monospace",
               }}
             >
-              {isPlaying ? 'ON AIR' : 'PAUSED'}
+              {currentTrack?.kind === 'podcast'
+                ? PODCAST_IDENTITY_LABEL
+                : isOnDemand
+                  ? (isPlaying ? 'ON AIR' : 'PAUSED')
+                  : isOnline ? LIVE_RADIO_IDENTITY_LABEL : 'OFFLINE'}
             </span>
           </div>
 
