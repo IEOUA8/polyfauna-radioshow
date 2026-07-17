@@ -1,6 +1,6 @@
 # PolyFauna - Modelo de gobernanza y soporte
 
-Fecha: 2026-06-24
+Fecha de revision: 2026-07-17
 
 ## Objetivo
 
@@ -39,7 +39,8 @@ Rutas permitidas:
 Controles incluidos:
 
 - Solo admins pueden ejecutar.
-- Roles permitidos: `citizen`, `artist`, `promoter`, `club`, `sello`, `admin`.
+- Valores persistidos permitidos: `citizen`, `artist`, `promoter`, `club`, `sello`, `admin`.
+- La entrada administrativa `collective` es un alias: `set_user_role` la convierte en `role = 'promoter'` y `organizer_type = 'collective'`. No se persiste `collective` en `profiles.role`.
 - Un admin no puede quitarse a si mismo el rol admin.
 - Las solicitudes de rol ya revisadas no se procesan de nuevo.
 - Cada decision queda registrada en `admin_audit_log`.
@@ -100,12 +101,15 @@ Cada actualizacion queda auditada como `support.case_update`.
 - Verificacion local: `npm run verify` corre lint, tests, chequeo de secretos, build y presupuesto de performance.
 - Notificaciones push: existen service worker, suscripciones y Edge Function `send-push` para flujos que ya la invocan.
 - Operacion: el panel admin consulta alertas calculadas mediante `get_operational_alerts`.
+- Alertas externas: `pg_cron` invoca `send-operational-alert` cada 15 minutos con un secreto de Vault; Resend envia alertas criticas nuevas a soporte.
+- Radio: crons protegidos actualizan health checks y la cache publica de cola mediante `check-radio-health` y `sync-radio-queue`.
+- Correo: `resend-webhook` verifica firma Svix y registra estados deduplicados de entrega.
 
 ## No automatico todavia
 
 - Este agente no ejecuta `git push` automaticamente. Se hace solo si el usuario lo pide.
-- Las alertas operativas no envian todavia push/email/Slack por scheduler externo.
-- La creacion de casos de soporte desde una pantalla publica dedicada queda para una fase posterior; la base y el panel admin ya estan listos.
+- No existe integracion Slack/Teams para alertas; el canal externo vigente es correo por Resend.
+- El usuario autenticado puede abrir un caso desde "Reportar un problema" en Control Center; no existe una pagina publica anonima separada.
 - La eliminacion completa de usuarios en `auth.users` requiere una Edge Function con service role y proceso de doble confirmacion.
 
 ## Reglas para siguientes fases

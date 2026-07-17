@@ -1,5 +1,7 @@
 # PolyFauna - Playbooks operativos
 
+Fecha de revision: 2026-07-17.
+
 Estos playbooks cubren incidentes de beta y ventas publicas. Siempre registra hora, usuario afectado, evento, transaccion o ticket, accion tomada y resultado.
 
 ## Pago aprobado sin ticket
@@ -234,6 +236,74 @@ Cierre:
 - Cola offline sincronizada.
 - Tickets usados/refund/cancelados reflejan el estado real.
 - Se documenta si hubo excepcion manual en puerta.
+
+## Radio sin audio o cola desactualizada
+
+Senal:
+
+- El reproductor entra repetidamente en `Reconectando` o termina en error.
+- `check-radio-health` registra mounts no saludables.
+- La seccion "Sigue en la transmision" no cambia o muestra una cola vacia durante mas de una ventana de cron.
+
+Pasos:
+
+1. Confirmar que el problema afecta el audio, Now Playing, la cola o los tres por separado.
+2. Probar los mounts high/medium/low directamente desde un entorno autorizado.
+3. Revisar los ultimos registros de `radio_health_checks` y logs de `check-radio-health`.
+4. Revisar `radio_queue_cache.synced_at` y logs de `sync-radio-queue`.
+5. Confirmar que `x-cron-secret`, `supabase_project_ref` y credenciales AzuraCast siguen presentes en Vault/Functions.
+6. Si solo falla un mount, mantener disponible el fallback low y corregir el origen antes de cambiar URLs publicas.
+7. Si la cola falla pero el audio funciona, no pausar la radio; informar la degradacion de metadata y restaurar el cron.
+
+Cierre:
+
+- El audio reproduce de forma estable en al menos el mount esperado.
+- Los health checks vuelven a estado saludable.
+- `radio_queue_cache` recibe una sincronizacion nueva y la UI muestra los siguientes items.
+
+## Venta manual pendiente de registro
+
+Senal:
+
+- Un ticket de venta manual figura como `pending_registration`.
+- El comprador recibio QR pero no lo ve en Ticket Vault.
+
+Contexto:
+
+- La venta manual a un correo sin cuenta conserva cupo, importe y QR, pero no se activa hasta que el destinatario se registra con el mismo correo.
+
+Pasos:
+
+1. Confirmar `assigned_email`, tipo de ticket, referencia manual e importe historico.
+2. Pedir al destinatario registrarse con exactamente el correo de emision.
+3. Tras el registro, confirmar que `handle_new_user` asigno `user_id` y cambio el estado a `valid`.
+4. Verificar que el ticket aparece en Ticket Vault y que el QR valida.
+5. No emitir un segundo ticket mientras el primero siga pendiente; usar la clave de idempotencia para rastrear el formulario original.
+
+Cierre:
+
+- Ticket activo y asociado al usuario correcto, o correccion documentada del correo antes de reemitir.
+- Inventario, transaccion manual e ingresos por tier coinciden.
+
+## Early vencido o recargo en puerta
+
+Senal:
+
+- El scanner responde que un ticket Early vencio o requiere recargo.
+- El asistente presenta un QR valido despues de `early_entry_deadline`.
+
+Pasos:
+
+1. Confirmar tipo `early`, deadline, zona horaria del evento y monto de recargo configurado.
+2. No marcar el ticket como usado mientras el recargo siga pendiente.
+3. Cobrar o registrar el recargo mediante el procedimiento operativo aprobado para el evento.
+4. Volver a validar el ticket con conectividad o registrar la excepcion de puerta segun politica.
+5. Si la hora configurada es incorrecta, escalar al responsable; no alterar masivamente el evento durante ingreso sin evaluar tickets ya emitidos.
+
+Cierre:
+
+- Acceso y recargo quedan conciliados, o excepcion registrada con responsable.
+- Se corrige la configuracion antes de la siguiente ventana de ingreso si hubo error.
 
 ## Activacion de trazabilidad de Resend
 

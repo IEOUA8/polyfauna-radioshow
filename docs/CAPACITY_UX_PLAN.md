@@ -1,6 +1,6 @@
 # PolyFauna - Plan de capacidad y experiencia
 
-Fecha: 2026-06-24
+Fecha inicial: 2026-06-24. Revision de estado: 2026-07-17.
 
 Este plan define como mejorar la experiencia del usuario sin sobrecargar la plataforma. La regla de trabajo es crecer por medicion: primero reducir llamadas repetidas, luego observar consumo real, despues ampliar infraestructura o funcionalidades segun datos.
 
@@ -8,7 +8,7 @@ Este plan define como mejorar la experiencia del usuario sin sobrecargar la plat
 
 - Hosting: Vercel, frontend React/Vite estatico con rutas protegidas y chunks lazy.
 - Backend: Supabase Postgres, Auth, Storage/RPCs y Edge Functions.
-- Radio: AzuraCast para stream y Now Playing.
+- Radio: AzuraCast para stream y Now Playing, con cola privada sincronizada a cache publica, sets editoriales, health checks y reconexion cliente.
 - Pagos: Wompi con webhook, validacion de monto/moneda/firma e idempotencia.
 - Tickets: emision atomica desde Postgres, QR firmado y validador online/offline.
 - Operacion: alertas admin, soporte interno, auditoria administrativa y presupuesto de performance.
@@ -19,10 +19,9 @@ Este plan define como mejorar la experiencia del usuario sin sobrecargar la plat
 - `max_connections` observado: 60.
 - Conexiones observadas durante auditoria: 13.
 - Bundle validado por `npm run perf:budget`:
-  - JS inicial gzip: 159.4 KiB / 190 KiB.
-  - CSS inicial gzip: 18.5 KiB / 30 KiB.
-  - chunk lazy mayor gzip: 125.7 KiB / 260 KiB.
-  - JS total gzip: 681.9 KiB / 720 KiB.
+  - baseline historico: JS total 681.9 KiB / 720 KiB.
+  - medicion 2026-07-17: JS inicial 173.7 KiB / 190 KiB; CSS inicial 18.7 KiB / 30 KiB; chunk lazy mayor 124.7 KiB / 260 KiB; JS total 729.4 KiB / 720 KiB.
+  - deuda actual: reducir al menos 9.4 KiB gzip de JS total o aprobar un cambio de presupuesto con tradeoff explicito.
 - Advisors Supabase:
   - baseline inicial: 485 advertencias totales.
   - estado despues de fases tecnicas 7.2 a 7.5: 17 advertencias de seguridad, 0 advertencias de performance.
@@ -229,7 +228,7 @@ Estado: implementada.
 - Frontend instrumentado:
   - `UsageTelemetry` registra vistas de ruta y heartbeat de sesion visible cada 60 segundos.
   - `GlobalPlayer` registra inicio de stream live y reproduccion on-demand.
-  - `EventPublicPage` y `EventTerminal` registran vista de evento, inicio de checkout, checkout listo, ticket gratuito emitido y error de checkout.
+  - `EventTerminal` registra vista de evento, inicio de checkout, checkout listo, ticket gratuito emitido y error de checkout. La instrumentacion que originalmente vivia en `EventPublicPage` se traslado al shell unificado.
 - Privacidad/carga:
   - no se guardan emails, nombres, titulos ni texto libre de usuario.
   - solo se permiten propiedades tecnicas acotadas: ids, tipo de media, estado, cantidad, seccion y codigo de error.
@@ -245,7 +244,7 @@ Resultado medido:
 
 ### Fase 7.4 - Experiencia de musica y perfiles reales
 
-Estado: pendiente.
+Estado: implementada funcionalmente; falta continuar carga de contenido y medicion real.
 
 - Mantener la plataforma sin contenido generico.
 - Crear perfiles reales de artistas con imagenes, bios, enlaces y catalogo.
@@ -255,7 +254,7 @@ Estado: pendiente.
 
 ### Fase 7.5 - Compra de tickets bajo demanda
 
-Estado: pendiente.
+Estado: implementada funcionalmente; pruebas de pico y E2E comercial siguen pendientes.
 
 - Simular picos de checkout con eventos de capacidad limitada.
 - Validar que Wompi, webhook, RPC `fulfill_paid_transaction` y emision de tickets sostienen duplicados/reintentos.

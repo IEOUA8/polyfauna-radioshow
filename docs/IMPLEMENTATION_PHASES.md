@@ -1,6 +1,6 @@
 # PolyFauna - Registro de implementacion por fases
 
-Este documento registra que se implemento en cada fase, como se verifico y que queda pendiente para la siguiente iteracion.
+Este documento registra que se implemento en cada fase, como se verifico y que queda pendiente para la siguiente iteracion. Estado actualizado al 2026-07-17; la arquitectura vigente se resume en `ARCHITECTURE_AND_MODULES.md`.
 
 ## Esquema de versionado
 
@@ -17,7 +17,8 @@ El historial de commits mezcla dos flujos de trabajo (sesiones documentadas fase
 | Version | Commit | Fecha | Contenido |
 |---|---|---|---|
 | `v1.0.0` | `9ad1758` | 2026-07-07 | Linea base consolidada: Fases 1-7.11 (fundaciones, seguridad, RLS, telemetria, gobernanza, Colonia/organizadores) mas tickets gratis/cortesias, tiers y editor de eventos unificado. |
-| `v1.1.0` | *(este commit)* | 2026-07-10 | Reconexion resiliente del stream en vivo con backoff, telemetria de estado de stream, monitor externo de salud de AzuraCast (Edge Function + cron) y esquema de versionado. |
+| `v1.1.0` | `51d84d5` | 2026-07-10 | Reconexion resiliente del stream en vivo con backoff, telemetria de estado de stream, monitor externo de salud de AzuraCast (Edge Function + cron) y esquema de versionado. |
+| `1.1.0` sin tag nuevo | `b2ac2ec` | 2026-07-17 | Estado desplegado: shell unificado, cola real de radio, blog editorial/SEO, reglas avanzadas de tickets, Resend observable, Organismo/radio sets, creditos multiples, podcasts canonicos y refinamiento de reproductores. Requiere definir el siguiente tag semantico antes de otro release funcional. |
 
 ## Fase 1 - Fundaciones de ingenieria
 
@@ -639,7 +640,7 @@ Medir usuarios activos, reproduccion, vista de eventos y conversion de checkout 
 - Se instrumento `GlobalPlayer` para:
   - `stream_start` en radio live.
   - `media_start` en contenido on-demand.
-- Se instrumento `EventPublicPage` y `EventTerminal` para:
+- Se instrumento inicialmente `EventPublicPage` y `EventTerminal` para (la instrumentacion termino consolidada en `EventTerminal` al unificar el shell):
   - `event_view`.
   - `checkout_start`.
   - `checkout_ready`.
@@ -851,7 +852,7 @@ Resultado:
 
 ### Pendientes para Fase 7.11
 
-- El commit `3a9a239` ya esta en `main` en GitHub; falta que el proveedor de hosting tome ese commit y redespliegue produccion (el sitio en vivo mostraba el dialogo nativo viejo al momento de escribir esta fase).
+- Resuelto posteriormente: el commit `3a9a239` y sus sucesores fueron desplegados; produccion ya no usa el dialogo nativo viejo.
 - Aplicar el mismo `ModalShell`/`ModalHeader` a los formularios grandes del panel (editar evento, editar articulo) que hoy usan paneles propios inconsistentes, para unificar el sistema de modales por completo.
 
 ## Fase 7.11 - Capa de organizadores (Colonia) y contenido multidimensional de artistas
@@ -873,6 +874,7 @@ Ejecutar `POLYFAUNA_EVENTOS_ORGANIZADORES_MASTER.md`: dar identidad publica nave
 - `src/components/ProfileContentTabs.jsx` (nuevo): tabs Eventos/Musica/Podcast/Entrevistas reutilizables por `artistId` u `organizerId`, con estados vacios y carga por pestana bajo demanda.
 - `src/pages/ArtistPublicPage.jsx`: el bloque fijo "Proximos eventos" se reemplaza por `<ProfileContentTabs artistId={artist.id} />`.
 - `src/components/OrganizersPage.jsx` + `src/pages/OrganizerPublicPage.jsx` (nuevos): fork de `ArtistsPage.jsx`/`ArtistPublicPage.jsx` preservando favoritos, compartir, SEO/Helmet y animaciones. Ruta publica `/organizadores/:slug`. `OrganizerPublicPage` resuelve una posible fila espejo en `artists` por coincidencia de slug para mostrar tambien Musica/Podcast/Entrevistas cuando el organizador sube contenido propio.
+- Nota historica: las dos paginas standalone anteriores fueron eliminadas en la Fase 7.13; sus detalles viven hoy dentro de `ArtistsPage.jsx` y `OrganizersPage.jsx`.
 - Navegacion: "Colonia" (nombre elegido para conservar la identidad comunicacional de Polyfauna en vez de "Organizadores") agregada a `Sidebar.jsx` y `MobileMenu.jsx`; seccion `organizers` cableada en `PolyfaunaOS.jsx` (`VALID_SECTIONS`, `GuestGate`, limpieza de query params). No se agrego a `BottomNav.jsx` (reservado a las 5 acciones primarias, igual que "Artists & Labels" tampoco esta ahi).
 - `src/App.jsx`: rutas `/organizadores/:slug` y `/entrevistas/:interview` (mismo patron `InternalRouteRedirect` que `/music/:album`).
 - `src/components/BlogInterviewsSection.jsx`: listener de `?interview=` para deep-link, mismo patron que `MusicPage.jsx`.
@@ -905,3 +907,189 @@ Resultado:
 - QA funcional con datos reales: confirmar que un evento co-organizado aparece en el tab "Eventos" de ambos perfiles publicos sin duplicarse, y que un evento de solo-reventa no aparece en el perfil del revendedor. Garantizado por diseno (el puente a `event_organizers` solo se crea para `co_organizer`, PK compuesta evita duplicados) pero sin verificar end-to-end porque no hay organizadores reales creados aun en produccion.
 - Ejecutar `supabase/scripts/populate_venue_organizer_id.sql` cuando existan venues reales en `events.venue`.
 - Evaluar si "Colonia" necesita aparecer tambien en `BottomNav.jsx` una vez haya organizadores reales y trafico hacia esa seccion.
+
+## Fase 7.12 - Identidad profesional, autenticacion y continuidad del reproductor
+
+Fecha: 2026-07-07 a 2026-07-10
+
+### Objetivo
+
+Cerrar fallos de provisionamiento, recuperacion de cuenta y continuidad de audio antes de ampliar contenido y operacion de radio.
+
+### Implementacion
+
+- Auto-provisionamiento de `organizers` para promoter/club aprobados y sincronizacion del propietario del evento mediante:
+  - `20260708014609_organizer_profile_auto_provision.sql`.
+  - `20260708014846_event_owner_organizer_sync.sql`.
+  - `20260708015128_provision_artist_profile_for_club.sql`.
+- `artists_public` excluye fichas espejo que no deben aparecer como artista y conserva artistas/sellos/colectivos publicables (`20260708033522_artists_public_view.sql`).
+- El CHECK de roles admite `sello` (`20260708165000_profiles_role_check_add_sello.sql`).
+- Guardar perfil ya no exige identidad completa para cambios publicos; `user_identity` solo se guarda cuando nombre/documento estan presentes.
+- Recuperacion de contrasena robusta: deteccion inicial de URL, timeouts, estado local de envio, continuidad de sesion despues del cambio y modal de correo verificado.
+- Upgrade de `@supabase/supabase-js` y pruebas para evitar regresiones del flujo Auth.
+- `GlobalPlayer` se movio fuera de `Routes`, comparte `PlaybackProvider` y mantiene audio al entrar a Admin/Dashboard.
+- Modo disco movil en rutas operativas, capas corregidas frente a menus y recuperacion ante pausas provocadas por el navegador.
+- Plantillas de correo ajustadas para Gmail iOS/dark mode sin fondo blanco.
+- `wompiCheckout.js` valida el destino de checkout antes de navegar.
+
+### Verificacion
+
+- `organizer-provisioning-contracts`, `artists-public-view-contract`, `profiles-role-check-sello`, `edit-profile-save-not-blocked-by-identity`, `auth-recovery-and-verification-contracts`, `supabase-js-version-contract`, `global-player-persistent-and-disc-mode-contract` y `email-templates-gmail-dark-mode-contract`.
+
+## Fase 7.13 - Radio resiliente, cola real y shell unificado
+
+Fecha: 2026-07-10 a 2026-07-11
+
+### Objetivo
+
+Sustituir programacion ficticia por datos reales de AzuraCast, robustecer la escucha y eliminar paginas de detalle que desmontaban el shell.
+
+### Implementacion
+
+- `20260710000001_stream_resilience_and_monitoring.sql`: health checks, cron y datos de monitoreo.
+- `check-radio-health`: comprueba API y mounts; `GlobalPlayer` aplica backoff, deteccion de stall y fallback de calidad.
+- `20260711000001_drop_radio_shows.sql`: retira la tabla/programacion `radio_shows` que ya no era fuente de verdad.
+- `20260711000003_radio_queue_cache.sql` + `sync-radio-queue`: cache server-side de hasta diez items privados de AzuraCast; UI muestra los tres proximos sin duplicar "Ahora".
+- `20260711000002_rotating_artists.sql`: rotacion estable de artistas por ventana de 25 minutos.
+- Banner de evento y timeline de radio redisenados con datos reales y zona horaria de Bogota.
+- Detalles de artista, organizador, musica, evento y entrevista integrados en `PolyfaunaOS` mediante redirects internos; podcast conserva ruta canonica dentro del shell.
+- `ProfileContentTabs` varia segun tipo/capacidades y muestra contenido propio o relacionado.
+- `sectionPreload.js` precarga secciones lazy al hover/touchstart sin repetir imports.
+- Event Terminal se habilito para invitados; modales de Control Center se montan en `document.body` para evitar recortes/off-screen.
+- Recomendaciones de dimensiones para imagenes de evento.
+
+### Verificacion
+
+- `stream-recovery`, `radio-queue-timeline-contract`, `internal-route-redirect-contract`, `in-app-navigation-speed-contract`, `section-preload-contract`, `profile-content-tabs-capabilities`, `event-terminal-guest-access-contract`, `control-center-modal-portal-contract` y `event-image-hint-contract`.
+
+## Fase 7.14 - Blog editorial, distribucion y SEO
+
+Fecha: 2026-07-13 a 2026-07-14
+
+### Objetivo
+
+Convertir Blog & Entrevistas en una superficie editorial publica con contenido rico, compartir y descubrimiento externo.
+
+### Implementacion
+
+- `20260713000001_blog_articles_rich_content.sql`: bloques tipados y reparacion del esquema de articulos.
+- `20260713000002_seed_fauna_de_altura.sql` y `20260714000001_update_fauna_de_altura_content.sql`: articulo real, figuras y revision editorial.
+- `20260713000003_blog_slug_likes_webp.sql`: slug publico, contador/like anonimo controlado y assets optimizados.
+- Lectura estilo "pliego de especimen", jerarquia editorial, capitulares, citas, figuras y bloques de estrato.
+- Compartir nativo con fallback a portapapeles, Open Graph y HTML prerenderizado por articulo.
+- Portadas 16:9, lazy loading movil, cache HTTP e imagenes WebP.
+- `sitemap.xml`, `llms.txt`, metadatos AI/SEO e IndexNow para Bing/Yandex y otros compatibles.
+- Blog & Entrevistas habilitado para invitados.
+
+### Verificacion
+
+- `blog-image-layout-contract`, build SEO/prerender, sitemap y revision visual responsive.
+
+## Fase 7.15 - Reglas avanzadas de tickets y emision manual
+
+Fecha: 2026-07-15
+
+### Objetivo
+
+Controlar ventanas de venta, Early/Anytime, cambios de evento y emision manual sin exigir una cuenta previa.
+
+### Implementacion
+
+- `20260715113000_event_ticket_time_controls.sql`:
+  - cierre digital por tier;
+  - vencimiento y recargo Early;
+  - reglas equivalentes online/offline;
+  - metadata necesaria en correo y paquete de puerta.
+- Validacion de recargos Early en miles de pesos.
+- Retiro seguro de tiers: deja de venderse sin invalidar tickets emitidos.
+- Cambios de inicio/final reconcilian horarios dependientes antes de guardar.
+- `20260715180000_manual_ticket_unregistered_recipients.sql`: venta manual con `pending_registration`, `assigned_email`, QR y reclamo automatico al registrarse.
+- Formularios admin en cache no pierden la clave tecnica de idempotencia.
+- Dashboard calcula ventas e ingresos por tier usando importe historico de transaccion cuando existe.
+
+### Verificacion
+
+- `event-ticket-time-controls`, `manual-ticket-unregistered-recipients`, `admin-ticket-tier-pricing`, `offline-ticket-rules` y `payment-ticket-contracts`.
+
+## Fase 7.16 - Entrega observable, imagenes y ciclo Radio/Organismo/Ticket Vault
+
+Fecha: 2026-07-15 a 2026-07-16
+
+### Objetivo
+
+Dar trazabilidad a correos, completar variantes visuales de eventos y unificar la semantica de radio, favoritos y tickets historicos.
+
+### Implementacion
+
+- `20260715210000_resend_delivery_observability.sql`:
+  - idempotencia por categoria/entidad;
+  - `provider_message_id` y estados agregados;
+  - webhook `resend-webhook` con firma Svix y deduplicacion;
+  - tablas cerradas a `anon`/`authenticated`.
+- `20260716133000_event_image_variants.sql`: `mobile_image_url` y `ticket_image_url` con fallback a `image_url`.
+- `20260716190000_radio_organism_ticket_lifecycle.sql`:
+  - `radio_sets`, `radio_set_likes` y contador por trigger;
+  - favoritos de podcast unificados en `user_favorites` con sincronizacion legacy;
+  - respuestas a preguntas del programa;
+  - `hidden_from_vault_at` y RPC para ocultar solo tickets usados de eventos finalizados.
+- `RadioManager` administra sets; consola y reproductor comparten set activo y corazones.
+- Organismo separa musica/podcasts, agenda y perfiles seguidos; la radio live no se guarda como media.
+- `20260716223000_collective_admin_role_and_content_credits.sql`:
+  - alias administrativo `collective` -> promoter + organizer_type;
+  - creditos multiples de album/podcast;
+  - consultas de perfil incluyen contenido acreditado.
+
+### Verificacion
+
+- `resend-delivery-observability-contract`, `event-image-variants-contract`, `radio-organism-ticket-lifecycle-contract`, `collective-admin-content-credits` y `profile-content-tabs-capabilities`.
+
+## Fase 7.17 - Experiencia editorial y URLs canonicas de podcasts
+
+Fecha: 2026-07-16
+
+### Objetivo
+
+Dar a podcasts la misma calidad editorial, de reproduccion y descubrimiento que musica y blog.
+
+### Implementacion
+
+- `20260716234500_podcast_footer_description.sql`: notas/creditos al pie del detalle.
+- `20260717003000_podcast_public_slugs.sql`: normalizacion, trigger, backfill e indice unico parcial de slug.
+- Ruta `/podcasts/:podcast` visible dentro del shell, compatible con id o slug.
+- Metadata Helmet, canonical, Open Graph/Twitter, compartir y HTML prerender por podcast.
+- Sitemap usa slug en lugar de UUID cuando esta disponible.
+- Jerarquia editorial comun en podcasts, musica, artistas, organizadores, blog y eventos.
+- Cola y favoritos diferencian correctamente `track` y `podcast`.
+- Panel de podcast administra metadata, footer y creditos.
+
+### Verificacion
+
+- `podcast-detail-experience-contract`, `podcast-editorial-metadata-contract`, `podcast-public-seo-contract`, `editorial-hierarchy-and-home-player-contract` y build SEO.
+
+## Fase 7.18 - Refinamiento de reproductores y publicacion canonica
+
+Fecha: 2026-07-17, commit `b2ac2ec`
+
+### Objetivo
+
+Mejorar legibilidad movil y terminar el rollout de URLs publicas de podcast.
+
+### Implementacion
+
+- Titulo de sesion del reproductor principal limitado a una linea, con tamano responsive y elipsis.
+- Boton play del reproductor flotante usa el dorado editorial; el naranja queda reservado al estado de radio en vivo.
+- Migracion de slugs aplicada y registrada en produccion Supabase.
+- Sitemap regenerado con `/podcasts/plano-de-fase-serie-001-nous`.
+- Frontend desplegado automaticamente desde `main` y verificado en `www.polyfauna.com` sobre el SHA `b2ac2ec`.
+
+### Verificacion
+
+- 235 pruebas aprobadas, lint de fuentes/pruebas, build productivo y comprobacion visual movil.
+- API de Supabase reconoce `podcasts.slug`; Vercel `READY` y dominio publico sobre el mismo commit.
+
+### Pendientes posteriores
+
+- Definir siguiente version/tag semantico: el producto acumulo features posteriores a `v1.1.0` sin un nuevo tag.
+- Reducir JS total gzip de 729.4 KiB a 720 KiB o menos; el resto del presupuesto cumple.
+- Ejecutar pruebas E2E reales de compra/QR, backup/restauracion y Lighthouse movil antes de ventas publicas.
+- Mantener `ARCHITECTURE_AND_MODULES.md` y `DEPLOYMENT_AND_MIGRATIONS.md` sincronizados con cada release funcional.

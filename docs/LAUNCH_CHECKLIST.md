@@ -1,6 +1,6 @@
 # POLYFAUNA — Checklist de lanzamiento
 
-Fecha de revisión: 2026-07-08 (revisión previa: 2026-06-22)
+Fecha de revision documental: 2026-07-17. Los datos de eventos/organizadores de la seccion inferior son un snapshot del 2026-07-08 y deben reconfirmarse antes de una apertura comercial.
 
 ## Listo técnicamente
 
@@ -16,8 +16,13 @@ Fecha de revisión: 2026-07-08 (revisión previa: 2026-06-22)
 - [x] Integración de Web Analytics y Speed Insights con rutas privadas excluidas.
 - [x] Ajustes de safe area, altura y capas modales para iOS.
 - [x] Presupuesto automatizado de performance para JS/CSS inicial y chunks lazy.
+- [ ] Volver a poner `npm run perf:budget` en verde: JS total actual 729.4 KiB / 720 KiB; ver `PERFORMANCE_BUDGET.md`.
 - [x] Aviso PWA de nueva versión disponible sin actualización silenciosa forzada.
-- [x] Lint, pruebas automatizadas y build de producción aprobados.
+- [x] Reproductor persistente con reconexion, health checks y cola AzuraCast cacheada server-side.
+- [x] URLs canonicas de podcasts y blog, prerender social, sitemap, `llms.txt` e IndexNow.
+- [x] Tiers con ventanas Early/Anytime, emision manual/cortesia a correos sin cuenta y ciclo de anulacion/transferencia controlado.
+- [x] Trazabilidad de Resend con idempotencia y webhook firmado.
+- [x] Lint de fuentes, 235 pruebas automatizadas y build de produccion aprobados en la ultima revision; el `verify` completo permanece bloqueado por el presupuesto de JS total indicado arriba.
 
 ## Prueba controlada antes de abrir ventas
 
@@ -42,14 +47,14 @@ Fecha de revisión: 2026-07-08 (revisión previa: 2026-06-22)
 - [ ] Revisar métricas a las 2, 8, 24 y 48 horas del lanzamiento.
 - [ ] Ejecutar Lighthouse/Web Vitals móvil antes de ventas públicas.
 
-## Estado de datos reales (nuevo desde 2026-07-07)
+## Snapshot de datos reales del 2026-07-08
 
 - 3 organizadores con ficha pública en Colonia (`organizers`), auto-provisionados desde cuentas `promoter`/`club` aprobadas.
 - 2 eventos reales creados y vinculados a su organizador: **MOVAIVA FESTIVAL** (Sara Victoria Silva Montoya, locación secreta) y **Tehnology Nigth Rom** (Concepto Fractal, venue "SOSO").
-- Ningún evento ni promotor es todavía dato de prueba/placeholder — ver `docs/IMPLEMENTATION_PHASES.md`, Fase 7.11 y 7.12, para el detalle de la migración de datos.
+- En esa fecha ningun evento ni promotor era dato de prueba/placeholder. Antes del lanzamiento se deben volver a consultar los datos vigentes; este bloque no es un inventario dinamico. Ver `ARCHITECTURE_AND_MODULES.md` y las Fases 7.11-7.18 de `IMPLEMENTATION_PHASES.md`.
 
 ## Criterio de salida
 
 Se puede abrir una beta cerrada después de completar la prueba controlada de compra y QR. Las ventas públicas deben esperar hasta que también estén definidos soporte, políticas, alertas y procedimiento de reembolso.
 
-Con esta revisión, lo único que falta para cumplir el criterio de "beta cerrada" es la prueba controlada de compra/QR en sí (checklist de arriba) — ya hay un evento real apto (`Tehnology Nigth Rom`, $5.000 COP) y todo lo demás de "Operación de beta" ya está resuelto salvo backup/restauración y la asignación humana de responsable de soporte.
+Para beta cerrada sigue faltando la prueba controlada de compra/QR. Para ventas publicas tambien siguen abiertos backup/restauracion, responsable humano de soporte, observacion de metricas y Lighthouse/Web Vitals movil.

@@ -3,6 +3,8 @@
 
 **Repositorio:** `IEOUA8/polyfauna-radioshow` (rama `main`)
 **Stack confirmado:** React + Vite, React Router, Supabase (Postgres + Auth + RLS + Edge Functions), Wompi, AzuraCast, Vercel.
+
+> **Estado del documento (2026-07-17): historico de diseno e implementacion inicial.** La capa de organizadores ya fue implementada y luego integrada por completo en `PolyfaunaOS`; no existen paginas standalone `ArtistPublicPage.jsx` ni `OrganizerPublicPage.jsx`. La referencia vigente es `ARCHITECTURE_AND_MODULES.md`. Las secciones marcadas como propuesta explican decisiones originales, pero no deben usarse como instrucciones de ejecucion actuales.
 **Fecha del documento:** 2026-07-07
 **Estado:** ✅ Implementado y desplegado a producción (2026-07-07). Ver registro completo en `docs/IMPLEMENTATION_PHASES.md`, sección "Fase 7.11", y el PR [#9](https://github.com/IEOUA8/polyfauna-radioshow/pull/9) (fusionado a `main`, deploy de Vercel en verde).
 
@@ -26,7 +28,7 @@ Este documento resuelve tres problemas simultáneos:
 
 ---
 
-## 2. Roles del sistema (estado actual + extensión)
+## 2. Roles del sistema (resultado implementado)
 
 Confirmado en `docs/GOVERNANCE_MODEL.md` y en las políticas RLS de `events`:
 
@@ -34,7 +36,7 @@ Confirmado en `docs/GOVERNANCE_MODEL.md` y en las políticas RLS de `events`:
 Roles actuales en profiles.role: citizen | artist | promoter | club | sello | admin
 ```
 
-**Extensión aprobada: se agrega `collective`.**
+`collective` se expone como opcion administrativa, pero no se agrega como valor persistido. Se almacena como `role = 'promoter'` y `organizer_type = 'collective'`.
 
 | Rol | Puede publicar eventos propios | Puede ser co-organizador | Puede ser co-promotor de boletas | Tiene perfil público navegable |
 |---|---|---|---|---|
@@ -43,10 +45,10 @@ Roles actuales en profiles.role: citizen | artist | promoter | club | sello | ad
 | `sello` (label) | No | No | No | Sí — vía `artists.type = 'label'` (a confirmar convención existente) |
 | `promoter` | Sí | Sí | Sí | Sí — nuevo, `/organizadores/:slug` |
 | `club` | Sí | Sí | Sí | Sí — nuevo, `/organizadores/:slug` |
-| `collective` **(nuevo)** | Sí | Sí | Sí | Sí — nuevo, `/organizadores/:slug`, y opcionalmente también en `artists` si sube contenido propio |
+| `collective` **(alias de promoter)** | Sí | Sí | Sí | Sí — `/organizadores/:slug`, y tambien en `artists` cuando publica contenido propio |
 | `admin` | Sí (todo) | N/A | N/A | No aplica |
 
-**Regla de gobernanza (a respetar en `set_user_role` y `process_role_request_admin`, según `GOVERNANCE_MODEL.md`):** ningún cambio de rol se hace desde el cliente contra `profiles.role` directamente. Todo pasa por las RPC ya auditadas. Se debe agregar `'collective'` a la lista blanca de roles permitidos en ambas funciones.
+**Regla de gobernanza:** ningun cambio de rol se hace desde el cliente contra `profiles.role` directamente. Todo pasa por las RPC auditadas. Estas aceptan `collective` como entrada y realizan la conversion a promoter + organizer_type.
 
 ---
 
@@ -132,7 +134,7 @@ ALTER TABLE public.events
 -- events.venue (TEXT) se conserva como fallback hasta que la Fase 5
 -- (migración de datos) pueble venue_organizer_id en todos los eventos
 -- existentes. No se elimina en esta fase para no romper EventTerminal.jsx
--- ni EventPublicPage.jsx, que hoy leen event.venue directamente.
+-- ni EventTerminal.jsx, que conserva compatibilidad con event.venue.
 ```
 
 ### 3.2 — `interviews.subject_artist_id` (cierre del gap de vínculo artista-entrevista)
@@ -254,13 +256,15 @@ GRANT EXECUTE ON FUNCTION public.add_event_co_promoter(UUID, TEXT, TEXT) TO auth
 
 > **No se toca:** `revoke_event_co_promoter`, `get_event_attendees`, `issue_manual_transfer_ticket`, ni la política `events_visible_read`. Toda la lógica financiera, de auditoría bancaria y de atribución de tickets sigue exactamente igual — la extensión es aditiva y quirúrgica.
 
-### 3.4 — Actualización de gobernanza (rol `collective`)
+### 3.4 — Propuesta original de gobernanza (reemplazada)
 
-Actualizar en el cuerpo de `set_user_role` y `process_role_request_admin` (ver `docs/GOVERNANCE_MODEL.md`) la lista blanca de roles:
+La propuesta original era persistir un rol nuevo:
 
 ```
 Roles permitidos: citizen, artist, promoter, club, sello, collective, admin
 ```
+
+La implementacion final no persiste `collective`: las RPCs lo aceptan como alias y guardan `promoter + organizer_type = collective`. Consulta `GOVERNANCE_MODEL.md`.
 
 ---
 
@@ -269,9 +273,8 @@ Roles permitidos: citizen, artist, promoter, club, sello, collective, admin
 | Componente | Estado | Acción |
 |---|---|---|
 | `src/components/ArtistsPage.jsx` | Existe | Se usa como plantilla estructural de `OrganizersPage.jsx` (grid + búsqueda + detail view) |
-| `src/pages/ArtistPublicPage.jsx` | Existe | Se extiende: el bloque fijo de "Próximos eventos" (línea ~262-290) se reemplaza por `<ProfileContentTabs artistId={artist.id} />` |
-| `src/pages/OrganizerPublicPage.jsx` | **Nuevo** | Fork de `ArtistPublicPage.jsx`; usa `<ProfileContentTabs organizerId={organizer.id} artistId={mirrorArtistId} />` si el organizador tiene fila espejo en `artists` |
-| `src/components/OrganizersPage.jsx` | **Nuevo** | Fork de `ArtistsPage.jsx` para la sección in-app equivalente a Artists & Labels |
+| `src/components/ArtistsPage.jsx` | Vigente | Lista y detalle de artista dentro del shell; integra `ProfileContentTabs` |
+| `src/components/OrganizersPage.jsx` | Vigente | Lista y detalle de organizador dentro del shell; integra `ProfileContentTabs` y contenido espejo/acreditado |
 | `src/components/ProfileContentTabs.jsx` | **Nuevo** | Componente reutilizable de las 4 pestañas (Eventos / Música / Podcast / Entrevistas) |
 | `src/components/EventTerminal.jsx` | Existe | Se extiende el filtro de búsqueda (línea ~792-802) y se agrega faceta por tipo de organizador |
 | `src/components/admin/EventManager.jsx` | Existe | Se agregan dos acciones distintas de vinculación: "Agregar co-organizador" / "Agregar co-promotor de boletas" (línea ~370) |
@@ -309,23 +312,21 @@ ni compra dentro del tab.
 
 ---
 
-## 5. Rutas nuevas en `App.jsx`
+## 5. Rutas finales en `App.jsx`
 
 ```jsx
-const OrganizerPublicPage = lazy(lazyImport(() => import('@/pages/OrganizerPublicPage')));
-
 // Dentro de <Routes>:
-<Route path="/organizadores/:slug" element={<OrganizerPublicPage />} />
+<Route path="/organizadores/:slug" element={<InternalRouteRedirect section="organizers" param="organizer" routeParam="slug" />} />
 <Route path="/entrevistas/:interview" element={<InternalRouteRedirect section="blog" param="interview" />} />
 ```
 
-`InternalRouteRedirect` ya existe y ya se usa para `/music/:album`, `/podcasts/:podcast` y `/events/:event` — no requiere modificación, solo una nueva instancia de uso.
+Los detalles de artista y organizador viven en `ArtistsPage.jsx` y `OrganizersPage.jsx` dentro de `PolyfaunaOS`. `/podcasts/:podcast` conserva su URL canonica visible y monta el shell directamente; las demas rutas de detalle usan `InternalRouteRedirect`.
 
 ---
 
 ## 6. Diseño visual — consistencia con la dirección de marca
 
-**Nota de auditoría:** el código en producción usa `#080B14` como fondo base en `ArtistPublicPage.jsx` y `EventPublicPage.jsx`, mientras que el brand book aprobado define void black `#0A0A0A`. Recomendación: unificar hacia el token de marca aprobado en la próxima pasada de refinamiento visual, fuera del alcance de este documento (que es funcional, no de reskin).
+**Nota vigente:** la jerarquia editorial comparte tokens en `src/index.css` y `src/lib/editorialTheme.js`. El dorado `#D6A456` identifica autoria, seleccion y acciones editoriales; el naranja se reserva para el estado semantico de radio en vivo.
 
 ### 6.1 — Tab bar de `ProfileContentTabs`
 
@@ -367,8 +368,8 @@ Cada fila de colaborador vinculado muestra un badge de tipo:
 | **2** | Migración `interviews.subject_artist_id` | `supabase/migrations/` | Bajo — aditivo |
 | **3** | Migración `event_co_promoters.collaboration_type` + reemplazo de `add_event_co_promoter` + rol `collective` en `set_user_role`/`process_role_request_admin` | `supabase/migrations/`, funciones RPC | Medio — requiere test de contrato (exigido por `GOVERNANCE_MODEL.md` para cambios en RPCs auditadas) |
 | **4** | `ProfileContentTabs.jsx` (nuevo componente reutilizable) | `src/components/` | Bajo |
-| **5** | Integrar `ProfileContentTabs` en `ArtistPublicPage.jsx`; nueva ruta `/entrevistas/:interview`; listener de deep-link en `BlogInterviewsSection.jsx` | `ArtistPublicPage.jsx`, `App.jsx`, `BlogInterviewsSection.jsx` | Bajo |
-| **6** | `OrganizersPage.jsx` (in-app) + `OrganizerPublicPage.jsx` (standalone) | Nuevos archivos | Medio — mayor superficie de código nuevo |
+| **5** | Integrar `ProfileContentTabs` en `ArtistsPage.jsx`; nueva ruta `/entrevistas/:interview`; listener de deep-link en `BlogInterviewsSection.jsx` | `ArtistsPage.jsx`, `App.jsx`, `BlogInterviewsSection.jsx` | Bajo |
+| **6** | `OrganizersPage.jsx` con lista y detalle dentro del shell | Nuevo archivo | Medio — mayor superficie de codigo nuevo |
 | **7** | Extender búsqueda/filtro de `EventTerminal.jsx` por tipo de organizador | `EventTerminal.jsx` | Bajo |
 | **8** | UI de dos acciones en `EventManager.jsx` ("Agregar co-organizador" / "Agregar co-promotor de boletas") + badges de tipo en lista de colaboradores | `EventManager.jsx` | Bajo |
 | **9** | Migración de datos: poblar `venue_organizer_id` desde `events.venue` (texto libre) para eventos existentes | Script de datos, no de UI | Medio — requiere revisión manual de duplicados/variantes de nombre |
@@ -381,7 +382,7 @@ Cada fila de colaborador vinculado muestra un badge de tipo:
 - [x] Migraciones SQL aplicadas al proyecto Supabase enlazado (`supabase db push --linked`). No se corrió `supabase db advisors --linked` en esta fase — pendiente confirmar 0 performance warnings nuevos según baseline de `docs/CAPACITY_UX_PLAN.md`.
 - [ ] ~~`set_user_role` y `process_role_request_admin` aceptan `'collective'`~~ — **descartado por diseño**, ver nota de implementación arriba. `collective` sigue funcionando vía `organizer_type`, no vía `role`.
 - [x] `add_event_co_promoter` desplegado con la nueva firma de 3 argumentos (la firma legacy de 2 se eliminó explícitamente para evitar ambigüedad); el default `ticket_reseller` sigue disponible para llamadas externas sin tercer parámetro. `EventManager.jsx` ya pasa el parámetro explícito (Fase 8).
-- [x] `ProfileContentTabs.jsx` renderiza las 4 pestañas en `ArtistPublicPage.jsx` con datos reales — verificado en navegador con el artista `kevin-ruiz`.
+- [x] `ProfileContentTabs.jsx` renderiza contenido segun capacidades dentro de `ArtistsPage.jsx` y `OrganizersPage.jsx`.
 - [x] `/organizadores/:slug` operativo (estados "no encontrado" y vacío verificados en navegador). No probado con datos reales de los 3 subtipos porque aún no existen organizadores creados en producción.
 - [ ] Evento co-organizado por un colectivo aparece en su tab "Eventos" público — garantizado por diseño (PK compuesta `event_organizers(event_id, organizer_id)` evita duplicados), sin verificar end-to-end por falta de datos reales.
 - [ ] Evento donde alguien solo revendió boletas NO aparece en su perfil público — garantizado por diseño y cubierto por `tests/add-event-co-promoter-collaboration-type-contract.test.js` (el puente a `event_organizers` solo se crea para `co_organizer`), sin verificar end-to-end por falta de datos reales.
@@ -397,11 +398,10 @@ Cada fila de colaborador vinculado muestra un badge de tipo:
 
 ---
 
-## 10. Instrucciones de ejecución para la IA de desarrollo
+## 10. Mantenimiento futuro
 
-1. Ejecutar las migraciones de la sección 3 en orden (3.1 → 3.2 → 3.3 → 3.4), validando cada una contra el proyecto Supabase enlazado antes de continuar a la siguiente.
-2. No modificar ninguna función o política no mencionada explícitamente en este documento — el proyecto tiene RLS extensamente endurecida (ver `docs/CAPACITY_UX_PLAN.md`, fases 7.2-7.5) y cualquier cambio no auditado puede reintroducir warnings de seguridad/performance ya resueltos.
-3. Construir `ProfileContentTabs.jsx` como componente aislado y probarlo primero de forma independiente antes de integrarlo en `ArtistPublicPage.jsx`.
-4. Para `OrganizersPage.jsx` y `OrganizerPublicPage.jsx`: partir literalmente de una copia de `ArtistsPage.jsx`/`ArtistPublicPage.jsx` y modificar incrementalmente — no reescribir desde cero, para preservar los patrones ya probados (favoritos, compartir, SEO/Helmet, animaciones).
-5. Cualquier cambio a `add_event_co_promoter` debe ir acompañado de una prueba de contrato, siguiendo el patrón ya existente en `tests/security-definer-surface-contracts.test.js`.
-6. Al finalizar cada fase, correr `npm run verify` (lint, tests, chequeo de secretos, build, presupuesto de performance) antes de pasar a la siguiente fase.
+1. No volver a ejecutar el SQL de propuesta de este documento. Usa exclusivamente las migraciones versionadas y `DEPLOYMENT_AND_MIGRATIONS.md`.
+2. Mantener `ProfileContentTabs.jsx` como capa compartida de artistas/organizadores y evitar paginas standalone duplicadas.
+3. Cualquier cambio a `add_event_co_promoter`, roles o RLS debe incluir prueba de contrato.
+4. Preservar la distincion entre `co_organizer` y `ticket_reseller` en UI, RPC y perfil publico.
+5. Ejecutar `npm run verify` y actualizar `ARCHITECTURE_AND_MODULES.md` cuando cambie el comportamiento vigente.

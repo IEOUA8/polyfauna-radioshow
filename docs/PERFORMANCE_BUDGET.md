@@ -1,5 +1,7 @@
 # PolyFauna - Presupuesto de performance
 
+Ultima medicion: 2026-07-17 sobre el build del commit `b2ac2ec`.
+
 El presupuesto se ejecuta con:
 
 ```bash
@@ -29,6 +31,16 @@ El script `tools/performance-budget.js` mide el build generado en `dist/`:
 - JS total gzip: 720 KiB.
 
 Estos limites son un baseline de control, no una meta final. Si una funcionalidad importante requiere subirlos, debe venir con una nota de tradeoff y, si es posible, una compensacion en otro punto del bundle.
+
+## Estado actual
+
+- JS inicial gzip: 173.7 KiB / 190 KiB — cumple.
+- CSS inicial gzip: 18.7 KiB / 30 KiB — cumple.
+- Chunk lazy mayor gzip: 124.7 KiB / 260 KiB — cumple (`vendor-pdf`).
+- JS total gzip: 729.4 KiB / 720 KiB — excede por 9.4 KiB.
+- Archivos JS generados: 112.
+
+Por tanto, `npm run perf:budget` y la etapa final de `npm run verify` quedan en rojo hasta reducir JS total o aprobar explicitamente un nuevo presupuesto con su tradeoff documentado. No se debe describir el estado actual como "verify completo en verde".
 
 ## Cuidado con builds sin `.env`
 
