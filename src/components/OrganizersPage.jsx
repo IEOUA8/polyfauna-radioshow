@@ -268,7 +268,7 @@ export default function OrganizersPage({ setCurrentSection }) {
   const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: organizers, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('organizers').select('*').order('name'),
+    () => supabase.from('organizers').select('*').eq('is_public', true).order('name'),
     []
   );
 
@@ -279,7 +279,7 @@ export default function OrganizersPage({ setCurrentSection }) {
       if (type !== 'organizers') return;
       const inList = (organizers || []).find(o => o.id === id);
       if (inList) { setSelectedOrganizer(inList); return; }
-      const { data } = await supabase.from('organizers').select('*').eq('id', id).single();
+      const { data } = await supabase.from('organizers').select('*').eq('is_public', true).eq('id', id).single();
       if (data) setSelectedOrganizer(data);
     };
     window.addEventListener('pf:open-item', handler);

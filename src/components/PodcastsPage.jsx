@@ -875,6 +875,8 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
     () => supabase
       .from('podcasts')
       .select('*, artists:artists!podcasts_artist_id_fkey(id, name, slug), podcast_artist_credits(artists(id, name, slug))')
+      .eq('is_public', true)
+      .eq('creator_is_public', true)
       .order('created_at', { ascending: false }),
     []
   );
@@ -900,6 +902,8 @@ export default function PodcastsPage({ setCurrentTrack, setIsPlaying, currentTra
       const { data } = await supabase
         .from('podcasts')
         .select('*, artists:artists!podcasts_artist_id_fkey(id, name, slug), podcast_artist_credits(artists(id, name, slug))')
+        .eq('is_public', true)
+        .eq('creator_is_public', true)
         .eq('id', id)
         .single();
       if (data) openPodcastDetail(data);

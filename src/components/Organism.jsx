@@ -221,25 +221,25 @@ export default function Organism({ currentTrack, isPlaying, setIsPlaying }) {
 
         const [podcastsRes, tracksRes, albumsRes, albumTracksRes, eventsRes, artistsRes, organizersRes] = await Promise.all([
           podcastIds.length
-            ? supabase.from('podcasts').select('id, title, cover_url, audio_url, duration, genre, artists:artists!podcasts_artist_id_fkey(name)').in('id', podcastIds)
+            ? supabase.from('podcasts').select('id, title, cover_url, audio_url, duration, genre, artists:artists!podcasts_artist_id_fkey(name)').eq('is_public', true).eq('creator_is_public', true).in('id', podcastIds)
             : Promise.resolve({ data: [], error: null }),
           trackIds.length
-            ? supabase.from('tracks').select('id, title, audio_url, duration, genre, track_number, albums(title, cover_url), artists(name)').in('id', trackIds)
+            ? supabase.from('tracks').select('id, title, audio_url, duration, genre, track_number, albums!inner(title, cover_url, is_public, creator_is_public), artists(name)').eq('albums.is_public', true).eq('albums.creator_is_public', true).in('id', trackIds)
             : Promise.resolve({ data: [], error: null }),
           albumIds.length
-            ? supabase.from('albums').select('id, title, cover_url, genre, artists:artists!albums_artist_id_fkey(name)').in('id', albumIds)
+            ? supabase.from('albums').select('id, title, cover_url, genre, artists:artists!albums_artist_id_fkey(name)').eq('is_public', true).eq('creator_is_public', true).in('id', albumIds)
             : Promise.resolve({ data: [], error: null }),
           albumIds.length
-            ? supabase.from('tracks').select('id, title, album_id, audio_url, duration, genre, track_number, albums(title, cover_url), artists(name)').in('album_id', albumIds).order('track_number', { ascending: true })
+            ? supabase.from('tracks').select('id, title, album_id, audio_url, duration, genre, track_number, albums!inner(title, cover_url, is_public, creator_is_public), artists(name)').eq('albums.is_public', true).eq('albums.creator_is_public', true).in('album_id', albumIds).order('track_number', { ascending: true })
             : Promise.resolve({ data: [], error: null }),
           eventIds.length
-            ? supabase.from('events').select('id, title, date, venue, city, image_url, mobile_image_url').in('id', eventIds)
+            ? supabase.from('events').select('id, title, date, venue, city, image_url, mobile_image_url').eq('is_public', true).eq('creator_is_public', true).in('id', eventIds)
             : Promise.resolve({ data: [], error: null }),
           artistIds.length
-            ? supabase.from('artists_public').select('id, name, type, image_url, genres').in('id', artistIds)
+            ? supabase.from('artists_public').select('id, name, type, image_url, genres').eq('is_public', true).in('id', artistIds)
             : Promise.resolve({ data: [], error: null }),
           organizerIds.length
-            ? supabase.from('organizers').select('id, name, type, image_url, city').in('id', organizerIds)
+            ? supabase.from('organizers').select('id, name, type, image_url, city').eq('is_public', true).in('id', organizerIds)
             : Promise.resolve({ data: [], error: null }),
         ]);
 

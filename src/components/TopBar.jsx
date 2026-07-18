@@ -56,11 +56,11 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
     setFocusedIndex(-1);
     try {
       const [evRes, podRes, artRes, albRes, blogRes] = await Promise.all([
-        supabase.from('events').select('id, title, image_url, mobile_image_url, ticket_image_url').ilike('title', `%${q}%`).limit(3),
-        supabase.from('podcasts').select('id, title, cover_url').ilike('title', `%${q}%`).limit(3),
-        supabase.from('artists_public').select('id, name, image_url').ilike('name', `%${q}%`).limit(3),
-        supabase.from('albums').select('id, title, cover_url').ilike('title', `%${q}%`).limit(2),
-        supabase.from('blog_articles').select('id, title, featured_image_url').ilike('title', `%${q}%`).limit(2),
+        supabase.from('events').select('id, title, image_url, mobile_image_url, ticket_image_url').eq('is_public', true).eq('creator_is_public', true).ilike('title', `%${q}%`).limit(3),
+        supabase.from('podcasts').select('id, title, cover_url').eq('is_public', true).eq('creator_is_public', true).ilike('title', `%${q}%`).limit(3),
+        supabase.from('artists_public').select('id, name, image_url').eq('is_public', true).ilike('name', `%${q}%`).limit(3),
+        supabase.from('albums').select('id, title, cover_url').eq('is_public', true).eq('creator_is_public', true).ilike('title', `%${q}%`).limit(2),
+        supabase.from('blog_articles').select('id, title, featured_image_url').eq('is_public', true).ilike('title', `%${q}%`).limit(2),
       ]);
       const merged = [
         ...(evRes.data  || []).map(r => ({ ...r, _type: 'events'        })),

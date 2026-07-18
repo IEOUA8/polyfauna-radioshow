@@ -94,11 +94,11 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
         if (organizerId) {
           const { data } = await supabase
             .from('event_organizers')
-            .select('events(id, title, date, venue, city, image_url, mobile_image_url, ticket_image_url)')
+            .select('events(id, title, date, venue, city, image_url, mobile_image_url, ticket_image_url, is_public, creator_is_public)')
             .eq('organizer_id', organizerId);
           const rows = (data || [])
             .map((row) => row.events)
-            .filter(Boolean)
+            .filter((event) => event?.is_public !== false && event?.creator_is_public !== false)
             .sort((a, b) => new Date(b.date) - new Date(a.date));
           if (!cancelled) setCache((prev) => ({ ...prev, events: rows }));
           return;
@@ -107,6 +107,8 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
           const { data } = await supabase
             .from('events')
             .select('id, title, date, venue, city, image_url, mobile_image_url, ticket_image_url, lineup')
+            .eq('is_public', true)
+            .eq('creator_is_public', true)
             .order('date', { ascending: false })
             .limit(60);
           const rows = (data || []).filter((event) => lineupIncludesArtist(event.lineup, { id: artistId }));
@@ -122,14 +124,16 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
           supabase
             .from('albums')
             .select('id, title, cover_url, release_year')
+            .eq('is_public', true)
+            .eq('creator_is_public', true)
             .eq('artist_id', artistId)
             .order('release_year', { ascending: false }),
           supabase
             .from('album_artist_credits')
-            .select('albums(id, title, cover_url, release_year)')
+            .select('albums(id, title, cover_url, release_year, is_public, creator_is_public)')
             .eq('artist_id', artistId),
         ]);
-        const credited = (creditsResult.data || []).map((row) => row.albums).filter(Boolean);
+        const credited = (creditsResult.data || []).map((row) => row.albums).filter((album) => album?.is_public !== false && album?.creator_is_public !== false);
         const rows = [...new Map([...(primaryResult.data || []), ...credited].map((album) => [album.id, album])).values()]
           .sort((a, b) => Number(b.release_year || 0) - Number(a.release_year || 0));
         if (!cancelled) setCache((prev) => ({ ...prev, music: rows }));
@@ -141,14 +145,16 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
           supabase
             .from('podcasts')
             .select('id, title, cover_url, duration, created_at')
+            .eq('is_public', true)
+            .eq('creator_is_public', true)
             .eq('artist_id', artistId)
             .order('created_at', { ascending: false }),
           supabase
             .from('podcast_artist_credits')
-            .select('podcasts(id, title, cover_url, duration, created_at)')
+            .select('podcasts(id, title, cover_url, duration, created_at, is_public, creator_is_public)')
             .eq('artist_id', artistId),
         ]);
-        const credited = (creditsResult.data || []).map((row) => row.podcasts).filter(Boolean);
+        const credited = (creditsResult.data || []).map((row) => row.podcasts).filter((podcast) => podcast?.is_public !== false && podcast?.creator_is_public !== false);
         const rows = [...new Map([...(primaryResult.data || []), ...credited].map((podcast) => [podcast.id, podcast])).values()]
           .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
         if (!cancelled) setCache((prev) => ({ ...prev, podcast: rows }));
@@ -159,6 +165,7 @@ export default function ProfileContentTabs({ artistId, organizerId, artistType, 
         const { data } = await supabase
           .from('interviews')
           .select('id, title, image_url, duration_minutes, created_at')
+          .eq('is_public', true)
           .eq('subject_artist_id', artistId)
           .order('created_at', { ascending: false });
         if (!cancelled) setCache((prev) => ({ ...prev, interviews: data || [] }));

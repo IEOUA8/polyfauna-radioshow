@@ -28,12 +28,16 @@ export function useNotifications() {
         supabase
           .from('podcasts')
           .select('id, title, cover_url, created_at, artists:artists!podcasts_artist_id_fkey(name)')
+          .eq('is_public', true)
+          .eq('creator_is_public', true)
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false })
           .limit(4),
         supabase
           .from('events')
           .select('id, title, image_url, date, venue')
+          .eq('is_public', true)
+          .eq('creator_is_public', true)
           .gte('date', now)
           .lte('date', sevenDaysLater)
           .order('date', { ascending: true })
@@ -41,12 +45,15 @@ export function useNotifications() {
         supabase
           .from('blog_articles')
           .select('id, title, featured_image_url, created_at, category')
+          .eq('is_public', true)
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false })
           .limit(2),
         supabase
           .from('albums')
           .select('id, title, cover_url, created_at, artists:artists!albums_artist_id_fkey(name)')
+          .eq('is_public', true)
+          .eq('creator_is_public', true)
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false })
           .limit(3),

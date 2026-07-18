@@ -335,12 +335,12 @@ export default function RightPanel({ setCurrentSection }) {
 
   const { data: events } = useSupabaseQuery(
     () => supabase.from('events').select('id, title, date, venue, image_url, mobile_image_url, ticket_image_url')
-      .gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3),
+      .eq('is_public', true).eq('creator_is_public', true).gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(3),
     []
   );
 
   const { data: podcasts } = useSupabaseQuery(
-    () => supabase.from('podcasts').select('*, artists:artists!podcasts_artist_id_fkey(name)').order('created_at', { ascending: false }).limit(3),
+    () => supabase.from('podcasts').select('*, artists:artists!podcasts_artist_id_fkey(name)').eq('is_public', true).eq('creator_is_public', true).order('created_at', { ascending: false }).limit(3),
     []
   );
 

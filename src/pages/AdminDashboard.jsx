@@ -26,6 +26,7 @@ const UserManager      = lazy(lazyImport(() => import('@/components/admin/UserMa
 const ArtistManager    = lazy(lazyImport(() => import('@/components/admin/ArtistManager')));
 const AlbumManager     = lazy(lazyImport(() => import('@/components/admin/AlbumManager')));
 const RadioManager     = lazy(lazyImport(() => import('@/components/admin/RadioManager')));
+const VisibilityManager = lazy(lazyImport(() => import('@/components/admin/VisibilityManager')));
 
 /* ─────────────────────── NAV CONFIG ─────────────────────── */
 const NAV_GROUPS = [
@@ -37,6 +38,7 @@ const NAV_GROUPS = [
       { id: 'operations', label: 'Operación',   icon: AlertTriangle, color: '#f59e0b' },
       { id: 'radio',      label: 'Radio',        icon: Radio,         color: '#f87171' },
       { id: 'support',   label: 'Soporte',      icon: MessageCircle, color: '#93c5fd' },
+      { id: 'visibility', label: 'Visibilidad', icon: Shield,        color: '#fbbf24' },
       { id: 'events',    label: 'Eventos',      icon: CalendarDays,color: 'rgba(255,255,255,0.85)' },
       { id: 'tickets',   label: 'Tickets',      icon: Ticket,      color: 'rgba(255,255,255,0.85)' },
       { id: 'refunds',   label: 'Devoluciones', icon: RefreshCw,   color: 'rgba(255,255,255,0.85)' },
@@ -2557,6 +2559,7 @@ const AdminDashboard = () => {
       case 'operations':  return isAdmin ? <OperationalSection /> : <DashboardSection ownerId={currentUser?.id} />;
       case 'radio':       return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Radio</h2><p className="text-sm text-white/40 mt-0.5">Programación, corazones y preguntas de oyentes</p></div><RadioManager /></div> : <DashboardSection ownerId={currentUser?.id} />;
       case 'support':     return isAdmin ? <SupportCasesSection /> : <DashboardSection ownerId={currentUser?.id} />;
+      case 'visibility':  return isAdmin ? <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Visibilidad pública</h2><p className="text-sm text-white/40 mt-0.5">Oculta o restaura perfiles y contenidos sin eliminarlos</p></div><VisibilityManager /></div> : <DashboardSection ownerId={currentUser?.id} />;
       case 'events':      return <div className="space-y-4"><div><h2 className="text-lg font-black text-white">Eventos</h2><p className="text-sm text-white/40 mt-0.5">Crear y gestionar eventos, artistas y tipos de entrada</p></div><EventManager ownerId={isAdmin ? null : currentUser?.id} isAdmin={isAdmin} /></div>;
       case 'tickets':     return <TicketsSection ownerId={isAdmin ? null : currentUser?.id} onConfigureCourtesy={() => setActiveSection('events')} />;
       case 'refunds':     return <RefundRequestsSection ownerId={isAdmin ? null : currentUser?.id} />;

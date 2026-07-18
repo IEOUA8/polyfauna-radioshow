@@ -184,7 +184,7 @@ export default function InterviewsSection() {
   const [selectedInterview, setSelectedInterview] = useState(null);
 
   const { data: interviews, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('interviews').select('*').order('created_at', { ascending: false }).limit(100),
+    () => supabase.from('interviews').select('*').eq('is_public', true).order('created_at', { ascending: false }).limit(100),
     []
   );
 

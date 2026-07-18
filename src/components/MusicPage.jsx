@@ -25,6 +25,8 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
     () => supabase
       .from('albums')
       .select('*, artists:artists!albums_artist_id_fkey(name, image_url)')
+      .eq('is_public', true)
+      .eq('creator_is_public', true)
       .order('created_at', { ascending: false }),
     []
   );
@@ -59,7 +61,7 @@ export default function MusicPage({ setCurrentTrack, setIsPlaying, currentTrack 
       const inList = (albums || []).find(a => a.id === id);
       if (inList) { setSelectedAlbum(inList); return; }
       const { data } = await supabase
-        .from('albums').select('*, artists:artists!albums_artist_id_fkey(name, image_url)').eq('id', id).single();
+        .from('albums').select('*, artists:artists!albums_artist_id_fkey(name, image_url)').eq('is_public', true).eq('creator_is_public', true).eq('id', id).single();
       if (data) setSelectedAlbum(data);
     };
     window.addEventListener('pf:open-item', handler);

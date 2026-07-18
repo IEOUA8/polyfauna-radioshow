@@ -340,7 +340,7 @@ export default function ArtistsPage({ setCurrentSection }) {
   // (auto-creadas para que suban música/podcast) — esas se muestran en
   // Colonia, no en Artists & Labels.
   const { data: artists, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('artists_public').select('*').order('name'),
+    () => supabase.from('artists_public').select('*').eq('is_public', true).order('name'),
     []
   );
 
@@ -351,7 +351,7 @@ export default function ArtistsPage({ setCurrentSection }) {
       if (type !== 'artists') return;
       const inList = (artists || []).find(a => a.id === id);
       if (inList) { setSelectedArtist(inList); return; }
-      const { data } = await supabase.from('artists_public').select('*').eq('id', id).single();
+      const { data } = await supabase.from('artists_public').select('*').eq('is_public', true).eq('id', id).single();
       if (data) setSelectedArtist(data);
     };
     window.addEventListener('pf:open-item', handler);

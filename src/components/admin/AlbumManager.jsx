@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { R2UploadField } from './R2UploadField';
 import { useConfirmDialog } from './ConfirmDialog';
 import ArtistCreditSelector from './ArtistCreditSelector';
+import CreatorVisibilityControl from './CreatorVisibilityControl';
 
 const EMPTY_ALBUM = { title: '', artist_id: '', cover_url: '', release_year: '', genre: '', description: '', credited_artist_ids: [] };
 const EMPTY_TRACK = { title: '', artist_id: '', audio_url: '', duration: '', track_number: '', genre: '' };
@@ -472,6 +473,13 @@ const AlbumManager = ({ ownerId = null }) => {
                       </p>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      <CreatorVisibilityControl
+                        entityType="albums"
+                        item={album}
+                        ownerId={album.uploaded_by}
+                        noun="Álbum"
+                        onChanged={(updated) => setAlbums((current) => current.map((item) => item.id === album.id ? { ...item, ...updated } : item))}
+                      />
                       <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(album); }} className="text-secondary hover:text-secondary/80">
                         <Edit className="w-4 h-4" />
                       </Button>

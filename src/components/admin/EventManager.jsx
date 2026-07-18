@@ -13,6 +13,7 @@ import { UploadField } from './UploadField';
 import ArtistMentionInput from '@/components/ArtistMentionInput';
 import { TransferTicketModal, VoidTicketModal } from './TicketActionModals';
 import { useConfirmDialog } from './ConfirmDialog';
+import CreatorVisibilityControl from './CreatorVisibilityControl';
 
 const EMPTY = {
   title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
@@ -1270,6 +1271,13 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                     )}
                   </div>
                   <div className="flex gap-1.5 shrink-0 flex-wrap sm:justify-end">
+                    <CreatorVisibilityControl
+                      entityType="events"
+                      item={event}
+                      ownerId={event.owner_id}
+                      noun="Evento"
+                      onChanged={(updated) => setEvents((current) => current.map((item) => item.id === event.id ? { ...item, ...updated } : item))}
+                    />
                     <Button
                       variant="ghost"
                       size="sm"

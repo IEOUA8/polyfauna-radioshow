@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { R2UploadField } from './R2UploadField';
 import { useConfirmDialog } from './ConfirmDialog';
 import ArtistCreditSelector from './ArtistCreditSelector';
+import CreatorVisibilityControl from './CreatorVisibilityControl';
 
 function formatDuration(seconds) {
   const value = Number(seconds);
@@ -382,6 +383,13 @@ const PodcastManager = ({ ownerId = null }) => {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <CreatorVisibilityControl
+                    entityType="podcasts"
+                    item={podcast}
+                    ownerId={podcast.uploaded_by}
+                    noun="Podcast"
+                    onChanged={(updated) => setPodcasts((current) => current.map((item) => item.id === podcast.id ? { ...item, ...updated } : item))}
+                  />
                   <Button
                     variant="ghost"
                     size="icon"

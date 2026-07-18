@@ -27,7 +27,7 @@ export default function RadioConsolePage({ isPlaying, setIsPlaying, currentTrack
 
   const { data: upcomingEvents } = useSupabaseQuery(
     () => supabase.from('events').select('id, title, date, venue, image_url, mobile_image_url, ticket_image_url')
-      .gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(6),
+      .eq('is_public', true).eq('creator_is_public', true).gte('date', new Date().toISOString()).order('date', { ascending: true }).limit(6),
     []
   );
 

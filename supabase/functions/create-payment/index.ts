@@ -82,14 +82,14 @@ Deno.serve(async (req) => {
     // Obtener evento y sus tipos de entrada
     const { data: event, error: evErr } = await supabase
       .from('events')
-      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, date, ends_at, status')
+      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, date, ends_at, status, is_public, creator_is_public')
       .eq('id', event_id)
       .single();
 
     if (evErr || !event)
       return new Response(JSON.stringify({ error: 'Evento no encontrado' }), { status: 404, headers: CORS });
 
-    if (!['upcoming', 'live', 'published'].includes(event.status))
+    if (!['upcoming', 'live', 'published'].includes(event.status) || event.is_public === false || event.creator_is_public === false)
       return new Response(JSON.stringify({ error: 'El evento no está disponible' }), { status: 400, headers: CORS });
 
     const tiers = Array.isArray(event.ticket_types) ? event.ticket_types : [];

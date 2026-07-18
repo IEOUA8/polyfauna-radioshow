@@ -826,7 +826,7 @@ export default function EventTerminal({ setCurrentSection }) {
   const { isFav, toggle: toggleFav } = useFavorites();
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
-    () => supabase.from('events').select('*').order('date', { ascending: true }),
+    () => supabase.from('events').select('*').eq('is_public', true).eq('creator_is_public', true).order('date', { ascending: true }),
     []
   );
   const { data: artists } = useSupabaseQuery(
@@ -889,7 +889,7 @@ export default function EventTerminal({ setCurrentSection }) {
       if (type !== 'events') return;
       const inList = visibleEvents.find(ev => ev.id === id);
       if (inList) { setSelectedEvent(inList); return; }
-      const { data } = await supabase.from('events').select('*').eq('id', id).single();
+      const { data } = await supabase.from('events').select('*').eq('is_public', true).eq('creator_is_public', true).eq('id', id).single();
       if (data && isEventVisibleInTerminal(data, clock)) setSelectedEvent(data);
     };
     window.addEventListener('pf:open-item', handler);

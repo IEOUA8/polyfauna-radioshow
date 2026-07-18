@@ -511,12 +511,12 @@ export default function BlogInterviewsSection() {
   const [selectedType, setSelectedType] = useState(null);
 
   const { data: articles, loading: blogLoading, error: blogError } = useSupabaseQuery(
-    () => supabase.from('blog_articles').select('*').order('published_at', { ascending: false }).limit(100),
+    () => supabase.from('blog_articles').select('*').eq('is_public', true).order('published_at', { ascending: false }).limit(100),
     []
   );
 
   const { data: interviews, loading: ivtwLoading, error: ivtwError } = useSupabaseQuery(
-    () => supabase.from('interviews').select('*').order('created_at', { ascending: false }).limit(100),
+    () => supabase.from('interviews').select('*').eq('is_public', true).order('created_at', { ascending: false }).limit(100),
     []
   );
 
