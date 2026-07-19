@@ -39,6 +39,12 @@ const ALLOWED_PROPERTIES = new Set([
   'delay_ms',
   'duration_ms',
   'network_type',
+  'country_code',
+  'region',
+  'city',
+  'device_type',
+  'os_name',
+  'browser_name',
 ]);
 
 const clean = (value: unknown, max: number) => String(value ?? '')
@@ -96,6 +102,10 @@ serve(async (req) => {
 
     if ((count || 0) >= MAX_EVENTS_PER_MINUTE) return json({ ok: true, throttled: true });
 
+    const properties = sanitizeProperties(body.properties);
+    const countryCode = clean(properties.country_code, 2).toUpperCase();
+    const deviceType = clean(properties.device_type, 20);
+
     const { error } = await admin.from('usage_events').insert({
       session_id: sessionId,
       user_id: user?.id || null,
@@ -103,7 +113,13 @@ serve(async (req) => {
       route: pathnameOnly(body.route),
       referrer: pathnameOnly(body.referrer),
       release: clean(body.release, 120) || null,
-      properties: sanitizeProperties(body.properties),
+      properties,
+      country_code: /^[A-Z]{2}$/.test(countryCode) ? countryCode : null,
+      region: clean(properties.region, 80) || null,
+      city: clean(properties.city, 80) || null,
+      device_type: ['mobile', 'tablet', 'desktop'].includes(deviceType) ? deviceType : null,
+      os_name: clean(properties.os_name, 80) || null,
+      browser_name: clean(properties.browser_name, 80) || null,
     });
 
     if (error) throw error;

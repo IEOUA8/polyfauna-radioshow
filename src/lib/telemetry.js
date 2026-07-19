@@ -7,6 +7,7 @@ const USAGE_RATE_LIMIT = 18;
 const usageTimestamps = [];
 const recentUsageEvents = new Map();
 let reporting = false;
+let visitorContextPromise = null;
 
 const ALLOWED_USAGE_EVENTS = new Set([
   'session_heartbeat',
@@ -42,7 +43,26 @@ const ALLOWED_USAGE_PROPERTIES = new Set([
   'delay_ms',
   'duration_ms',
   'network_type',
+  'country_code',
+  'region',
+  'city',
+  'device_type',
+  'os_name',
+  'browser_name',
 ]);
+
+function getVisitorContext() {
+  if (visitorContextPromise) return visitorContextPromise;
+  visitorContextPromise = fetch('/api/visitor-context', {
+    method: 'GET',
+    credentials: 'omit',
+    headers: { Accept: 'application/json' },
+  })
+    .then((response) => response.ok ? response.json() : {})
+    .then((context) => sanitizeUsageProperties(context))
+    .catch(() => ({}));
+  return visitorContextPromise;
+}
 
 function getSessionId(key) {
   let id = sessionStorage.getItem(key);
@@ -134,16 +154,18 @@ export function trackUsageEvent(eventName, properties = {}) {
   metrics.lastEventAt = new Date().toISOString();
   window.__polyfaunaUsageTelemetry = metrics;
 
-  supabase.functions.invoke('collect-usage-event', {
-    body: {
-      sessionId: getSessionId(USAGE_SESSION_KEY),
-      eventName,
-      route: window.location.pathname,
-      referrer: document.referrer || null,
-      release: import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || null,
-      properties: safeProperties,
-    },
-  }).catch(() => {
-    metrics.dropped += 1;
-  });
+  getVisitorContext()
+    .then((visitorContext) => supabase.functions.invoke('collect-usage-event', {
+      body: {
+        sessionId: getSessionId(USAGE_SESSION_KEY),
+        eventName,
+        route: window.location.pathname,
+        referrer: document.referrer || null,
+        release: import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || null,
+        properties: { ...visitorContext, ...safeProperties },
+      },
+    }))
+    .catch(() => {
+      metrics.dropped += 1;
+    });
 }

@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle, AlertTriangle, ArrowUpRight, Banknote, BarChart2, CalendarDays, CheckCircle,
   ChevronRight, CreditCard, Disc3, FileText, Headphones, Home, Loader2, Mail, Menu,
-  Gift, MessageCircle, Mic, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
-  Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle,
+  Gift, MapPin, MessageCircle, Mic, Monitor, Music, QrCode, Radio, RefreshCw, ScanLine, Shield,
+  Smartphone, Ticket, TrendingUp, UserPlus, Users, WifiOff, X, XCircle,
 } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { parseTicketQRPayload } from '@/lib/tickets';
@@ -605,21 +605,30 @@ function OperationalSection() {
 function UsageMetricsSection() {
   const [hours, setHours] = useState(24);
   const [metrics, setMetrics] = useState(null);
+  const [demographics, setDemographics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    const { data, error: metricsError } = await supabase.rpc('get_usage_metrics', { p_hours: hours });
+    const [metricsResult, demographicsResult] = await Promise.all([
+      supabase.rpc('get_usage_metrics', { p_hours: hours }),
+      supabase.rpc('get_audience_demographics', { p_hours: hours }),
+    ]);
+    const { data, error: metricsError } = metricsResult;
+    const { data: demographicsData, error: demographicsError } = demographicsResult;
 
-    if (metricsError) {
-      setError(metricsError.code === '42883'
+    if (metricsError || demographicsError) {
+      const loadError = metricsError || demographicsError;
+      setError(loadError.code === '42883'
         ? 'La migración del tablero de métricas aún no está aplicada en Supabase.'
-        : metricsError.message);
+        : loadError.message);
       setMetrics(null);
+      setDemographics(null);
     } else {
       setMetrics(data);
+      setDemographics(demographicsData);
     }
     setLoading(false);
   }, [hours]);
@@ -630,8 +639,37 @@ function UsageMetricsSection() {
   const funnel = metrics?.funnel || [];
   const timeline = metrics?.timeline || [];
   const checkoutErrors = metrics?.checkout_errors || [];
+  const cities = metrics?.cities || [];
+  const devices = metrics?.devices || [];
+  const browsers = metrics?.browsers || [];
+  const operatingSystems = metrics?.operating_systems || [];
+  const gender = demographics?.gender || [];
+  const ageRanges = demographics?.age_ranges || [];
   const maxSessions = Math.max(1, ...timeline.map(item => Number(item.sessions || 0)));
   const firstStage = Number(funnel[0]?.count || 0);
+  const maxCitySessions = Math.max(1, ...cities.map(item => Number(item.sessions || 0)));
+  const totalDeviceSessions = Math.max(1, devices.reduce((sum, item) => sum + Number(item.sessions || 0), 0));
+  const totalGenderUsers = Math.max(1, gender.reduce((sum, item) => sum + Number(item.count || 0), 0));
+  const totalAgeUsers = Math.max(1, ageRanges.reduce((sum, item) => sum + Number(item.count || 0), 0));
+
+  const deviceLabel = { mobile: 'Móvil', tablet: 'Tablet', desktop: 'Computador', unknown: 'Sin identificar' };
+  const genderLabel = {
+    woman: 'Mujeres',
+    man: 'Hombres',
+    non_binary: 'No binario',
+    prefer_not_to_say: 'Prefiere no responder',
+    not_provided: 'No informado',
+  };
+  const ageLabel = {
+    under_18: 'Menor de 18',
+    '18_24': '18–24',
+    '25_34': '25–34',
+    '35_44': '35–44',
+    '45_54': '45–54',
+    '55_plus': '55+',
+    prefer_not_to_say: 'Prefiere no responder',
+    not_provided: 'No informado',
+  };
 
   const formatBucket = (value) => {
     const date = new Date(value);
@@ -652,7 +690,7 @@ function UsageMetricsSection() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-lg font-black text-white">Métricas</h2>
-          <p className="text-sm text-white/40 mt-0.5">Actividad, escucha y conversión sin datos personales</p>
+          <p className="text-sm text-white/40 mt-0.5">Visitas, audiencia, escucha y conversión en datos agregados</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -697,8 +735,10 @@ function UsageMetricsSection() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatTile label="Sesiones activas" value={Number(summary.sessions || 0).toLocaleString('es-CO')} icon={Users} loading={loading} sub="Sesiones únicas" />
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <StatTile label="Visitas" value={Number(summary.page_views || 0).toLocaleString('es-CO')} icon={BarChart2} loading={loading} sub="Páginas vistas" />
+            <StatTile label="Visitantes" value={Number(summary.sessions || 0).toLocaleString('es-CO')} icon={Users} loading={loading} sub="Sesiones únicas" />
+            <StatTile label="Registrados" value={Number(summary.authenticated_users || 0).toLocaleString('es-CO')} icon={UserPlus} loading={loading} sub="Usuarios identificados" />
             <StatTile label="Escuchas live" value={Number(summary.live_starts || 0).toLocaleString('es-CO')} icon={Radio} loading={loading} sub="Inicios de radio" />
             <StatTile label="On-demand" value={Number(summary.media_starts || 0).toLocaleString('es-CO')} icon={Headphones} loading={loading} sub="Podcasts y música" />
             <StatTile label="Errores checkout" value={Number(summary.checkout_errors || 0).toLocaleString('es-CO')} icon={AlertTriangle} loading={loading} sub="Intentos con error" />
@@ -765,6 +805,112 @@ function UsageMetricsSection() {
                 })}
               </div>
             </div>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Monitor className="w-4 h-4 text-cyan-300" />
+                <h3 className="text-sm font-black text-white">Tipo de dispositivo</h3>
+              </div>
+              <p className="text-[11px] text-white/30 mb-5">Sesiones desde móvil, tablet o computador</p>
+              {loading ? (
+                <div className="h-32 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.035)' }} />
+              ) : devices.length === 0 ? (
+                <p className="py-8 text-center text-xs text-white/30">La segmentación comenzará con las próximas visitas.</p>
+              ) : (
+                <div className="space-y-3">
+                  {devices.map(item => {
+                    const count = Number(item.sessions || 0);
+                    const percentage = (count / totalDeviceSessions) * 100;
+                    const DeviceIcon = item.key === 'mobile' ? Smartphone : Monitor;
+                    return (
+                      <div key={item.key}>
+                        <div className="flex items-center justify-between gap-3 mb-1.5">
+                          <span className="flex items-center gap-2 text-[11px] font-bold text-white/60"><DeviceIcon className="w-3.5 h-3.5" />{deviceLabel[item.key] || item.key}</span>
+                          <span className="text-[11px] font-black text-white">{count.toLocaleString('es-CO')} <span className="font-medium text-white/25">· {Math.round(percentage)}%</span></span>
+                        </div>
+                        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                          <div className="h-full rounded-full bg-cyan-300/75" style={{ width: `${percentage}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="mt-5 flex flex-wrap gap-2">
+                {browsers.slice(0, 3).map(item => <span key={`browser-${item.key}`} className="rounded-full bg-white/5 px-2.5 py-1 text-[9px] text-white/35">{item.key} · {item.sessions}</span>)}
+                {operatingSystems.slice(0, 3).map(item => <span key={`os-${item.key}`} className="rounded-full bg-white/5 px-2.5 py-1 text-[9px] text-white/35">{item.key} · {item.sessions}</span>)}
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className="w-4 h-4 text-emerald-300" />
+                <h3 className="text-sm font-black text-white">Ciudades principales</h3>
+              </div>
+              <p className="text-[11px] text-white/30 mb-5">Ubicación aproximada; nunca se almacena la dirección IP</p>
+              {loading ? (
+                <div className="h-40 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.035)' }} />
+              ) : cities.length === 0 ? (
+                <p className="py-8 text-center text-xs text-white/30">La segmentación comenzará con las próximas visitas.</p>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  {cities.map(item => {
+                    const count = Number(item.sessions || 0);
+                    return (
+                      <div key={`${item.city}-${item.country_code || 'unknown'}`}>
+                        <div className="flex items-center justify-between gap-3 mb-1.5">
+                          <span className="truncate text-[11px] font-bold text-white/60">{item.city}{item.country_code ? ` · ${item.country_code}` : ''}</span>
+                          <span className="text-[11px] font-black text-white">{count.toLocaleString('es-CO')}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                          <div className="h-full rounded-full bg-emerald-300/70" style={{ width: `${(count / maxCitySessions) * 100}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-4">
+            {[
+              { title: 'Género', items: gender, labels: genderLabel, total: totalGenderUsers, color: '#f0abfc' },
+              { title: 'Rangos de edad', items: ageRanges, labels: ageLabel, total: totalAgeUsers, color: '#fbbf24' },
+            ].map(groupItem => (
+              <div key={groupItem.title} className="p-5 rounded-2xl" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h3 className="text-sm font-black text-white">{groupItem.title}</h3>
+                <p className="text-[11px] text-white/30 mt-0.5 mb-5">Usuarios registrados activos · respuesta voluntaria</p>
+                {loading ? (
+                  <div className="h-36 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.035)' }} />
+                ) : groupItem.items.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-white/30">Todavía no hay usuarios registrados activos en este periodo.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {groupItem.items.map(item => {
+                      const count = Number(item.count || 0);
+                      const percentage = (count / groupItem.total) * 100;
+                      return (
+                        <div key={item.key}>
+                          <div className="flex items-center justify-between gap-3 mb-1.5">
+                            <span className="text-[11px] font-bold text-white/60">{groupItem.labels[item.key] || item.key}</span>
+                            <span className="text-[11px] font-black text-white">{count.toLocaleString('es-CO')} <span className="font-medium text-white/25">· {Math.round(percentage)}%</span></span>
+                          </div>
+                          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                            <div className="h-full rounded-full" style={{ width: `${percentage}%`, background: groupItem.color, opacity: 0.72 }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="mt-5 text-[10px] text-white/28">
+                  Cobertura: {Number(demographics?.coverage_percent || 0).toLocaleString('es-CO')}% · {Number(demographics?.responded_users || 0).toLocaleString('es-CO')} de {Number(demographics?.eligible_users || 0).toLocaleString('es-CO')} usuarios respondieron
+                </p>
+              </div>
+            ))}
           </div>
 
           <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>

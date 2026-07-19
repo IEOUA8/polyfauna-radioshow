@@ -20,6 +20,8 @@ export default function EditProfile({ profile, onSave, onClose }) {
   const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || null);
   const [identity, setIdentity] = useState({ full_name: '', document_type: 'CC', document_number: '' });
   const [genres, setGenres] = useState('');
+  const [demographics, setDemographics] = useState({ gender_identity: '', age_range: '' });
+  const [demographicsConsent, setDemographicsConsent] = useState(false);
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
     username:     profile?.username || '',
@@ -56,6 +58,22 @@ export default function EditProfile({ profile, onSave, onClose }) {
         if (Array.isArray(data?.genres)) setGenres(data.genres.join(', '));
       });
   }, [currentUser.id, isArtistLike]);
+
+  useEffect(() => {
+    supabase
+      .from('user_demographics')
+      .select('gender_identity, age_range, consented_at')
+      .eq('user_id', currentUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setDemographics({
+          gender_identity: data.gender_identity || '',
+          age_range: data.age_range || '',
+        });
+        setDemographicsConsent(Boolean(data.consented_at));
+      });
+  }, [currentUser.id]);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -129,6 +147,13 @@ export default function EditProfile({ profile, onSave, onClose }) {
         document_number: identity.document_number.trim(),
       });
 
+    const hasDemographicData = Boolean(demographics.gender_identity || demographics.age_range);
+    const { error: demographicsError } = error ? { error: null } : await supabase.rpc('set_user_demographics', {
+      p_gender_identity: demographicsConsent && demographics.gender_identity ? demographics.gender_identity : null,
+      p_age_range: demographicsConsent && demographics.age_range ? demographics.age_range : null,
+      p_consent: demographicsConsent && hasDemographicData,
+    });
+
     // Tu ficha publica en Artists & Labels se mantiene sincronizada con este
     // mismo formulario (no hay un editor separado): mismo nombre, bio, foto,
     // redes y ahora el genero/estilo.
@@ -166,8 +191,8 @@ export default function EditProfile({ profile, onSave, onClose }) {
       organizerSyncError = syncError;
     }
 
-    if (error || identityError || artistSyncError || organizerSyncError) {
-      toast({ title: 'Error al guardar', description: error?.message || identityError?.message || artistSyncError?.message || organizerSyncError?.message, variant: 'destructive' });
+    if (error || identityError || demographicsError || artistSyncError || organizerSyncError) {
+      toast({ title: 'Error al guardar', description: error?.message || identityError?.message || demographicsError?.message || artistSyncError?.message || organizerSyncError?.message, variant: 'destructive' });
     } else if (!hasIdentityInput) {
       toast({
         title: 'Perfil actualizado',
@@ -283,6 +308,66 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="rounded-xl p-4 space-y-3"
+            style={{ background: 'rgba(93,224,163,0.045)', border: '1px solid rgba(93,224,163,0.16)' }}>
+            <div>
+              <p className="text-xs font-black text-white">Datos estadísticos opcionales</p>
+              <p className="text-[10px] text-white/35 mt-0.5">
+                Se usan únicamente de forma agregada para conocer la audiencia. No aparecen en tu perfil público.
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Género</label>
+                <select
+                  value={demographics.gender_identity}
+                  onChange={event => setDemographics(current => ({ ...current, gender_identity: event.target.value }))}
+                  className="w-full text-sm px-3 py-2.5 rounded-lg outline-none [color-scheme:dark]"
+                  style={{ background: '#111817', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                >
+                  <option value="">Sin responder</option>
+                  <option value="woman">Mujer</option>
+                  <option value="man">Hombre</option>
+                  <option value="non_binary">No binario</option>
+                  <option value="prefer_not_to_say">Prefiero no responder</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block mb-1.5">Rango de edad</label>
+                <select
+                  value={demographics.age_range}
+                  onChange={event => setDemographics(current => ({ ...current, age_range: event.target.value }))}
+                  className="w-full text-sm px-3 py-2.5 rounded-lg outline-none [color-scheme:dark]"
+                  style={{ background: '#111817', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                >
+                  <option value="">Sin responder</option>
+                  <option value="under_18">Menor de 18</option>
+                  <option value="18_24">18–24</option>
+                  <option value="25_34">25–34</option>
+                  <option value="35_44">35–44</option>
+                  <option value="45_54">45–54</option>
+                  <option value="55_plus">55+</option>
+                  <option value="prefer_not_to_say">Prefiero no responder</option>
+                </select>
+              </div>
+            </div>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={demographicsConsent}
+                onChange={event => {
+                  const checked = event.target.checked;
+                  setDemographicsConsent(checked);
+                  if (!checked) setDemographics({ gender_identity: '', age_range: '' });
+                }}
+                className="mt-0.5 h-4 w-4 accent-emerald-400"
+              />
+              <span className="text-[10px] leading-relaxed text-white/45">
+                Autorizo el uso de estos datos para estadísticas agregadas de audiencia. Puedo retirar esta autorización desmarcando la casilla y guardando.
+              </span>
+            </label>
           </div>
 
           {/* Basic fields */}
