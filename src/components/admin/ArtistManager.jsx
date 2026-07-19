@@ -213,6 +213,7 @@ const ArtistManager = () => {
                 imagePreset="avatar"
                 value={formData.image_url}
                 onChange={(url) => setFormData({ ...formData, image_url: url })}
+                previewAspect="1 / 1"
               />
               <div>
                 <Label htmlFor="name">Nombre del artista *</Label>

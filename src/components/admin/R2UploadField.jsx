@@ -16,11 +16,13 @@ export function R2UploadField({
   required = false,
   extractMetadata = null,
   imagePreset = 'default',
+  previewAspect = '',
 }) {
   const { toast } = useToast();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState('');
+  const showsImagePreview = accept?.split(',').some((type) => type.trim().startsWith('image/'));
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -85,6 +87,19 @@ export function R2UploadField({
       </div>
       {fileName && !uploading && (
         <p className="text-[11px] text-muted-foreground mt-1 truncate">✓ {fileName}</p>
+      )}
+      {value && showsImagePreview && (
+        <figure className="mt-3 space-y-1.5">
+          <div
+            className="relative w-full overflow-hidden rounded-xl border border-primary/25 bg-black/20"
+            style={{ aspectRatio: previewAspect || '1 / 1' }}
+          >
+            <img src={value} alt={`Vista previa de ${label}`} className="w-full h-full object-cover" />
+          </div>
+          <figcaption className="text-[11px] text-muted-foreground">
+            Vista previa antes de guardar
+          </figcaption>
+        </figure>
       )}
     </div>
   );

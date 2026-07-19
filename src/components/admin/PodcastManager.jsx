@@ -319,6 +319,7 @@ const PodcastManager = ({ ownerId = null }) => {
                 imagePreset="square"
                 value={formData.cover_url}
                 onChange={(url) => setFormData({ ...formData, cover_url: url })}
+                previewAspect="1 / 1"
               />
               <R2UploadField
                 label="Archivo de audio"

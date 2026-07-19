@@ -371,6 +371,7 @@ const AlbumManager = ({ ownerId = null }) => {
                 imagePreset="square"
                 value={form.cover_url}
                 onChange={(url) => setForm({ ...form, cover_url: url })}
+                previewAspect="1 / 1"
               />
               <div>
                 <Label>Descripción</Label>
