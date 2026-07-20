@@ -1023,33 +1023,6 @@ export default function EventTerminal({ setCurrentSection }) {
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-              {/* Prev / Next arrows */}
-              {bannerEvents.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Evento anterior"
-                    onClick={handlePrevFeatured}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center
-                      opacity-80 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:scale-110"
-                    style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
-                  >
-                    <ChevronLeft className="w-5 h-5 text-white" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Evento siguiente"
-                    onClick={handleNextFeatured}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center
-                      opacity-80 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:scale-110"
-                    style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
-                  >
-                    <ChevronRight className="w-5 h-5 text-white" />
-                  </button>
-                </>
-              )}
-
-
               <div className="relative z-10 p-6 md:p-8 flex flex-col justify-between" style={{ minHeight: 300 }}>
                 <div>
                   <span className="pf-eyebrow">
@@ -1115,23 +1088,52 @@ export default function EventTerminal({ setCurrentSection }) {
                     </button>
                   </div>
 
-                  {/* Dots indicator */}
+                  {/* En móvil, navegación e indicadores comparten la franja
+                      inferior. En escritorio las flechas regresan a los
+                      laterales del banner mediante sm:absolute. */}
                   {bannerEvents.length > 1 && (
-                    <div className="flex items-center gap-2 mt-5">
-                      {bannerEvents.map((_, i) => (
+                    <div className="flex items-center justify-between gap-4 mt-5">
+                      <div className="flex items-center gap-2">
+                        {bannerEvents.map((_, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            aria-label={`Ir al evento ${i + 1}`}
+                            onClick={(e) => { e.stopPropagation(); setFeaturedIndex(i); }}
+                            className="rounded-full transition-all duration-300"
+                            style={{
+                              width: i === safeIndex ? 22 : 8,
+                              height: 8,
+                              background: i === safeIndex ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)',
+                            }}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 sm:contents">
                         <button
-                          key={i}
                           type="button"
-                          aria-label={`Ir al evento ${i + 1}`}
-                          onClick={(e) => { e.stopPropagation(); setFeaturedIndex(i); }}
-                          className="rounded-full transition-all duration-300"
-                          style={{
-                            width: i === safeIndex ? 22 : 8,
-                            height: 8,
-                            background: i === safeIndex ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.28)',
-                          }}
-                        />
-                      ))}
+                          aria-label="Evento anterior"
+                          onClick={handlePrevFeatured}
+                          className="z-20 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center
+                            opacity-90 hover:opacity-100 transition-all duration-200 hover:scale-110
+                            sm:absolute sm:left-3 sm:top-1/2 sm:-translate-y-1/2 sm:opacity-0 sm:group-hover:opacity-100"
+                          style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+                        >
+                          <ChevronLeft className="w-5 h-5 text-white" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Evento siguiente"
+                          onClick={handleNextFeatured}
+                          className="z-20 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center
+                            opacity-90 hover:opacity-100 transition-all duration-200 hover:scale-110
+                            sm:absolute sm:right-3 sm:top-1/2 sm:-translate-y-1/2 sm:opacity-0 sm:group-hover:opacity-100"
+                          style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+                        >
+                          <ChevronRight className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
