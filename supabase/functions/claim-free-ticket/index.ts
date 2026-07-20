@@ -44,11 +44,17 @@ Deno.serve(async (req) => {
 
     const { data: event } = await admin
       .from('events')
-      .select('id, title, date, city, venue, status, ticket_types')
+      .select('id, title, date, city, venue, status, ticket_types, ticket_sales_channel')
       .eq('id', eventId)
       .maybeSingle();
     if (!event || !['published', 'upcoming', 'live'].includes(event.status)) {
       return json({ error: 'El evento no está disponible' }, 400);
+    }
+    if (event.ticket_sales_channel !== 'polyfauna') {
+      return json({
+        error: 'Este evento gestiona sus ventas directamente por WhatsApp',
+        code: 'WHATSAPP_SALES_ONLY',
+      }, 400);
     }
 
     const tiers = Array.isArray(event.ticket_types) ? event.ticket_types : [];

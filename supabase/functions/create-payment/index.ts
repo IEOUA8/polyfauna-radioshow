@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     // Obtener evento y sus tipos de entrada
     const { data: event, error: evErr } = await supabase
       .from('events')
-      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, date, ends_at, status, is_public, creator_is_public')
+      .select('id, title, price, tickets_total, tickets_sold, ticket_types, owner_id, ticket_sales_channel, date, ends_at, status, is_public, creator_is_public')
       .eq('id', event_id)
       .single();
 
@@ -91,6 +91,12 @@ Deno.serve(async (req) => {
 
     if (!['upcoming', 'live', 'published'].includes(event.status) || event.is_public === false || event.creator_is_public === false)
       return new Response(JSON.stringify({ error: 'El evento no está disponible' }), { status: 400, headers: CORS });
+
+    if (event.ticket_sales_channel !== 'polyfauna')
+      return new Response(
+        JSON.stringify({ error: 'Este evento gestiona sus ventas directamente por WhatsApp', code: 'WHATSAPP_SALES_ONLY' }),
+        { status: 400, headers: CORS },
+      );
 
     const tiers = Array.isArray(event.ticket_types) ? event.ticket_types : [];
     const tier = tiers.find((item: Record<string, unknown>) =>

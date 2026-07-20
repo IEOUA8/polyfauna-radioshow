@@ -7,17 +7,24 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard, Copy, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Ticket, Users, X, Save, Mail, Phone, User, Hash, IdCard, Copy, Calendar, CreditCard, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UploadField } from './UploadField';
 import ArtistMentionInput from '@/components/ArtistMentionInput';
 import { TransferTicketModal, VoidTicketModal } from './TicketActionModals';
 import { useConfirmDialog } from './ConfirmDialog';
 import CreatorVisibilityControl from './CreatorVisibilityControl';
+import {
+  buildDefaultWhatsAppMessage,
+  isValidWhatsAppNumber,
+  normalizeWhatsAppNumber,
+  TICKET_SALES_CHANNELS,
+} from '@/lib/eventTicketSales';
 
 const EMPTY = {
   title: '', date: '', ends_at: '', venue: '', city: '', lineup: [],
   image_url: '', mobile_image_url: '', ticket_image_url: '', description: '', courtesy_limit: '0',
+  ticket_sales_channel: TICKET_SALES_CHANNELS.POLYFAUNA, whatsapp_number: '', whatsapp_message: '',
   featured: false, featured_order: '',
 };
 
@@ -610,6 +617,22 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
         throw new Error('La fecha de finalización debe ser posterior al inicio.');
       }
 
+      const ticketSalesChannel = formData.ticket_sales_channel === TICKET_SALES_CHANNELS.WHATSAPP
+        ? TICKET_SALES_CHANNELS.WHATSAPP
+        : TICKET_SALES_CHANNELS.POLYFAUNA;
+      const whatsappNumber = normalizeWhatsAppNumber(formData.whatsapp_number);
+      const whatsappMessage = String(
+        formData.whatsapp_message || buildDefaultWhatsAppMessage(formData.title),
+      ).trim();
+      if (ticketSalesChannel === TICKET_SALES_CHANNELS.WHATSAPP) {
+        if (!isValidWhatsAppNumber(whatsappNumber)) {
+          throw new Error('Ingresa un número de WhatsApp válido con código de país. Ejemplo: 573001234567.');
+        }
+        if (!whatsappMessage || whatsappMessage.length > 500) {
+          throw new Error('El mensaje de WhatsApp debe tener entre 1 y 500 caracteres.');
+        }
+      }
+
       const reconciledTicketTypes = ticketTypes.map(ticket => reconcileTicketWindows(
         ticket,
         formData.date,
@@ -697,6 +720,9 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
         tickets_total: ticketsTotal,
         courtesy_limit: courtesyLimit,
         ticket_types: normalizedTicketTypes,
+        ticket_sales_channel: ticketSalesChannel,
+        whatsapp_number: ticketSalesChannel === TICKET_SALES_CHANNELS.WHATSAPP ? whatsappNumber : null,
+        whatsapp_message: ticketSalesChannel === TICKET_SALES_CHANNELS.WHATSAPP ? whatsappMessage : null,
         featured_order: formData.featured && fo ? parseInt(fo) : null,
         owner_id: editingEvent?.owner_id || currentUser.id,
         status: editingEvent?.status || 'upcoming',
@@ -768,6 +794,11 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
       ticket_image_url: event.ticket_image_url || '',
       description:    event.description || '',
       courtesy_limit: String(event.courtesy_limit || 0),
+      ticket_sales_channel: event.ticket_sales_channel === TICKET_SALES_CHANNELS.WHATSAPP
+        ? TICKET_SALES_CHANNELS.WHATSAPP
+        : TICKET_SALES_CHANNELS.POLYFAUNA,
+      whatsapp_number: event.whatsapp_number || '',
+      whatsapp_message: event.whatsapp_message || '',
       featured:       event.featured || false,
       featured_order: event.featured_order != null ? String(event.featured_order) : '',
     });
@@ -901,6 +932,7 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
         activeTicketTypes[index].price !== '' && Number(activeTicketTypes[index].price) >= 0
       ))
     );
+  const defaultWhatsAppMessage = buildDefaultWhatsAppMessage(formData.title);
 
   return (
     <>
@@ -1135,6 +1167,93 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Canal público del botón Comprar Ticket */}
+                <div className="space-y-4 rounded-xl p-4 border border-border bg-background/40">
+                  <div>
+                    <Label>Canal de venta de tickets *</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      El botón público siempre dirá Comprar Ticket y abrirá el canal que selecciones.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      aria-pressed={formData.ticket_sales_channel === TICKET_SALES_CHANNELS.POLYFAUNA}
+                      onClick={() => set('ticket_sales_channel', TICKET_SALES_CHANNELS.POLYFAUNA)}
+                      className="rounded-xl p-3 text-left transition-colors"
+                      style={{
+                        background: formData.ticket_sales_channel === TICKET_SALES_CHANNELS.POLYFAUNA ? 'rgba(32,199,232,0.11)' : 'rgba(255,255,255,0.03)',
+                        border: formData.ticket_sales_channel === TICKET_SALES_CHANNELS.POLYFAUNA ? '1px solid rgba(32,199,232,0.34)' : '1px solid rgba(255,255,255,0.09)',
+                      }}
+                    >
+                      <span className="flex items-center gap-2 text-sm font-bold text-foreground">
+                        <CreditCard className="w-4 h-4" /> Pasarela de pagos Polyfauna
+                      </span>
+                      <span className="block mt-1 text-[11px] text-muted-foreground">
+                        Pago en línea y emisión automática del QR.
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={formData.ticket_sales_channel === TICKET_SALES_CHANNELS.WHATSAPP}
+                      onClick={() => set('ticket_sales_channel', TICKET_SALES_CHANNELS.WHATSAPP)}
+                      className="rounded-xl p-3 text-left transition-colors"
+                      style={{
+                        background: formData.ticket_sales_channel === TICKET_SALES_CHANNELS.WHATSAPP ? 'rgba(34,197,94,0.10)' : 'rgba(255,255,255,0.03)',
+                        border: formData.ticket_sales_channel === TICKET_SALES_CHANNELS.WHATSAPP ? '1px solid rgba(34,197,94,0.32)' : '1px solid rgba(255,255,255,0.09)',
+                      }}
+                    >
+                      <span className="flex items-center gap-2 text-sm font-bold text-foreground">
+                        <MessageCircle className="w-4 h-4" /> Venta directa por WhatsApp
+                      </span>
+                      <span className="block mt-1 text-[11px] text-muted-foreground">
+                        Coordinas transferencia o efectivo y emites el QR manualmente.
+                      </span>
+                    </button>
+                  </div>
+
+                  {formData.ticket_sales_channel === TICKET_SALES_CHANNELS.WHATSAPP && (
+                    <div className="space-y-3 rounded-xl p-3" style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.16)' }}>
+                      <div>
+                        <Label htmlFor="event_whatsapp_number">Número de WhatsApp *</Label>
+                        <Input
+                          id="event_whatsapp_number"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={formData.whatsapp_number}
+                          onChange={(e) => set('whatsapp_number', e.target.value)}
+                          className="bg-background border-border text-foreground mt-1"
+                          placeholder="573001234567"
+                          required
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Incluye el código del país. Puedes escribir +57; al guardar se conservarán solo los números.
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor="event_whatsapp_message">Mensaje predeterminado *</Label>
+                        <textarea
+                          id="event_whatsapp_message"
+                          value={formData.whatsapp_message || defaultWhatsAppMessage}
+                          onChange={(e) => set('whatsapp_message', e.target.value)}
+                          rows={3}
+                          maxLength={500}
+                          required
+                          className="mt-1 w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm resize-none"
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          El nombre del evento se carga automáticamente; puedes personalizar el texto antes de guardar.
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-emerald-300/80">
+                        Después de confirmar el pago, usa la emisión manual del panel para enviar el ticket QR al comprador.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Lineup */}

@@ -18,6 +18,7 @@ import { loadTicketIdentity } from '@/lib/ticketIdentity';
 import { hasOpenTicketSales, isEventVisibleInTerminal, isTicketSaleOpen } from '@/lib/eventTicketRules';
 import { getEventImage, getEventMobileSource } from '@/lib/eventImages';
 import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
+import { buildWhatsAppTicketUrl, usesWhatsAppTicketSales } from '@/lib/eventTicketSales';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
@@ -616,9 +617,10 @@ const EventCard = React.memo(function EventCard({ event, index, isFavorite, onTo
             type="button"
             onClick={(e) => { e.stopPropagation(); onBuy(event); }}
             disabled={!salesOpen}
+            title={salesOpen ? 'Comprar Ticket' : 'Venta cerrada'}
             className="btn-cta text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 disabled:opacity-45 disabled:cursor-not-allowed"
           >
-            {salesOpen ? 'Comprar' : 'Venta cerrada'}
+            Comprar Ticket
           </button>
         </div>
       </div>
@@ -787,12 +789,13 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
           type="button"
           onClick={onBuy}
           disabled={!salesOpen}
+          title={salesOpen ? 'Comprar Ticket' : 'Venta cerrada'}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="btn-cta flex-1 py-4 rounded-2xl text-base font-black flex items-center justify-center gap-3 transition-all duration-200 disabled:opacity-45 disabled:cursor-not-allowed"
         >
           <Ticket className="w-5 h-5" />
-          {salesOpen ? 'Comprar Ticket' : 'Venta digital cerrada'}
+          Comprar Ticket
         </motion.button>
         <motion.button
           type="button"
@@ -824,6 +827,29 @@ export default function EventTerminal({ setCurrentSection }) {
   const [organizerTypeFilter, setOrganizerTypeFilter] = useState(null);
   const [clock, setClock] = useState(Date.now());
   const { isFav, toggle: toggleFav } = useFavorites();
+
+  const handleTicketPurchase = useCallback((event) => {
+    if (usesWhatsAppTicketSales(event)) {
+      const whatsappUrl = buildWhatsAppTicketUrl(event);
+      if (!whatsappUrl) {
+        toast({
+          variant: 'destructive',
+          title: 'WhatsApp no disponible',
+          description: 'El organizador todavía no ha configurado un número válido para este evento.',
+        });
+        return;
+      }
+      trackUsageEvent('checkout_start', {
+        event_id: event.id,
+        mode: 'whatsapp',
+        price_tier: 'manual',
+        status: 'redirected',
+      });
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setBuyingEvent(event);
+  }, [toast]);
 
   const { data: events, loading, error, refetch } = useSupabaseQuery(
     () => supabase.from('events').select('*').eq('is_public', true).eq('creator_is_public', true).order('date', { ascending: true }),
@@ -982,7 +1008,7 @@ export default function EventTerminal({ setCurrentSection }) {
             key="detail"
             event={selectedEvent}
             onBack={() => setSelectedEvent(null)}
-            onBuy={() => setBuyingEvent(selectedEvent)}
+            onBuy={() => handleTicketPurchase(selectedEvent)}
             isFav={isFav}
             toggleFav={toggleFav}
             artists={artists || []}
@@ -1070,12 +1096,13 @@ export default function EventTerminal({ setCurrentSection }) {
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setBuyingEvent(featured); }}
+                      onClick={(e) => { e.stopPropagation(); handleTicketPurchase(featured); }}
                       disabled={!hasOpenTicketSales(featured, clock)}
+                      title={hasOpenTicketSales(featured, clock) ? 'Comprar Ticket' : 'Venta cerrada'}
                       className="btn-cta flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 disabled:opacity-45 disabled:cursor-not-allowed"
                     >
                       <Ticket className="w-4 h-4" />
-                      {hasOpenTicketSales(featured, clock) ? 'Comprar Ticket' : 'Venta digital cerrada'}
+                      Comprar Ticket
                     </button>
                     <button
                       type="button"
@@ -1211,7 +1238,7 @@ export default function EventTerminal({ setCurrentSection }) {
                     isFavorite={isFav('event', event.id)}
                     onToggleFavorite={toggleFavorite}
                     onSelect={setSelectedEvent}
-                    onBuy={setBuyingEvent}
+                    onBuy={handleTicketPurchase}
                     now={clock}
                   />
                 ))}
