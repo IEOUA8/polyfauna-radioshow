@@ -2,19 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
+  formatTicketPrice,
+  getEventPriceLabel,
+  getPublicTicketTiers,
   getTicketSaleAmount,
   getTicketTierPrice,
   sumTicketRevenue,
 } from '../src/lib/ticketPricing.js';
 
 const dashboard = readFileSync('src/pages/AdminDashboard.jsx', 'utf8');
+const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
 
 const event = {
   price: 100000,
   ticket_types: [
-    { name: 'Early', price: 100000 },
-    { name: 'Anytime', price: 120000 },
-    { name: 'Gratis', price: 0 },
+    { name: 'Early', price: 100000, capacity: 100 },
+    { name: 'Anytime', price: 120000, capacity: 100 },
+    { name: 'Gratis', price: 0, capacity: 10 },
   ],
 };
 
@@ -24,6 +28,17 @@ test('el precio corresponde al tipo de ticket y no al precio Early del evento', 
   assert.equal(getTicketTierPrice(event, 'anytime'), 120000);
   assert.equal(getTicketTierPrice(event, 'Gratis'), 0);
   assert.equal(getTicketTierPrice(event, 'Cortesía'), 0);
+});
+
+test('la información pública conserva y formatea todos los precios configurados', () => {
+  assert.deepEqual(
+    getPublicTicketTiers(event).map(ticket => [ticket.name, ticket.price]),
+    [['Early', 100000], ['Anytime', 120000], ['Gratis', 0]],
+  );
+  assert.equal(formatTicketPrice(120000), '$120.000');
+  assert.equal(getEventPriceLabel({ ...event, ticket_types: event.ticket_types.slice(0, 2) }), 'Desde $100.000');
+  assert.match(eventTerminal, /ticketTypes\.map\(ticket =>/);
+  assert.match(eventTerminal, /\{ticket\.name\}[\s\S]*formatTicketPrice\(ticket\.price\)/);
 });
 
 test('el importe histórico de la transacción tiene prioridad y se divide por cantidad', () => {

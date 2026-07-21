@@ -19,17 +19,12 @@ import { hasOpenTicketSales, isEventVisibleInTerminal, isTicketSaleOpen } from '
 import { getEventImage, getEventMobileSource } from '@/lib/eventImages';
 import { EDITORIAL_ACCENT, editorialAccent } from '@/lib/editorialTheme';
 import { buildWhatsAppTicketUrl, usesWhatsAppTicketSales } from '@/lib/eventTicketSales';
+import { formatTicketPrice, getEventPriceLabel, getPublicTicketTiers } from '@/lib/ticketPricing';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1459749411177-0473ef716175?q=80&w=2070&auto=format&fit=crop';
 const useFallbackImage = (event) => {
   if (event.currentTarget.src !== FALLBACK_IMG) event.currentTarget.src = FALLBACK_IMG;
 };
-
-function formatPrice(price) {
-  const value = Number(price);
-  if (!Number.isFinite(value) || value <= 0) return 'Gratis';
-  return `$${value.toLocaleString('es-CO')}`;
-}
 
 function formatDateLong(str) {
   if (!str) return '';
@@ -37,25 +32,12 @@ function formatDateLong(str) {
 }
 
 function getTicketTypes(event) {
-  if (Array.isArray(event?.ticket_types) && event.ticket_types.length > 0) {
-    const configured = event.ticket_types
-      .filter(ticket => ticket?.active !== false && ticket?.name && !/^cortes[ií]a$/i.test(ticket.name) && Number(ticket?.capacity) > 0)
-      .map(ticket => ({
-        name: String(ticket.name),
-        price: Math.max(0, Number(ticket.price) || 0),
-        capacity: Math.max(1, Number(ticket.capacity) || 1),
-        sales_end_at: ticket.sales_end_at || event?.date || null,
-        entry_cutoff_at: ticket.entry_cutoff_at || null,
-        late_entry_fee: Math.max(0, Number(ticket.late_entry_fee) || 0),
-      }));
-    if (configured.length > 0) return configured;
-  }
-  return [{
-    name: 'General',
-    price: Math.max(0, Number(event?.price) || 0),
-    capacity: Math.max(1, Number(event?.tickets_total) || 1),
-    sales_end_at: event?.date || null,
-  }];
+  return getPublicTicketTiers(event).map(ticket => ({
+    ...ticket,
+    sales_end_at: ticket.sales_end_at || event?.date || null,
+    entry_cutoff_at: ticket.entry_cutoff_at || null,
+    late_entry_fee: Math.max(0, Number(ticket.late_entry_fee) || 0),
+  }));
 }
 
 function formatDateTime(value) {
@@ -373,7 +355,7 @@ function BuyModal({ event, onClose }) {
                         }}
                       >
                         <span className="block text-xs font-black">{ticket.name}</span>
-                        <span className="block text-sm font-black mt-1">{formatPrice(ticket.price)}</span>
+                        <span className="block text-sm font-black mt-1">{formatTicketPrice(ticket.price)}</span>
                         <span className="block text-[9px] mt-1.5 opacity-70">
                           {saleOpen ? `Venta hasta ${formatDateTime(ticket.sales_end_at)}` : 'Venta digital cerrada'}
                         </span>
@@ -499,8 +481,8 @@ function BuyModal({ event, onClose }) {
               {quantity > 1 && !isFree && (
                 <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
                   style={{ background: 'rgba(255,138,31,0.06)', border: '1px solid rgba(255,138,31,0.14)' }}>
-                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{quantity} tickets {selectedTicket.name} × {formatPrice(selectedTicket.price)}</span>
-                  <span className="text-base font-black" style={{ color: 'rgba(255,255,255,0.90)' }}>{formatPrice(totalPrice)}</span>
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>{quantity} tickets {selectedTicket.name} × {formatTicketPrice(selectedTicket.price)}</span>
+                  <span className="text-base font-black" style={{ color: 'rgba(255,255,255,0.90)' }}>{formatTicketPrice(totalPrice)}</span>
                 </div>
               )}
 
@@ -537,7 +519,7 @@ function BuyModal({ event, onClose }) {
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> {status === 'processing' ? 'Preparando pago…' : 'Procesando…'}</>
                     : isFree
                       ? <><Ticket className="w-4 h-4" /> Confirmar (Gratis)</>
-                      : <><ExternalLink className="w-4 h-4" /> Pagar {quantity > 1 ? formatPrice(totalPrice) : 'con Wompi'}</>}
+                      : <><ExternalLink className="w-4 h-4" /> Pagar {quantity > 1 ? formatTicketPrice(totalPrice) : 'con Wompi'}</>}
                 </button>
               )}
 
@@ -611,7 +593,7 @@ const EventCard = React.memo(function EventCard({ event, index, isFavorite, onTo
         </div>
         <div className="flex items-center justify-between mt-auto pt-2">
           <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-            {formatPrice(event.price)}
+            {getEventPriceLabel(event)}
           </span>
           <button
             type="button"
@@ -632,6 +614,7 @@ const EventCard = React.memo(function EventCard({ event, index, isFavorite, onTo
 function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], setCurrentSection }) {
   const [linkCopied, setLinkCopied] = React.useState(false);
   const lineup = resolveLineupArtists(event.lineup, artists);
+  const ticketTypes = getTicketTypes(event);
   const salesOpen = hasOpenTicketSales(event);
 
   const openArtist = (artist) => {
@@ -739,8 +722,15 @@ function EventDetail({ event, onBack, onBuy, isFav, toggleFav, artists = [], set
         )}
         <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <Ticket className="w-4 h-4 mx-auto mb-1.5" style={{ color: EDITORIAL_ACCENT }} />
-          <p className="pf-eyebrow">Precio</p>
-          <p className="text-sm font-black mt-0.5" style={{ color: 'rgba(255,255,255,0.85)' }}>{formatPrice(event.price)}</p>
+          <p className="pf-eyebrow">{ticketTypes.length > 1 ? 'Precios' : 'Precio'}</p>
+          <div className="mt-1 space-y-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            {ticketTypes.map(ticket => (
+              <p key={ticket.name} className="text-xs font-black leading-tight">
+                <span className="text-white/55">{ticket.name}</span>{' '}
+                {formatTicketPrice(ticket.price)}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
 

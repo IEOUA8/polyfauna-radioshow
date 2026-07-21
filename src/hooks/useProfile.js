@@ -22,6 +22,15 @@ export function useProfile() {
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handleProfileUpdated = (event) => {
+      if (event.detail?.id === currentUser?.id) setProfile(event.detail);
+    };
+    window.addEventListener('pf:profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('pf:profile-updated', handleProfileUpdated);
+  }, [currentUser?.id]);
+
   const updateProfile = async (updates) => {
     if (!currentUser) return { error: 'No autenticado' };
     const { data, error } = await supabase

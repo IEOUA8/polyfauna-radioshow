@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, IdCard, Loader2, Save, X } from 'lucide-react';
+import { Camera, CheckCircle, IdCard, Loader2, Save, X } from 'lucide-react';
 import supabase from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,6 +17,7 @@ export default function EditProfile({ profile, onSave, onClose }) {
   const fileRef = useRef();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || null);
   const [identity, setIdentity] = useState({ full_name: '', document_type: 'CC', document_number: '' });
   const [genres, setGenres] = useState('');
@@ -99,8 +100,14 @@ export default function EditProfile({ profile, onSave, onClose }) {
       return;
     }
     setUploading(true);
+    setUploadProgress(5);
+    let progressTimer = null;
     try {
       const optimizedFile = await optimizeImageForUpload(file, 'avatar');
+      setUploadProgress(30);
+      progressTimer = window.setInterval(() => {
+        setUploadProgress(current => current < 90 ? Math.min(90, current + 4) : current);
+      }, 250);
       const path = `${currentUser.id}/${crypto.randomUUID()}.webp`;
       // upsert:true dispara un rechazo RLS falso en el storage-api de Supabase
       // para esta politica (probado: el mismo insert sin upsert funciona). Se
@@ -110,27 +117,31 @@ export default function EditProfile({ profile, onSave, onClose }) {
         contentType: 'image/webp',
       });
       if (error) throw error;
-      const prevMarker = '/object/public/avatars/';
-      const previousPath = avatarPreview?.includes(prevMarker) ? avatarPreview.split(prevMarker)[1] : null;
-      if (previousPath) supabase.storage.from('avatars').remove([previousPath]);
+      window.clearInterval(progressTimer);
+      progressTimer = null;
+      setUploadProgress(95);
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       setAvatarPreview(publicUrl);
       set('avatar_url', publicUrl);
+      setUploadProgress(100);
     } catch (error) {
+      setUploadProgress(0);
       toast({ title: 'Error al subir imagen', description: error.message, variant: 'destructive' });
     } finally {
+      if (progressTimer) window.clearInterval(progressTimer);
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
 
   const handleSave = async () => {
+    if (uploading) return;
     setSaving(true);
     const updates = { ...form };
     if (avatarPreview && avatarPreview !== profile?.avatar_url) {
       updates.avatar_url = avatarPreview.split('?')[0];
     }
-    const { error } = await supabase.from('profiles')
+    const { data: savedProfile, error } = await supabase.from('profiles')
       .upsert({ id: currentUser.id, ...updates })
       .select().single();
 
@@ -193,15 +204,28 @@ export default function EditProfile({ profile, onSave, onClose }) {
 
     if (error || identityError || demographicsError || artistSyncError || organizerSyncError) {
       toast({ title: 'Error al guardar', description: error?.message || identityError?.message || demographicsError?.message || artistSyncError?.message || organizerSyncError?.message, variant: 'destructive' });
-    } else if (!hasIdentityInput) {
-      toast({
+    } else {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pf:profile-updated', { detail: savedProfile }));
+      }
+
+      const previousMarker = '/object/public/avatars/';
+      const previousPath = profile?.avatar_url?.includes(previousMarker)
+        ? profile.avatar_url.split(previousMarker)[1]
+        : null;
+      if (updates.avatar_url && previousPath && updates.avatar_url !== profile.avatar_url) {
+        const { error: cleanupError } = await supabase.storage.from('avatars').remove([previousPath]);
+        if (cleanupError) console.warn('Previous avatar could not be removed:', cleanupError);
+      }
+
+      toast(hasIdentityInput ? {
+        title: 'Perfil actualizado',
+        description: 'Tus cambios se guardaron correctamente.',
+      } : {
         title: 'Perfil actualizado',
         description: 'Tus cambios se guardaron. Completa tu nombre y número de documento cuando quieras comprar o validar tickets.',
       });
-      onSave?.();
-    } else {
-      toast({ title: 'Perfil actualizado', description: 'Tus cambios se guardaron correctamente.' });
-      onSave?.();
+      await onSave?.(savedProfile);
     }
     setSaving(false);
   };
@@ -254,15 +278,45 @@ export default function EditProfile({ profile, onSave, onClose }) {
                 </div>
               )}
             </div>
-            <div>
-              <button type="button" onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+            <div className="flex-1 min-w-0">
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait"
                 style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}>
                 <Camera className="w-3.5 h-3.5" />
-                {uploading ? 'Subiendo…' : 'Cambiar foto'}
+                {uploading ? `Subiendo… ${uploadProgress}%` : 'Cambiar foto'}
               </button>
               <p className="text-[10px] text-white/30 mt-1.5">JPG, PNG o WebP · se optimiza automáticamente</p>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} />
+              {uploadProgress > 0 && (
+                <div className="mt-2.5" aria-live="polite">
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <span className={`flex items-center gap-1 text-[10px] font-bold ${uploadProgress === 100 ? 'text-emerald-300' : 'text-white/50'}`}>
+                      {uploadProgress === 100 && <CheckCircle className="w-3 h-3" />}
+                      {uploadProgress === 100 ? 'Imagen lista · ya puedes guardar' : 'Procesando y subiendo imagen'}
+                    </span>
+                    <span className={`text-[10px] font-black ${uploadProgress === 100 ? 'text-emerald-300' : 'text-white/70'}`}>
+                      {uploadProgress}%
+                    </span>
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-label="Progreso de carga de la imagen de perfil"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={uploadProgress}
+                    className="h-1.5 rounded-full overflow-hidden"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-[width,background-color] duration-300"
+                      style={{
+                        width: `${uploadProgress}%`,
+                        background: uploadProgress === 100 ? '#6EE7B7' : '#67E8F9',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -452,11 +506,11 @@ export default function EditProfile({ profile, onSave, onClose }) {
         {/* Save footer */}
         <div className="shrink-0 px-5 sm:px-6 py-4"
           style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(11,16,15,0.99)' }}>
-          <button type="button" onClick={handleSave} disabled={saving}
+          <button type="button" onClick={handleSave} disabled={saving || uploading}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ background: 'rgba(255,255,255,0.9)', color: '#080B14' }}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Guardando…' : 'Guardar cambios'}
+            {saving || uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Guardando…' : uploading ? `Espera a que termine la imagen · ${uploadProgress}%` : 'Guardar cambios'}
           </button>
         </div>
       </div>

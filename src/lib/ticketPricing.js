@@ -9,6 +9,46 @@ function validMoney(value) {
   return Number.isFinite(amount) && amount >= 0 ? amount : null;
 }
 
+export function formatTicketPrice(price) {
+  const value = validMoney(price);
+  if (value === null || value === 0) return 'Gratis';
+  return `$${value.toLocaleString('es-CO')}`;
+}
+
+export function getPublicTicketTiers(event) {
+  if (Array.isArray(event?.ticket_types) && event.ticket_types.length > 0) {
+    const configured = event.ticket_types
+      .filter(ticket => (
+        ticket?.active !== false
+        && ticket?.name
+        && !NON_REVENUE_TYPES.has(normalizedTicketType(ticket.name))
+        && Number(ticket?.capacity) > 0
+      ))
+      .map(ticket => ({
+        ...ticket,
+        name: String(ticket.name),
+        price: validMoney(ticket.price) ?? 0,
+        capacity: Math.max(1, Number(ticket.capacity) || 1),
+      }));
+    if (configured.length > 0) return configured;
+  }
+
+  return [{
+    name: 'General',
+    price: validMoney(event?.price) ?? 0,
+    capacity: Math.max(1, Number(event?.tickets_total) || 1),
+    sales_end_at: event?.date || null,
+  }];
+}
+
+export function getEventPriceLabel(event) {
+  const tiers = getPublicTicketTiers(event);
+  const distinctPrices = [...new Set(tiers.map(ticket => ticket.price))];
+  if (distinctPrices.length <= 1) return formatTicketPrice(distinctPrices[0] ?? event?.price);
+  const minimum = Math.min(...distinctPrices);
+  return minimum === 0 ? 'Gratis y pago' : `Desde ${formatTicketPrice(minimum)}`;
+}
+
 export function getTicketTierPrice(event, ticketType) {
   const normalizedType = normalizedTicketType(ticketType);
   if (NON_REVENUE_TYPES.has(normalizedType)) return 0;

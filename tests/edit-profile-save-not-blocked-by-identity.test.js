@@ -25,6 +25,6 @@ test('user_identity solo se guarda cuando ambos campos estan presentes, sin bloq
 });
 
 test('guardado exitoso sin identidad muestra confirmacion, no error', () => {
-  assert.match(editProfile, /else if \(!hasIdentityInput\) \{/);
+  assert.match(editProfile, /toast\(hasIdentityInput \? \{/);
   assert.match(editProfile, /Tus cambios se guardaron\. Completa tu nombre y número de documento/);
 });

@@ -11,6 +11,7 @@ import {
 
 const eventManager = readFileSync('src/components/admin/EventManager.jsx', 'utf8');
 const eventTerminal = readFileSync('src/components/EventTerminal.jsx', 'utf8');
+const ticketPricing = readFileSync('src/lib/ticketPricing.js', 'utf8');
 const validatePage = readFileSync('src/pages/ValidatePage.jsx', 'utf8');
 const createPayment = readFileSync('supabase/functions/create-payment/index.ts', 'utf8');
 const wompiCheckout = readFileSync('src/lib/wompiCheckout.js', 'utf8');
@@ -87,7 +88,7 @@ test('un tipo retirado deja de venderse sin invalidar sus tickets emitidos', () 
   assert.equal(hasOpenTicketSales({ ...event, ticket_types: [event.ticket_types[0]] }, '2026-07-15T20:00:00.000Z'), false);
   assert.match(eventManager, /active: false, sales_end_at: toDateTimeLocal\(new Date\(\)\)/);
   assert.doesNotMatch(eventManager, /disabled=\{ticketTypes\.length === 1 \|\| sold > 0\}/);
-  assert.match(eventTerminal, /ticket\?\.active !== false/);
+  assert.match(ticketPricing, /ticket\?\.active !== false/);
   assert.match(createPayment, /item\.active !== false/);
   assert.match(freeTicket, /item\.active !== false/);
   assert.match(manualTicket, /requestedTier\.active === false/);
