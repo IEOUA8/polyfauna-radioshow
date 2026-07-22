@@ -171,8 +171,16 @@ export const AuthProvider = ({ children }) => {
 
   const hydrateAuthenticatedUser = useCallback(async (authUser) => {
     if (!authUser?.id) return;
-    await consumePendingOAuthRole(authUser);
-    await notifyPendingRoleRequest(authUser);
+    try {
+      await consumePendingOAuthRole(authUser);
+    } catch (pendingRoleError) {
+      console.warn('Pending OAuth role reconciliation deferred:', pendingRoleError);
+    }
+    try {
+      await notifyPendingRoleRequest(authUser);
+    } catch (roleNotificationError) {
+      console.warn('Pending role notification deferred:', roleNotificationError);
+    }
     await fetchUserProfile(authUser);
   }, [consumePendingOAuthRole, fetchUserProfile, notifyPendingRoleRequest]);
 

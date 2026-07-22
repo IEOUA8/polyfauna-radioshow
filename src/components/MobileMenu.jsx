@@ -1,5 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays, Disc3, Dna, FileText, Headphones,
   Lock, LogIn, MessageSquare, Music, Network, Radio,
@@ -85,6 +86,7 @@ function NavCard({ item, locked, active, onPress, idx }) {
 export default function MobileMenu({ open, onClose, currentSection, setCurrentSection }) {
   const { currentUser } = useAuth();
   const { profile }     = useProfile();
+  const navigate        = useNavigate();
   const isLoggedIn      = !!currentUser;
   const role            = profile?.role || 'citizen';
   const displayName     = profile?.display_name || currentUser?.email?.split('@')[0] || 'Invitado';
@@ -195,7 +197,8 @@ export default function MobileMenu({ open, onClose, currentSection, setCurrentSe
                       idx={idx}
                       onPress={() => {
                         if (item.href) {
-                          window.location.assign(item.href);
+                          onClose();
+                          navigate(item.href);
                           return;
                         }
                         setCurrentSection(item.id);
