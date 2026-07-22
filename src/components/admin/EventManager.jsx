@@ -739,12 +739,18 @@ const EventManager = ({ ownerId = null, isAdmin = false }) => {
         supabase.functions.invoke('send-push', {
           body: {
             broadcast: true,
+            notificationType: 'event',
+            actionSection: 'events',
+            actionId: createdEvent?.id,
+            dedupeKey: `event-published/${createdEvent?.id}`,
             title: 'Nuevo evento en Polyfauna',
             body: [createdEvent?.title, createdEvent?.venue || createdEvent?.city].filter(Boolean).join(' · '),
             url: `${window.location.origin}/?section=events&event=${createdEvent?.id}`,
             image: createdEvent?.image_url || undefined,
           },
-        }).catch((notifyError) => console.error('send-push failed', notifyError));
+        }).then(({ error: notifyError }) => {
+          if (notifyError) console.error('send-push failed', notifyError);
+        });
         toast({ title: '¡Evento publicado!' });
       }
       setIsDialogOpen(false);

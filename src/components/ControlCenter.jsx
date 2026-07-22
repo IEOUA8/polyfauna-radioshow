@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Headphones, Info, Loader2, LogOut, Mail, Mic2, Shield, UserX, Users, X, Zap } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff, Building2, CalendarDays, Check, ChevronRight, Disc3, Dna, Edit3, FileText, Headphones, Info, Loader2, LogOut, Mail, Mic2, Send, Shield, Smartphone, UserX, Users, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -353,6 +353,111 @@ function AudioQualityPanel({ onClose }) {
   );
 }
 
+function PushPreferenceCard({ push, onTest }) {
+  const state = {
+    subscribed: {
+      icon: Bell,
+      color: '#20C7E8',
+      title: 'Notificaciones Push activas',
+      description: 'Este dispositivo recibirá eventos, transmisiones, tickets, devoluciones y mensajes.',
+      action: 'Desactivar',
+    },
+    available: {
+      icon: BellOff,
+      color: 'rgba(255,255,255,0.48)',
+      title: 'Activar Notificaciones Push',
+      description: 'Recibe avisos aunque Polyfauna esté cerrada. El permiso se solicita al tocar Activar.',
+      action: 'Activar',
+    },
+    'needs-install': {
+      icon: Smartphone,
+      color: '#FBBF24',
+      title: 'Instala Polyfauna para activar Push',
+      description: 'En iPhone debes agregar Polyfauna a la pantalla de inicio y abrirla como app.',
+      action: 'Ver pasos',
+    },
+    blocked: {
+      icon: BellOff,
+      color: '#F87171',
+      title: 'Notificaciones bloqueadas',
+      description: 'El permiso fue rechazado. Habilita Polyfauna en los ajustes de notificaciones del navegador o del teléfono.',
+      action: null,
+    },
+    unsupported: {
+      icon: BellOff,
+      color: 'rgba(255,255,255,0.35)',
+      title: 'Push no disponible en este navegador',
+      description: 'Puedes seguir consultando el centro de notificaciones dentro de Polyfauna.',
+      action: null,
+    },
+    misconfigured: {
+      icon: AlertTriangle,
+      color: '#F87171',
+      title: 'Push pendiente de configuración',
+      description: 'Falta la llave pública VAPID del frontend. El equipo técnico debe completar la configuración.',
+      action: null,
+    },
+  }[push.status];
+  const StateIcon = state.icon;
+  const handlePrimary = push.status === 'needs-install'
+    ? push.openInstallGuide
+    : push.status === 'subscribed'
+      ? push.unsubscribe
+      : push.subscribe;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.22, type: 'spring', stiffness: 300, damping: 28 }}
+      className="rounded-xl px-5 py-4"
+      style={{ background: 'rgba(11,16,15,0.90)', border: '1px solid rgba(255,255,255,0.07)' }}
+    >
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: `${state.color}18` }}>
+          {push.loading
+            ? <Loader2 className="w-4 h-4 text-white/40 animate-spin" />
+            : <StateIcon className="w-4 h-4" style={{ color: state.color }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white">{state.title}</p>
+          <p className="text-xs mt-1 text-white/35 leading-relaxed">{state.description}</p>
+          {push.error && (
+            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: '#F87171' }} role="alert">
+              {push.error}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {(state.action || push.subscribed) && (
+        <div className="flex gap-2 mt-4 pl-14">
+          {state.action && (
+            <button type="button" onClick={handlePrimary} disabled={push.loading}
+              className="px-3.5 py-2 rounded-lg text-xs font-black disabled:opacity-45"
+              style={{
+                background: push.subscribed ? 'rgba(255,255,255,0.07)' : 'rgba(32,199,232,0.16)',
+                color: push.subscribed ? 'rgba(255,255,255,0.65)' : '#66D9EF',
+                border: `1px solid ${push.subscribed ? 'rgba(255,255,255,0.09)' : 'rgba(32,199,232,0.25)'}`,
+              }}>
+              {state.action}
+            </button>
+          )}
+          {push.subscribed && (
+            <button type="button" onClick={onTest} disabled={push.testing || push.loading}
+              className="px-3.5 py-2 rounded-lg text-xs font-black inline-flex items-center gap-1.5 disabled:opacity-45"
+              style={{ background: 'rgba(32,199,232,0.16)', color: '#66D9EF', border: '1px solid rgba(32,199,232,0.25)' }}>
+              {push.testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              Enviar prueba
+            </button>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function ControlCenter({ setCurrentSection }) {
   const { currentUser, isLoading: authLoading } = useAuth();
   const { profile } = useProfile();
@@ -364,7 +469,7 @@ export default function ControlCenter({ setCurrentSection }) {
   const [privacyOpen, setPrivacyOpen]   = useState(false);
   const [reportOpen, setReportOpen]     = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
-  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, toggle: togglePush, permission: pushPerm } = usePushNotifications(currentUser?.id);
+  const push = usePushNotifications(currentUser?.id);
   const currentRole = profile?.role || 'citizen';
 
   if (authLoading) {
@@ -386,6 +491,22 @@ export default function ControlCenter({ setCurrentSection }) {
     await supabase.auth.signOut();
     toast({ title: 'Cuenta desactivada', description: 'Escribe a info@polyfauna.com para reactivarla o eliminar tus datos.' });
     navigate('/login');
+  };
+
+  const handlePushTest = async () => {
+    try {
+      const result = await push.sendTest();
+      toast({
+        title: 'Push de prueba enviado',
+        description: `Entregado a ${result.sent} suscripción${result.sent === 1 ? '' : 'es'}.`,
+      });
+    } catch (pushError) {
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo enviar la prueba',
+        description: pushError?.message || 'Revisa el permiso del dispositivo.',
+      });
+    }
   };
 
   const role = currentRole;
@@ -597,57 +718,7 @@ export default function ControlCenter({ setCurrentSection }) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Preferencias</p>
           <div className="space-y-2">
 
-            {/* Push notifications toggle */}
-            {pushSupported && pushPerm !== 'denied' && (
-              <motion.button
-                type="button"
-                onClick={pushLoading ? undefined : togglePush}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.22, type: 'spring', stiffness: 300, damping: 28 }}
-                className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-colors"
-                style={{
-                  background: 'rgba(11,16,15,0.90)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  cursor: pushLoading ? 'wait' : 'pointer',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(11,16,15,0.90)'; }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: pushSubscribed ? 'rgba(32,199,232,0.12)' : 'rgba(255,255,255,0.06)' }}>
-                  {pushLoading
-                    ? <Loader2 className="w-4 h-4 text-white/40 animate-spin" />
-                    : pushSubscribed
-                      ? <Bell  className="w-4 h-4" style={{ color: '#20C7E8' }} />
-                      : <BellOff className="w-4 h-4 text-white/40" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white">Notificaciones Push</p>
-                  <p className="text-xs mt-0.5 text-white/35 leading-relaxed">
-                    {pushLoading
-                      ? 'Procesando…'
-                      : pushSubscribed
-                        ? 'Activas para eventos, transmisiones, tickets, devoluciones y mensajes.'
-                        : 'Recibe avisos de eventos, transmisiones especiales, tickets, devoluciones y mensajes directos.'}
-                  </p>
-                </div>
-                {/* Toggle pill */}
-                <div className="shrink-0 w-10 h-5.5 rounded-full transition-all relative"
-                  style={{
-                    background: pushSubscribed ? 'rgba(32,199,232,0.65)' : 'rgba(255,255,255,0.10)',
-                    width: 40, height: 22,
-                  }}>
-                  <div className="absolute top-[3px] rounded-full transition-all"
-                    style={{
-                      width: 16, height: 16, background: 'white',
-                      left: pushSubscribed ? 21 : 3,
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
-                    }} />
-                </div>
-              </motion.button>
-            )}
+            <PushPreferenceCard push={push} onTest={handlePushTest} />
 
             <div>
               <SettingsTile

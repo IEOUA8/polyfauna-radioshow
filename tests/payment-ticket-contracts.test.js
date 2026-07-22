@@ -43,8 +43,8 @@ const eventCoPromoters = readFileSync('supabase/migrations/20260702180108_event_
 const notifyCoPromoterMigration = readFileSync('supabase/migrations/20260702183724_notify_co_promoter_linked.sql', 'utf8');
 const notifyCoPromoterFunction = readFileSync('supabase/functions/notify-co-promoter-linked/index.ts', 'utf8');
 const useNotifications = readFileSync('src/hooks/useNotifications.js', 'utf8');
+const notificationsCenter = readFileSync('src/components/NotificationsCenter.jsx', 'utf8');
 const rlsRecursionFix = readFileSync('supabase/migrations/20260702184953_fix_events_co_promoters_rls_recursion.sql', 'utf8');
-const rightPanel = readFileSync('src/components/RightPanel.jsx', 'utf8');
 
 test('emisión pagada conserva idempotencia, locks e inventario atómico', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.fulfill_paid_transaction/);
@@ -178,7 +178,7 @@ test('colectivos, cortesías e identidad usan permisos y superficies restringida
   assert.match(organizerCommunity, /'ticket\.courtesy'/);
   assert.match(organizerCommunity, /courtesy_limit INTEGER/);
   assert.match(courtesyFunction, /Cortesía confirmada/);
-  assert.match(courtesyFunction, /sendPush/);
+  assert.match(courtesyFunction, /dispatchNotification/);
   assert.match(adminDashboard, /function CourtesyTicketModal/);
   assert.match(adminDashboard, /functions\.invoke\('issue-courtesy-ticket'/);
   assert.match(adminDashboard, /courtesy_limit, courtesies_issued/);
@@ -433,5 +433,5 @@ test('notificaciones cubren música, podcasts, eventos, blog y avisos in-app', (
   assert.match(useNotifications, /from\('albums'\)/);
   assert.match(useNotifications, /type: 'music'/);
   assert.match(useNotifications, /section: 'music'/);
-  assert.match(rightPanel, /music:\s*\{ icon: Music/);
+  assert.match(notificationsCenter, /music:\s*\{ icon: Music/);
 });

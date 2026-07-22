@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PlaybackProvider } from '@/contexts/PlaybackContext';
 import { NowPlayingProvider } from '@/hooks/useNowPlaying';
+import { NotificationProvider } from '@/hooks/useNotifications';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import UsageTelemetry from '@/components/UsageTelemetry';
@@ -98,7 +99,8 @@ function App() {
       <AuthProvider>
         <NowPlayingProvider>
           <PlaybackProvider>
-            <TooltipProvider delayDuration={400}>
+            <NotificationProvider>
+              <TooltipProvider delayDuration={400}>
               <Suspense fallback={<RouteLoader />}>
                 <Routes>
                   <Route path="/login"    element={<LoginPage />} />
@@ -135,7 +137,8 @@ function App() {
               <Suspense fallback={null}>
                 <GlobalPlayer />
               </Suspense>
-            </TooltipProvider>
+              </TooltipProvider>
+            </NotificationProvider>
           </PlaybackProvider>
         </NowPlayingProvider>
       </AuthProvider>

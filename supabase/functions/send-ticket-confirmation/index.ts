@@ -40,7 +40,7 @@ serve(async (req) => {
       late_entry_fee: lateEntryFee,
     });
 
-    await sendEmail({
+    const emailDelivery = await sendEmail({
       to: userEmail,
       subject: `Ticket confirmado · ${eventTitle.replace(/[\r\n]/g, ' ')}`,
       html,
@@ -48,7 +48,7 @@ serve(async (req) => {
       tags: [{ name: 'category', value: 'ticket_confirmed' }],
     });
 
-    return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
+    return new Response(JSON.stringify({ ok: true, email_id: emailDelivery.id }), { headers: JSON_HEADERS });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error interno';
     return new Response(JSON.stringify({ error: message }), { status: 500, headers: JSON_HEADERS });

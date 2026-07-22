@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { sendEmail, emailWrapper } from '../_shared/resend.ts';
 import { escapeEmailValue, publicEmailUrl, renderEmailTemplate } from '../_shared/email-templates.ts';
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 // Batch size to avoid Resend rate limits
 const BATCH_SIZE = 50;
@@ -13,18 +14,6 @@ const CORS_HEADERS = {
 };
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
-
-async function sendPush(body: Record<string, unknown>) {
-  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
-  await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -148,7 +137,7 @@ serve(async (req) => {
     let sent = 0;
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         batch.map(r => sendEmail({
           to: r.email,
           subject: safeSubject,
@@ -160,18 +149,43 @@ serve(async (req) => {
           ],
         }))
       );
-      sent += batch.length;
+      sent += results.filter(result => result.status === 'fulfilled').length;
       if (i + BATCH_SIZE < recipients.length) await sleep(BATCH_DELAY_MS);
     }
 
-    if (templateType === 'radio-special') {
-      await sendPush({
-        broadcast: true,
-        title: 'Transmisión especial en vivo',
-        body: `${templateData.programName} · ${templateData.artist}`,
-        url: publicEmailUrl(templateData.listenUrl, appUrl),
-      });
-    }
+    const notification = templateType === 'radio-special'
+      ? {
+          notificationType: 'radio' as const,
+          actionSection: 'radio-console',
+          title: 'Transmisión especial en vivo',
+          body: `${templateData.programName} · ${templateData.artist}`,
+          url: publicEmailUrl(templateData.listenUrl, appUrl),
+        }
+      : templateType === 'upcoming-events'
+        ? {
+            notificationType: 'event' as const,
+            actionSection: 'events',
+            title: 'Próximos eventos en Polyfauna',
+            body: `${templateData.eventName} · ${templateData.event2Name}`,
+            url: `${appUrl}/?section=events`,
+          }
+        : {
+            notificationType: 'system' as const,
+            actionSection: undefined,
+            title: String(title).trim(),
+            body: String(body).trim(),
+            url: ctaUrl ? publicEmailUrl(ctaUrl, appUrl) : appUrl,
+          };
+
+    await dispatchNotification({
+      broadcast: true,
+      ...notification,
+      dedupeKey: `community-broadcast/${broadcastId}`,
+      emailDelivery: {
+        status: sent > 0 ? 'sent' : 'failed',
+        metadata: { sent, attempted: recipients.length, broadcastId },
+      },
+    });
 
     return new Response(JSON.stringify({ ok: true, sent, broadcastId }), { headers: CORS_HEADERS });
   } catch (err) {

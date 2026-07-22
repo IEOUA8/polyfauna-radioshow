@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNowPlaying } from '@/hooks/useNowPlaying';
 import supabase from '@/lib/customSupabaseClient';
 import { getEventImage } from '@/lib/eventImages';
+import NotificationsBell from '@/components/NotificationsCenter';
 
 const TYPE_META = {
   events:        { label: 'Evento',   icon: Calendar,   section: 'events',   imgKey: 'image_url',          nameKey: 'title' },
@@ -180,7 +181,7 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
         </button>
 
         {/* Search */}
-        <div className="flex-1 max-w-lg relative" ref={searchRef}>
+        <div className="flex-1 min-w-0 max-w-lg relative" ref={searchRef}>
           <div className="relative flex items-center">
             <Search className="absolute left-3 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.28)' }} />
             <input
@@ -310,6 +311,12 @@ export default function TopBar({ setCurrentSection, setMobileMenuOpen }) {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* En móvil y tablet la campana vive al lado derecho de la búsqueda.
+            En xl la misma acción está en el panel lateral de identidad. */}
+        <div className="xl:hidden shrink-0">
+          <NotificationsBell setCurrentSection={setCurrentSection} mobile />
         </div>
 
         {/* Live indicator */}

@@ -7,6 +7,7 @@ import {
   renderTicketPurchasedEmail,
 } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -75,6 +76,10 @@ Deno.serve(async (req) => {
     const isPending = Boolean(ticket.pending);
     let emailSent = false;
     let emailWarning: string | null = null;
+    let notificationSent = false;
+    let notificationWarning: string | null = null;
+    let emailProviderId: string | null = null;
+    const appUrl = Deno.env.get('APP_URL') || 'https://polyfauna.com';
     const claimedAt = new Date().toISOString();
     const { data: notificationClaim } = await admin
       .from('user_tickets')
@@ -101,7 +106,6 @@ Deno.serve(async (req) => {
 
       const qrPayload = await signTicketToken(ticket.ticket_id, eventId, ticket.event_date);
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}&format=png&margin=8`;
-      const appUrl = Deno.env.get('APP_URL') || 'https://polyfauna.com';
       const ticketTier = findTicketTier(eventConfig?.ticket_types, ticket.ticket_type);
       const formattedDate = ticket.event_date
         ? new Date(ticket.event_date).toLocaleDateString('es-CO', {
@@ -140,7 +144,7 @@ Deno.serve(async (req) => {
         }, ticketTier);
       }
 
-      await sendEmail({
+      const emailDelivery = await sendEmail({
         to: recipientEmail,
         subject: isPending
           ? `Activa tu ticket · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`
@@ -152,6 +156,7 @@ Deno.serve(async (req) => {
           { name: 'entity_id', value: ticket.ticket_id },
         ],
       });
+      emailProviderId = emailDelivery.id;
       emailSent = true;
     } catch (emailError) {
       emailWarning = emailError instanceof Error ? emailError.message : 'No fue posible enviar el correo';
@@ -162,6 +167,29 @@ Deno.serve(async (req) => {
         .eq('confirmation_email_sent_at', claimedAt);
     }
 
+    if (!isPending) {
+      try {
+        const delivery = await dispatchNotification({
+          userId: ticket.user_id,
+          notificationType: 'ticket',
+          actionSection: 'tickets',
+          actionId: ticket.ticket_id,
+          dedupeKey: `manual-ticket/${ticket.ticket_id}`,
+          title: 'Ticket confirmado',
+          body: `Tu entrada para ${ticket.event_title} ya está en tu Ticket Vault.`,
+          url: `${appUrl}/?section=tickets`,
+          emailDelivery: emailSent
+            ? { status: 'sent', providerMessageId: emailProviderId || undefined }
+            : { status: 'failed', error: emailWarning || undefined },
+        });
+        notificationSent = Boolean(delivery.notificationId);
+      } catch (notificationError) {
+        notificationWarning = notificationError instanceof Error
+          ? notificationError.message
+          : 'No fue posible enviar la notificación';
+      }
+    }
+
     return json({
       ok: true,
       alreadyProcessed: ticket.already_processed,
@@ -169,6 +197,8 @@ Deno.serve(async (req) => {
       ticketNumber: ticket.ticket_number,
       emailSent,
       emailWarning,
+      notificationSent,
+      notificationWarning,
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'Error interno' }, 500);

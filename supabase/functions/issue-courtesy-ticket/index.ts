@@ -2,23 +2,7 @@ import { CORS_HEADERS, json, requireUser } from '../_shared/auth.ts';
 import { sendEmail } from '../_shared/resend.ts';
 import { publicEmailUrl, renderEmailTemplate } from '../_shared/email-templates.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
-
-async function sendPush(userId: string, eventTitle: string) {
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      userId,
-      title: 'Cortesía confirmada',
-      body: `Tu cortesía para ${eventTitle} ya está en tu Ticket Vault.`,
-      url: `${Deno.env.get('APP_URL') || 'https://www.polyfauna.com'}/?section=tickets`,
-    }),
-  });
-  if (!response.ok) throw new Error(`Push error ${response.status}`);
-}
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -127,7 +111,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      await sendEmail({
+      const emailDelivery = await sendEmail({
         to: recipientEmail,
         subject: isPending
           ? `Cortesía pendiente de activación · ${String(ticket.event_title).replace(/[\r\n]/g, ' ')}`
@@ -143,8 +127,18 @@ Deno.serve(async (req) => {
 
       if (!isPending) {
         try {
-          await sendPush(ticket.user_id, ticket.event_title);
-          pushSent = true;
+          const notificationResult = await dispatchNotification({
+            userId: ticket.user_id,
+            notificationType: 'ticket',
+            actionSection: 'tickets',
+            actionId: ticket.ticket_id,
+            dedupeKey: `courtesy-confirmed/${ticket.ticket_id}`,
+            title: 'Cortesía confirmada',
+            body: `Tu cortesía para ${ticket.event_title} ya está en tu Ticket Vault.`,
+            url: `${Deno.env.get('APP_URL') || 'https://www.polyfauna.com'}/?section=tickets`,
+            emailDelivery: { status: 'sent', providerMessageId: emailDelivery.id },
+          });
+          pushSent = notificationResult.sent > 0;
         } catch (pushError) {
           notificationWarning = pushError instanceof Error ? pushError.message : 'Push no disponible';
         }

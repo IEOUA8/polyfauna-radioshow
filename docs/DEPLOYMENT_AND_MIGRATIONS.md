@@ -43,6 +43,8 @@ Edge Functions y servicios:
 
 Las variables `VITE_*` son publicas en el bundle. Nunca usar ese prefijo para service role, secretos Wompi, Resend, VAPID privada, R2 privada o JWK privada.
 
+Para Web Push, `VITE_VAPID_PUBLIC_KEY` y `VAPID_PUBLIC_KEY` deben contener exactamente la misma llave publica. La privada solo vive en los secretos de Supabase. Despues de configurar el par, validar desde Control Center con **Enviar prueba** en un dispositivo suscrito; en iPhone/iPad la app debe estar instalada en la pantalla de inicio.
+
 ## Flujo de frontend
 
 Antes de subir:
@@ -170,7 +172,7 @@ Despues de desplegar:
 | `send-community-broadcast` | Envia comunicacion comunitaria a audiencia permitida. | JWT y rol profesional autorizado. |
 | `send-message-notification` | Envia aviso asociado a un mensaje interno. | Invocacion server-side con identificador validado. |
 | `send-operational-alert` | Envia alertas criticas por Resend. | Cron con `x-cron-secret`. |
-| `send-push` | Envia Web Push y limpia suscripciones expiradas. | Usuario autorizado o service role segun alcance. |
+| `send-push` | Persiste el aviso, deduplica, registra entregas, envia Web Push y limpia suscripciones expiradas. | Usuario autorizado o service role segun alcance. |
 | `send-role-decision` | Notifica aprobacion/rechazo de rol. | Flujo administrativo/server-side. |
 | `send-role-request` | Notifica una nueva solicitud de rol. | Flujo de registro/solicitud validado. |
 | `send-ticket-confirmation` | Envia correo transaccional de ticket. | Bearer igual a service role. |

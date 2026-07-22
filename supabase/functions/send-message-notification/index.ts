@@ -1,18 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { sendEmail, emailWrapper } from '../_shared/resend.ts';
 import { CORS_HEADERS, escapeHtml, json, requireUser } from '../_shared/auth.ts';
-
-async function sendPush(body: Record<string, unknown>) {
-  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
-  await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-}
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -56,7 +45,7 @@ serve(async (req) => {
         </tr>
       </table>
     `);
-    await sendEmail({
+    const emailDelivery = await sendEmail({
       to: recipient.email,
       subject: `Nuevo mensaje de ${String(message.from_name || 'Usuario').replace(/[\r\n]/g, ' ')} — POLYFAUNA`,
       html,
@@ -66,11 +55,16 @@ serve(async (req) => {
         { name: 'entity_id', value: message.id },
       ],
     });
-    await sendPush({
+    await dispatchNotification({
       userId: message.to_user_id,
+      notificationType: 'system',
+      actionSection: 'inbox',
+      actionId: message.id,
+      dedupeKey: `direct-message/${message.id}`,
       title: 'Nuevo mensaje directo',
       body: `${message.from_name || 'Alguien del bioma'}: ${String(message.subject || 'Mensaje nuevo').slice(0, 90)}`,
       url: `${appUrl}/?section=inbox`,
+      emailDelivery: { status: 'sent', providerMessageId: emailDelivery.id },
     });
     return json({ ok: true });
   } catch (err) {

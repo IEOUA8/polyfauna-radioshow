@@ -2521,11 +2521,16 @@ function RefundRequestsSection({ ownerId }) {
       supabase.functions.invoke('send-push', {
         body: {
           userId: data.user_id,
+          notificationType: 'ticket',
+          actionSection: 'tickets',
+          dedupeKey: `refund-status/${data.id}/${patch.status}`,
           title: 'Actualización de devolución',
           body: `Tu solicitud de devolución fue ${label}${data.events?.title ? ` · ${data.events.title}` : ''}.`,
           url: `${window.location.origin}/?section=tickets`,
         },
-      }).catch(() => {});
+      }).then(({ error: notifyError }) => {
+        if (notifyError) console.error('refund notification failed', notifyError);
+      });
     }
     toast({ title: 'Solicitud actualizada', description: `Estado: ${data.status}` });
   };

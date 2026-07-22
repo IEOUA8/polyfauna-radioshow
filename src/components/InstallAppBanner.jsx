@@ -30,6 +30,7 @@ export default function InstallAppBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [visible, setVisible] = useState(false);
   const [showIOSSteps, setShowIOSSteps] = useState(false);
+  const [notificationIntent, setNotificationIntent] = useState(false);
   const iosInstall = useMemo(() => isIOS() && isSafari(), []);
 
   useEffect(() => {
@@ -62,6 +63,17 @@ export default function InstallAppBanner() {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
+  }, [iosInstall]);
+
+  useEffect(() => {
+    const showFromNotifications = (event) => {
+      if (!isMobileInstallContext() || isStandalone()) return;
+      setNotificationIntent(Boolean(event.detail?.notifications));
+      setShowIOSSteps(iosInstall);
+      setVisible(true);
+    };
+    window.addEventListener('polyfauna-show-install', showFromNotifications);
+    return () => window.removeEventListener('polyfauna-show-install', showFromNotifications);
   }, [iosInstall]);
 
   const dismiss = () => {
@@ -108,9 +120,13 @@ export default function InstallAppBanner() {
                 <Smartphone className="w-5 h-5" style={{ color: '#20C7E8' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-white">Instala Polyfauna</p>
+                <p className="text-sm font-black text-white">
+                  {notificationIntent ? 'Activa notificaciones en iPhone' : 'Instala Polyfauna'}
+                </p>
                 <p className="text-xs text-white/42 mt-1 leading-relaxed">
-                  Abre la radio, tickets y Organismo desde tu pantalla de inicio.
+                  {notificationIntent
+                    ? 'Apple requiere abrir Polyfauna desde la pantalla de inicio antes de permitir Push.'
+                    : 'Abre la radio, tickets y Organismo desde tu pantalla de inicio.'}
                 </p>
               </div>
               <button

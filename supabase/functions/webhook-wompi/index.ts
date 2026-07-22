@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 async function sha256hex(message: string): Promise<string> {
   const data = new TextEncoder().encode(message);
@@ -22,18 +23,6 @@ const STATUS_MAP: Record<string, string> = {
   VOIDED:   'voided',
   ERROR:    'error',
 };
-
-async function sendPush(body: Record<string, unknown>) {
-  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
-  await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST')
@@ -175,7 +164,7 @@ Deno.serve(async (req) => {
               )
             : null;
 
-          await supabase.functions.invoke('send-ticket-confirmation', {
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-ticket-confirmation', {
             body: {
               userEmail:  buyerUser.email,
               userName:   buyerProfile?.display_name || buyerUser.email.split('@')[0],
@@ -189,12 +178,20 @@ Deno.serve(async (req) => {
               lateEntryFee: ticketTier?.late_entry_fee || null,
             },
           });
+          if (emailError) throw emailError;
 
-          await sendPush({
+          await dispatchNotification({
             userId: transaction.buyer_id,
+            notificationType: 'ticket',
+            actionSection: 'tickets',
+            actionId: firstTicketId,
+            dedupeKey: `ticket-confirmed/${transaction.id}`,
             title: 'Ticket confirmado',
             body: `Tu acceso para ${transaction.events?.title || 'el evento'} ya está en tu Ticket Vault.`,
             url: `${Deno.env.get('APP_URL') || 'https://www.polyfauna.com'}/?section=tickets`,
+            emailDelivery: emailResult?.email_id
+              ? { status: 'sent', providerMessageId: emailResult.email_id }
+              : { status: 'sent' },
           });
         }
       } catch (emailErr) {

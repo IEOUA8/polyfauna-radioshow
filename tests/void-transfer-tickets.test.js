@@ -50,8 +50,8 @@ test('el edge function transfer-ticket envía la plantilla correcta según pendi
   assert.match(transferFunction, /transfer_ticket/);
   assert.match(transferFunction, /renderPendingTicketActivationEmail/);
   assert.match(transferFunction, /renderTicketPurchasedEmail/);
-  assert.match(transferFunction, /create_notification/);
-  assert.match(transferFunction, /action_section: 'tickets'|p_action_section: 'tickets'/);
+  assert.match(transferFunction, /dispatchNotification/);
+  assert.match(transferFunction, /actionSection: 'tickets'/);
 });
 
 test('EventManager solo ofrece anular/transferir para tickets manuales o de cortesía, no de pasarela', () => {

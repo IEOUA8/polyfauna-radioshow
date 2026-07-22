@@ -4,6 +4,7 @@ import { sendEmail } from '../_shared/resend.ts';
 import { publicEmailUrl } from '../_shared/email-templates.ts';
 import { renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -108,6 +109,7 @@ Deno.serve(async (req) => {
 
     let emailSent = Boolean(ticket.confirmation_email_sent_at);
     let emailWarning: string | null = null;
+    let emailProviderId: string | null = null;
     if (!emailSent && user.email) {
       const claimedAt = new Date().toISOString();
       const { data: claimed } = await admin
@@ -144,7 +146,7 @@ Deno.serve(async (req) => {
             qr_url: publicEmailUrl(qrDataUrl),
             ticket_url: `${appUrl}/?section=tickets`,
           }, tier);
-          await sendEmail({
+          const emailDelivery = await sendEmail({
             to: user.email,
             subject: `Ticket confirmado · ${String(event.title).replace(/[\r\n]/g, ' ')}`,
             html,
@@ -154,6 +156,7 @@ Deno.serve(async (req) => {
               { name: 'entity_id', value: ticket.id },
             ],
           });
+          emailProviderId = emailDelivery.id;
           emailSent = true;
         } catch (emailError) {
           emailWarning = emailError instanceof Error ? emailError.message : 'No fue posible enviar el correo';
@@ -168,6 +171,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    let pushSent = false;
+    let pushWarning: string | null = null;
+    try {
+      const delivery = await dispatchNotification({
+        userId: user.id,
+        notificationType: 'ticket',
+        actionSection: 'tickets',
+        actionId: ticket.id,
+        dedupeKey: `free-ticket/${ticket.id}`,
+        title: 'Ticket confirmado',
+        body: `Tu entrada para ${event.title} ya está en tu Ticket Vault.`,
+        url: `${Deno.env.get('APP_URL') || 'https://www.polyfauna.com'}/?section=tickets`,
+        emailDelivery: emailSent
+          ? { status: 'sent', providerMessageId: emailProviderId || undefined }
+          : { status: 'failed', error: emailWarning || undefined },
+      });
+      pushSent = delivery.sent > 0 || Boolean(delivery.duplicate);
+    } catch (pushError) {
+      pushWarning = pushError instanceof Error ? pushError.message : 'No fue posible enviar Push';
+    }
+
     return json({
       success: true,
       ticket_id: ticket.id,
@@ -176,6 +200,8 @@ Deno.serve(async (req) => {
       already_processed: alreadyProcessed,
       email_sent: emailSent,
       email_warning: emailWarning,
+      push_sent: pushSent,
+      push_warning: pushWarning,
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'Error interno' }, 500);

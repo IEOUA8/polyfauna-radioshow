@@ -3,6 +3,7 @@ import { sendEmail } from '../_shared/resend.ts';
 import { publicEmailUrl } from '../_shared/email-templates.ts';
 import { findTicketTier, renderPendingTicketActivationEmail, renderTicketPurchasedEmail } from '../_shared/ticket-email-rules.ts';
 import { signTicketToken } from '../_shared/ticket-signing.ts';
+import { dispatchNotification } from '../_shared/notifications.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
           qr_url: publicEmailUrl(qrDataUrl),
           ticket_url: `${appUrl}/?section=tickets`,
         }, ticketTier);
-        await sendEmail({
+        const emailDelivery = await sendEmail({
           to: result.recipient_email,
           subject: `Te transfirieron una entrada · ${String(result.event_title).replace(/[\r\n]/g, ' ')}`,
           html,
@@ -109,14 +110,18 @@ Deno.serve(async (req) => {
         });
         emailSent = true;
 
-        const { error: notifError } = await admin.rpc('create_notification', {
-          p_type: 'ticket',
-          p_title: 'Te transfirieron una entrada',
-          p_body: `Tu entrada para ${result.event_title} ya está en tu Ticket Vault.`,
-          p_action_section: 'tickets',
-          p_user_id: result.user_id,
+        const delivery = await dispatchNotification({
+          userId: result.user_id,
+          notificationType: 'ticket',
+          actionSection: 'tickets',
+          actionId: result.ticket_id,
+          dedupeKey: `ticket-transfer/${result.ticket_id}/${result.user_id}`,
+          title: 'Te transfirieron una entrada',
+          body: `Tu entrada para ${result.event_title} ya está en tu Ticket Vault.`,
+          url: `${appUrl}/?section=tickets`,
+          emailDelivery: { status: 'sent', providerMessageId: emailDelivery.id },
         });
-        notificationSent = !notifError;
+        notificationSent = Boolean(delivery.notificationId);
       }
     } catch (notifyError) {
       return json({

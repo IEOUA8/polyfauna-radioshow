@@ -95,14 +95,16 @@ self.addEventListener('push', (event) => {
     icon:    data.icon    || `${APP_URL}/icons/icon-192.png`,
     badge:   data.badge   || `${APP_URL}/icons/icon-96.png`,
     image:   data.image   || undefined,
-    data:    { url: data.url || APP_URL },
-    tag:     data.tag     || 'polyfauna-notification',
+    data:    { url: data.url || APP_URL, notificationId: data.notificationId || null },
+    tag:     data.tag || (data.notificationId ? `polyfauna-${data.notificationId}` : `polyfauna-${Date.now()}`),
     renotify: true,
     vibrate: [120, 60, 120],
     actions: data.actions || [],
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  const tasks = [self.registration.showNotification(title, options)];
+  if ('setAppBadge' in self.navigator) tasks.push(self.navigator.setAppBadge());
+  event.waitUntil(Promise.all(tasks));
 });
 
 self.addEventListener('notificationclick', (event) => {

@@ -167,8 +167,10 @@ Reglas principales:
 - Plantillas compartidas viven en `supabase/functions/_shared` y las de Auth en `supabase/auth-email-templates`.
 - Resend usa claves de idempotencia y categorias; el webhook Svix registra sent/delivered/delayed/bounced/failed/complained/suppressed sin guardar cuerpo ni destinatario.
 - Las plantillas incluyen el ajuste de Gmail iOS para evitar inversion/fondo blanco.
-- Web Push usa suscripciones por usuario, VAPID y limpieza de endpoints expirados.
-- Notificaciones internas cubren mensajes, roles, co-promotores y contenido comunitario.
+- El centro de notificaciones es compartido por el header movil y el panel lateral; combina actividad editorial reciente con avisos persistentes y sincroniza lecturas por usuario en tiempo real.
+- `send-push` es el punto de despacho para avisos persistentes y Web Push: deduplica reintentos, conserva el aviso in-app aunque Push no este configurado, limpia endpoints expirados y registra entregas `in_app`, `push` y `email`.
+- Web Push usa suscripciones por usuario y el mismo par VAPID en frontend (`VITE_VAPID_PUBLIC_KEY`) y Edge Functions (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`). En iOS requiere instalar la PWA en la pantalla de inicio antes de solicitar permiso.
+- Notificaciones internas cubren mensajes, tickets, eventos, roles, co-promotores y contenido comunitario.
 
 ## Telemetria, seguridad y performance
 

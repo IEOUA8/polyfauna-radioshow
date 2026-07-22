@@ -44,7 +44,7 @@ test('edge function issue-courtesy-ticket envía la plantilla de cortesía pendi
   assert.match(courtesyFunction, /isPending/);
   assert.match(courtesyFunction, /courtesyPendingActivation/);
   assert.match(courtesyFunction, /signup_url/);
-  assert.match(courtesyFunction, /if \(!isPending\) \{\s*\n\s*try \{\s*\n\s*await sendPush/);
+  assert.match(courtesyFunction, /if \(!isPending\) \{\s*\n\s*try \{\s*\n\s*const notificationResult = await dispatchNotification/);
 });
 
 test('la plantilla de cortesía pendiente está registrada y disponible para renderEmailTemplate', () => {
