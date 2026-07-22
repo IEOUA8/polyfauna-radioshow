@@ -16,7 +16,7 @@ import Logo from '@/components/Logo';
 import { TransferTicketModal, VoidTicketModal } from '@/components/admin/TicketActionModals';
 import { useConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { lazyImport } from '@/lib/lazyImport';
-import { getTicketSaleAmount, sumTicketRevenue } from '@/lib/ticketPricing';
+import { getTicketSaleAmount, sumAttendeeRevenue, sumTicketRevenue } from '@/lib/ticketPricing';
 
 const EventManager     = lazy(lazyImport(() => import('@/components/admin/EventManager')));
 const PodcastManager   = lazy(lazyImport(() => import('@/components/admin/PodcastManager')));
@@ -1382,6 +1382,7 @@ function CourtesyTicketModal({ event, onClose, onIssued, onConfigure }) {
 function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const { toast } = useToast();
   const [events, setEvents] = useState([]);
+  const [eventRevenue, setEventRevenue] = useState({});
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [buyers, setBuyers] = useState({});
@@ -1390,6 +1391,49 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
   const [courtesyEvent, setCourtesyEvent] = useState(null);
   const [transferTarget, setTransferTarget] = useState(null);
   const [voidTarget, setVoidTarget] = useState(null);
+
+  const loadEventRevenue = useCallback(async (eventList) => {
+    const loadedEvents = Array.isArray(eventList) ? eventList : [];
+    const eventIds = loadedEvents.map(event => event.id).filter(Boolean);
+    if (eventIds.length === 0) {
+      setEventRevenue({});
+      return;
+    }
+
+    const totals = Object.fromEntries(eventIds.map(id => [id, 0]));
+    const { data: tickets, error } = await supabase.from('user_tickets')
+      .select('event_id, ticket_type, status, events(price, ticket_types), sale:transactions!user_tickets_transaction_id_fkey(amount_total, quantity, status)')
+      .in('event_id', eventIds)
+      .in('status', ['valid', 'used', 'pending_registration']);
+
+    if (error) {
+      eventIds.forEach(id => { totals[id] = null; });
+    } else {
+      (tickets || []).forEach(ticket => {
+        totals[ticket.event_id] += getTicketSaleAmount(ticket);
+      });
+
+      // La RLS permite la consulta directa al dueño/admin. Para eventos donde
+      // el usuario participa como co-promotor, la RPC autorizada entrega los
+      // asistentes y se conserva el importe histórico por transacción.
+      const visibleTicketCounts = (tickets || []).reduce((counts, ticket) => {
+        counts[ticket.event_id] = (counts[ticket.event_id] || 0) + 1;
+        return counts;
+      }, {});
+      const fallbackEvents = loadedEvents.filter(event => (
+        Number(event.tickets_sold) > (visibleTicketCounts[event.id] || 0)
+      ));
+      const fallbackResults = await Promise.all(fallbackEvents.map(async event => {
+        const result = await supabase.rpc('get_event_attendees', { p_event_id: event.id });
+        return { event, ...result };
+      }));
+      fallbackResults.forEach(({ event, data, error: attendeesError }) => {
+        totals[event.id] = attendeesError ? null : sumAttendeeRevenue(data, event);
+      });
+    }
+
+    setEventRevenue(totals);
+  }, []);
 
   useEffect(() => {
     const EVENT_COLUMNS = 'id, title, date, venue, price, tickets_total, tickets_sold, ticket_types, courtesy_limit, courtesies_issued, tickets_voided';
@@ -1413,11 +1457,13 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
         (coPromotedEvents || []).forEach(event => byId.set(event.id, event));
       }
 
-      setEvents([...byId.values()].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      const loadedEvents = [...byId.values()].sort((a, b) => new Date(a.date) - new Date(b.date));
+      setEvents(loadedEvents);
+      await loadEventRevenue(loadedEvents);
       setLoading(false);
     };
     load();
-  }, [ownerId]);
+  }, [loadEventRevenue, ownerId]);
 
   const loadBuyers = async (eventId) => {
     if (buyers[eventId]) { setExpanded(eventId); return; }
@@ -1452,6 +1498,7 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
       setEvents(current => current.map(item => item.id === eventId
         ? { ...item, tickets_sold: Math.max(0, (item.tickets_sold || 0) - 1), tickets_voided: data.ticketsVoidedTotal }
         : item));
+      await loadEventRevenue(events);
       setVoidTarget(null);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -1490,6 +1537,7 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
     });
     setExpanded(null);
     setManualEvent(null);
+    if (!result?.alreadyProcessed) void loadEventRevenue(events);
   };
   const handleCourtesyIssued = (result) => {
     setEvents(current => current.map(item => item.id === courtesyEvent?.id
@@ -1565,8 +1613,7 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
             const sold = ev.tickets_sold || 0;
             const total = ev.tickets_total || 0;
             const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
-            // Las cortesías no generan ingreso real, se descuentan del estimado.
-            const revenue = Math.max(0, sold - (ev.courtesies_issued || 0)) * (ev.price || 0);
+            const revenue = eventRevenue[ev.id];
             const isOpen = expanded === ev.id;
 
             return (
@@ -1602,8 +1649,10 @@ function TicketsSection({ ownerId, onConfigureCourtesy }) {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>${revenue.toLocaleString('es-CO')}</p>
-                    <p className="text-[10px] text-white/30">${(ev.price || 0).toLocaleString('es-CO')} c/u</p>
+                    <p className="text-sm font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                      {Number.isFinite(revenue) ? `$${revenue.toLocaleString('es-CO')}` : '—'}
+                    </p>
+                    <p className="text-[10px] text-white/30">Total real por tipo emitido</p>
                   </div>
 
                   <ChevronRight

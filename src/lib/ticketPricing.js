@@ -78,3 +78,23 @@ export function sumTicketRevenue(tickets) {
   return (Array.isArray(tickets) ? tickets : [])
     .reduce((total, ticket) => total + getTicketSaleAmount(ticket), 0);
 }
+
+export function sumAttendeeRevenue(attendees, event) {
+  const countedTransactions = new Set();
+
+  return (Array.isArray(attendees) ? attendees : [])
+    .filter(ticket => ['valid', 'used', 'pending_registration'].includes(ticket?.ticket_status))
+    .reduce((total, ticket) => {
+      if (NON_REVENUE_TYPES.has(normalizedTicketType(ticket?.ticket_type))) return total;
+
+      const transactionAmount = validMoney(ticket?.amount_total);
+      const transactionReference = String(ticket?.wompi_reference ?? '').trim();
+      if (transactionAmount !== null && transactionReference) {
+        if (countedTransactions.has(transactionReference)) return total;
+        countedTransactions.add(transactionReference);
+        return total + transactionAmount;
+      }
+
+      return total + getTicketTierPrice(event, ticket?.ticket_type);
+    }, 0);
+}
