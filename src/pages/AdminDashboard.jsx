@@ -602,16 +602,157 @@ function OperationalSection() {
   );
 }
 
+function VercelAnalyticsList({ title, description, items, formatLabel }) {
+  const maxPageviews = Math.max(1, ...items.map(item => Number(item.pageviews || 0)));
+
+  return (
+    <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)' }}>
+      <h4 className="text-xs font-black text-white">{title}</h4>
+      <p className="text-[10px] text-white/28 mt-0.5 mb-4">{description}</p>
+      {items.length === 0 ? (
+        <p className="py-7 text-center text-[11px] text-white/25">Sin datos todavía</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item, index) => {
+            const label = formatLabel ? formatLabel(item.key) : item.key;
+            const pageviews = Number(item.pageviews || 0);
+            return (
+              <div key={`${item.key}-${index}`}>
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <span className="truncate text-[11px] font-bold text-white/55" title={label}>{label}</span>
+                  <span className="shrink-0 text-[10px] font-black text-white">
+                    {pageviews.toLocaleString('es-CO')}
+                    <span className="font-medium text-white/25"> · {Number(item.visitors || 0).toLocaleString('es-CO')} usuarios</span>
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  <div className="h-full rounded-full" style={{ width: `${(pageviews / maxPageviews) * 100}%`, background: '#7dd3fc', opacity: 0.72 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VercelAnalyticsPanel({ data, error, loading, selectedHours }) {
+  const countryNames = typeof Intl.DisplayNames === 'function'
+    ? new Intl.DisplayNames(['es'], { type: 'region' })
+    : null;
+  const formatCountry = (value) => {
+    if (!countryNames || !/^[A-Z]{2}$/i.test(value)) return value;
+    try {
+      return countryNames.of(value.toUpperCase()) || value;
+    } catch (_) {
+      return value;
+    }
+  };
+
+  return (
+    <section className="p-5 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(10,18,22,0.96), rgba(11,16,15,0.92))', border: '1px solid rgba(125,211,252,0.15)' }}>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-sky-300" />
+            <h3 className="text-sm font-black text-white">Adquisición y contenido · Vercel Analytics</h3>
+          </div>
+          <p className="text-[11px] text-white/32 mt-1">Tráfico web agregado para entender alcance, contenido y procedencia de las visitas.</p>
+        </div>
+        <span className="w-fit rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-sky-200" style={{ background: 'rgba(125,211,252,0.08)', border: '1px solid rgba(125,211,252,0.14)' }}>
+          Fuente externa
+        </span>
+      </div>
+
+      {error ? (
+        <div className="flex items-start gap-3 p-4 rounded-xl" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.15)' }}>
+          <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-amber-200">No se pudo cargar Vercel Analytics</p>
+            <p className="text-[10px] text-amber-100/45 mt-1">{error}</p>
+          </div>
+        </div>
+      ) : loading ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2].map(item => <div key={item} className="h-20 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.035)' }} />)}
+          </div>
+          <div className="grid lg:grid-cols-3 gap-3">
+            {[1, 2, 3].map(item => <div key={item} className="h-40 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.035)' }} />)}
+          </div>
+          {selectedHours < 24 && <p className="text-[10px] text-white/25">Vercel consolidará esta selección en una ventana mínima de 24 horas.</p>}
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="p-4 rounded-xl" style={{ background: 'rgba(125,211,252,0.055)', border: '1px solid rgba(125,211,252,0.1)' }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/30">Visitantes únicos</p>
+              <p className="text-2xl font-black text-white mt-1">{Number(data.summary?.visitors || 0).toLocaleString('es-CO')}</p>
+            </div>
+            <div className="p-4 rounded-xl" style={{ background: 'rgba(125,211,252,0.055)', border: '1px solid rgba(125,211,252,0.1)' }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/30">Páginas vistas</p>
+              <p className="text-2xl font-black text-white mt-1">{Number(data.summary?.pageviews || 0).toLocaleString('es-CO')}</p>
+            </div>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-3">
+            <VercelAnalyticsList title="Páginas principales" description="Vistas · usuarios únicos" items={data.top_pages || []} />
+            <VercelAnalyticsList title="Fuentes de tráfico" description="Referentes · usuarios únicos" items={data.referrers || []} />
+            <VercelAnalyticsList title="Países" description="Vistas · usuarios únicos" items={data.countries || []} formatLabel={formatCountry} />
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-white/25">
+            <p>Estos conteos complementan las sesiones y conversiones internas; no se suman entre sí.</p>
+            {Number(data.effective_hours) > Number(data.requested_hours) && (
+              <p className="shrink-0 text-sky-200/45">Ventana Vercel: mínimo 24h</p>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="py-8 text-center text-xs text-white/25">Actualiza el tablero para consultar la adquisición web.</p>
+      )}
+    </section>
+  );
+}
+
 function UsageMetricsSection() {
   const [hours, setHours] = useState(24);
   const [metrics, setMetrics] = useState(null);
   const [demographics, setDemographics] = useState(null);
+  const [vercelMetrics, setVercelMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [vercelLoading, setVercelLoading] = useState(true);
   const [error, setError] = useState('');
+  const [vercelError, setVercelError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setVercelLoading(true);
     setError('');
+    setVercelError('');
+
+    const vercelRequest = (async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session?.access_token) {
+        throw new Error('Tu sesión expiró. Inicia sesión nuevamente para consultar Vercel Analytics.');
+      }
+
+      const response = await fetch(`/api/vercel-analytics?hours=${hours}`, {
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = payload.error === 'VERCEL_ANALYTICS_NOT_CONFIGURED'
+          ? 'La conexión del servidor con Vercel Analytics aún no está configurada.'
+          : payload.error === 'ADMIN_REQUIRED'
+            ? 'Solo un administrador puede consultar estos datos.'
+            : 'Vercel Analytics no respondió. Las métricas internas siguen disponibles.';
+        throw new Error(message);
+      }
+      return payload;
+    })()
+      .then(data => ({ data, error: null }))
+      .catch(vercelLoadError => ({ data: null, error: vercelLoadError }));
+
     const [metricsResult, demographicsResult] = await Promise.all([
       supabase.rpc('get_usage_metrics', { p_hours: hours }),
       supabase.rpc('get_audience_demographics', { p_hours: hours }),
@@ -631,6 +772,15 @@ function UsageMetricsSection() {
       setDemographics(demographicsData);
     }
     setLoading(false);
+
+    const vercelResult = await vercelRequest;
+    if (vercelResult.error) {
+      setVercelMetrics(null);
+      setVercelError(vercelResult.error.message);
+    } else {
+      setVercelMetrics(vercelResult.data);
+    }
+    setVercelLoading(false);
   }, [hours]);
 
   useEffect(() => { load(); }, [load]);
@@ -943,6 +1093,13 @@ function UsageMetricsSection() {
           </div>
         </>
       )}
+
+      <VercelAnalyticsPanel
+        data={vercelMetrics}
+        error={vercelError}
+        loading={vercelLoading}
+        selectedHours={hours}
+      />
     </div>
   );
 }
